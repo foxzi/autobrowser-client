@@ -145,6 +145,26 @@ def create_app(settings: Settings) -> FastAPI:
         status = status_map.get(exc.code, 500)
         return _error_response(exc, status)
 
+    # --- Optional token auth middleware ---
+    if settings.api.token:
+        from starlette.middleware.base import BaseHTTPMiddleware
+        from starlette.responses import JSONResponse as StarletteJSON
+
+        class TokenAuthMiddleware(BaseHTTPMiddleware):
+            async def dispatch(self, request: Request, call_next: Any) -> Any:
+                if request.url.path in ("/health", "/ready", "/docs", "/openapi.json"):
+                    return await call_next(request)
+                auth = request.headers.get("authorization", "")
+                expected = f"Bearer {settings.api.token}"
+                if auth != expected:
+                    return StarletteJSON(
+                        status_code=401,
+                        content={"success": False, "error": {"code": "UNAUTHORIZED", "message": "Invalid or missing token"}},
+                    )
+                return await call_next(request)
+
+        app.add_middleware(TokenAuthMiddleware)
+
     @app.on_event("shutdown")
     def shutdown() -> None:
         manager.stop_all()

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 import time
 import uuid
 from enum import StrEnum
@@ -24,6 +25,19 @@ class SessionState(StrEnum):
     FAILED = "failed"
 
 
+_SENSITIVE_HEADERS = {"authorization", "cookie", "set-cookie", "proxy-authorization"}
+
+
+def _mask_headers(headers: dict[str, str]) -> dict[str, str]:
+    masked: dict[str, str] = {}
+    for k, v in headers.items():
+        if k.lower() in _SENSITIVE_HEADERS:
+            masked[k] = v[:8] + "***" if len(v) > 8 else "****"
+        else:
+            masked[k] = v
+    return masked
+
+
 class HeadersEntry:
     """Captured request/response headers for a single navigation."""
 
@@ -33,11 +47,13 @@ class HeadersEntry:
         self.response_headers: dict[str, str] = {}
         self.status_code: int | None = None
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self, mask: bool = True) -> dict[str, Any]:
+        req = _mask_headers(self.request_headers) if mask else self.request_headers
+        resp = _mask_headers(self.response_headers) if mask else self.response_headers
         return {
             "url": self.url,
-            "request": self.request_headers,
-            "response": self.response_headers,
+            "request": req,
+            "response": resp,
             "statusCode": self.status_code,
         }
 
@@ -49,6 +65,7 @@ class BrowserSession:
         self.settings = settings
         self.started_at: float = time.time()
         self.stopped_at: float | None = None
+        self.last_activity: float = time.time()
         self.error: str | None = None
 
         self._playwright: Playwright | None = None
@@ -148,6 +165,10 @@ class BrowserSession:
             self._cleanup()
             raise BrowserStartError(str(exc)) from exc
 
+    def touch(self) -> None:
+        """Update last activity timestamp."""
+        self.last_activity = time.time()
+
     def stop(self) -> None:
         if self.state in {SessionState.STOPPED, SessionState.STOPPING}:
             return
@@ -196,8 +217,13 @@ class BrowserSession:
     def get_content(self, page_id: str | None = None, fmt: str = "html") -> str:
         page = self.get_page(page_id)
         if fmt == "text":
-            return page.inner_text("body")
-        return page.content()
+            content = page.inner_text("body")
+        else:
+            content = page.content()
+        max_bytes = self.settings.output.max_content_bytes
+        if max_bytes and len(content.encode("utf-8")) > max_bytes:
+            content = content.encode("utf-8")[:max_bytes].decode("utf-8", errors="ignore")
+        return content
 
     def info(self) -> dict[str, Any]:
         result: dict[str, Any] = {
@@ -244,6 +270,33 @@ class SessionManager:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self._sessions: dict[str, BrowserSession] = {}
+        self._reaper_stop = threading.Event()
+        self._reaper_thread: threading.Thread | None = None
+        idle_ms = self.settings.timeouts.idle_session_ms
+        if idle_ms > 0:
+            self._reaper_thread = threading.Thread(
+                target=self._reap_idle_sessions,
+                daemon=True,
+            )
+            self._reaper_thread.start()
+
+    def _reap_idle_sessions(self) -> None:
+        idle_sec = self.settings.timeouts.idle_session_ms / 1000.0
+        while not self._reaper_stop.wait(timeout=min(idle_sec / 2, 30)):
+            now = time.time()
+            for session in list(self._sessions.values()):
+                if session.state != SessionState.RUNNING:
+                    continue
+                if now - session.last_activity > idle_sec:
+                    logger.info(
+                        "Reaping idle session %s (idle %.0fs)",
+                        session.session_id,
+                        now - session.last_activity,
+                    )
+                    try:
+                        session.stop()
+                    except Exception:
+                        pass
 
     def create_session(
         self,
@@ -267,6 +320,7 @@ class SessionManager:
         session = self._sessions.get(session_id)
         if session is None:
             raise SessionNotFoundError(session_id)
+        session.touch()
         return session
 
     def stop_session(self, session_id: str) -> BrowserSession:
@@ -278,6 +332,9 @@ class SessionManager:
         return [s.info() for s in self._sessions.values()]
 
     def stop_all(self) -> None:
+        self._reaper_stop.set()
+        if self._reaper_thread:
+            self._reaper_thread.join(timeout=5)
         for session in self._sessions.values():
             try:
                 session.stop()
