@@ -7,4 +7,6 @@ Python client for launching and controlling a browser through CLI scripts and HT
 ## Documentation
 
 - Technical specification / Техническое задание: [`tz.md`](tz.md)
+- HTTP API / HTTP API: [`docs/api.md`](docs/api.md)
+- Configuration / Конфигурация: [`docs/configuration.md`](docs/configuration.md)
 - CLI scripts / CLI-сценарии: [`docs/scripts.md`](docs/scripts.md)
