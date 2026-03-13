@@ -13,8 +13,20 @@ Python client for launching and controlling a browser through CLI scripts and HT
 
 ## Quick start
 
+### Docker (recommended)
+
 ```bash
 docker compose build cli
 docker compose run --rm cli version
 docker compose run --rm cli show-config
+```
+
+### Local venv (dev mode)
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -e .
+.venv/bin/autobrowser version
+.venv/bin/autobrowser show-config
+.venv/bin/autobrowser validate-script --file examples/login.yaml
 ```

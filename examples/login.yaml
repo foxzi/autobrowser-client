@@ -1,0 +1,35 @@
+session:
+  headless: true
+  profile: test1
+  userAgent: Mozilla/5.0
+  timeout: 10000
+
+steps:
+  - action: open
+    url: https://example.com/login
+
+  - action: fill
+    locator:
+      type: name
+      value: username
+    value: demo-user
+
+  - action: fill
+    locator:
+      type: name
+      value: password
+    value: demo-password
+
+  - action: click
+    locator:
+      type: css
+      value: button[type='submit']
+
+  - action: wait
+    waitUntil: networkidle
+
+  - action: get-content
+    format: html
+
+output:
+  file: result.html
