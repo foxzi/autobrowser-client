@@ -12,6 +12,7 @@ from patchright.sync_api import sync_playwright, Playwright, Browser, BrowserCon
 
 from autobrowser_client.config import Settings
 from autobrowser_client.errors import BrowserStartError, SessionNotFoundError
+from autobrowser_client.profiles.manager import ProfileLock
 from autobrowser_client.proxy.relay import ProxyRelay
 
 logger = logging.getLogger(__name__)
@@ -74,6 +75,7 @@ class BrowserSession:
         self._pages: dict[str, Page] = {}
         self._headers: dict[str, list[HeadersEntry]] = {}  # page_id -> headers list
         self._proxy_relay: ProxyRelay | None = None
+        self._profile_lock: ProfileLock | None = None
 
     @property
     def context(self) -> BrowserContext:
@@ -107,6 +109,10 @@ class BrowserSession:
             if profile:
                 profile_dir = Path(self.settings.profiles.dir) / profile
                 profile_dir.mkdir(parents=True, exist_ok=True)
+
+                self._profile_lock = ProfileLock(profile_dir)
+                self._profile_lock.acquire()
+
                 logger.info("Using profile directory: %s", profile_dir)
 
                 ctx_kwargs: dict[str, Any] = {
@@ -259,10 +265,16 @@ class BrowserSession:
                 self._proxy_relay.stop()
         except Exception:
             pass
+        try:
+            if self._profile_lock:
+                self._profile_lock.release()
+        except Exception:
+            pass
         self._context = None
         self._browser = None
         self._playwright = None
         self._proxy_relay = None
+        self._profile_lock = None
         self._pages.clear()
 
 
