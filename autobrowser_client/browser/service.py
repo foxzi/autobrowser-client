@@ -97,6 +97,9 @@ class BrowserSession:
                     logger.info("Opened %s as %s", url, page_id)
             elif self._context.pages:
                 self._pages["page_0"] = self._context.pages[0]
+            else:
+                page = self._context.new_page()
+                self._pages["page_0"] = page
 
             self.state = SessionState.RUNNING
             logger.info("Session %s is running", self.session_id)
