@@ -1,10 +1,35 @@
 services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: autobrowser-client:dev
+    ports:
+      - "8080:8080"
+    volumes:
+      - profiles:/data/profiles
+    environment:
+      - AUTOBROWSER_PROFILE_DIR=/data/profiles
+      - AUTOBROWSER_LOG_LEVEL=INFO
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://127.0.0.1:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   cli:
     build:
       context: .
       dockerfile: Dockerfile
     image: autobrowser-client:dev
-    working_dir: /app
     volumes:
-      - ./:/app
+      - profiles:/data/profiles
+    environment:
+      - AUTOBROWSER_PROFILE_DIR=/data/profiles
+    entrypoint: ["autobrowser"]
     command: ["version"]
+    profiles:
+      - cli
+
+volumes:
+  profiles:
