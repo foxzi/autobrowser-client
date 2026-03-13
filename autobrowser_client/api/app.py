@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
@@ -188,6 +189,37 @@ def create_app(settings: Settings) -> FastAPI:
             "version": __version__,
             "api": {"host": settings.api.host, "port": settings.api.port},
         }
+
+    # =======================================================================
+    # Profile management
+    # =======================================================================
+
+    @app.post("/api/v1/profile/create")
+    async def create_profile(body: dict[str, Any]) -> dict[str, Any]:
+        name = body.get("name")
+        if not name or not isinstance(name, str):
+            raise HTTPException(status_code=400, detail="Field 'name' is required")
+        name = name.strip()
+        if not name or "/" in name or "\\" in name or name.startswith("."):
+            raise HTTPException(status_code=400, detail="Invalid profile name")
+        profile_dir = Path(settings.profiles.dir) / name
+        if profile_dir.exists():
+            raise HTTPException(
+                status_code=409, detail=f"Profile '{name}' already exists"
+            )
+        profile_dir.mkdir(parents=True, exist_ok=True)
+        logger.info("Created profile: %s", name)
+        return {"success": True, "profile": name, "path": str(profile_dir)}
+
+    @app.get("/api/v1/profiles")
+    async def list_profiles() -> dict[str, Any]:
+        profiles_dir = Path(settings.profiles.dir)
+        profiles: list[str] = []
+        if profiles_dir.is_dir():
+            profiles = sorted(
+                d.name for d in profiles_dir.iterdir() if d.is_dir()
+            )
+        return {"success": True, "profiles": profiles}
 
     # =======================================================================
     # Session management
