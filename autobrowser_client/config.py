@@ -49,10 +49,29 @@ class ProxySettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     enabled: bool = False
+    scheme: str = "socks5"
     host: str | None = None
     port: int | None = None
     username: str | None = None
     password: str | None = None
+    socks2http_bin: str = Field(
+        default="/home/piligrim/Work/golang/socks2http/build/socks2http",
+        alias="socks2httpBin",
+    )
+    local_port: int = Field(default=0, alias="localPort")
+
+    def proxy_url(self) -> str | None:
+        """Build upstream proxy URL for socks2http."""
+        if not self.host:
+            return None
+        auth = ""
+        if self.username:
+            auth = self.username
+            if self.password:
+                auth += f":{self.password}"
+            auth += "@"
+        p = self.port or (1080 if self.scheme == "socks5" else 8080)
+        return f"{self.scheme}://{auth}{self.host}:{p}"
 
 
 class LoggingSettings(BaseModel):
@@ -131,10 +150,13 @@ def _env_overrides(env: dict[str, str]) -> dict[str, Any]:
         ("AUTOBROWSER_LOG_LEVEL", ("logging", "level"), "str"),
         ("AUTOBROWSER_LOG_FILE", ("logging", "file"), "str"),
         ("AUTOBROWSER_PROXY_ENABLED", ("proxy", "enabled"), "bool"),
+        ("AUTOBROWSER_PROXY_SCHEME", ("proxy", "scheme"), "str"),
         ("AUTOBROWSER_PROXY_HOST", ("proxy", "host"), "str"),
         ("AUTOBROWSER_PROXY_PORT", ("proxy", "port"), "int"),
         ("AUTOBROWSER_PROXY_USERNAME", ("proxy", "username"), "str"),
         ("AUTOBROWSER_PROXY_PASSWORD", ("proxy", "password"), "str"),
+        ("AUTOBROWSER_SOCKS2HTTP_BIN", ("proxy", "socks2httpBin"), "str"),
+        ("AUTOBROWSER_PROXY_LOCAL_PORT", ("proxy", "localPort"), "int"),
         ("AUTOBROWSER_TIMEOUT_STARTUP_MS", ("timeouts", "startupMs"), "int"),
         ("AUTOBROWSER_TIMEOUT_ACTION_MS", ("timeouts", "actionMs"), "int"),
         ("AUTOBROWSER_TIMEOUT_NAVIGATION_MS", ("timeouts", "navigationMs"), "int"),

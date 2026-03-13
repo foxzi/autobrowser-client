@@ -11,6 +11,7 @@ from patchright.sync_api import sync_playwright, Playwright, Browser, BrowserCon
 
 from autobrowser_client.config import Settings
 from autobrowser_client.errors import BrowserStartError, SessionNotFoundError
+from autobrowser_client.proxy.relay import ProxyRelay
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,7 @@ class BrowserSession:
         self._context: BrowserContext | None = None
         self._pages: dict[str, Page] = {}
         self._headers: dict[str, list[HeadersEntry]] = {}  # page_id -> headers list
+        self._proxy_relay: ProxyRelay | None = None
 
     @property
     def context(self) -> BrowserContext:
@@ -70,6 +72,14 @@ class BrowserSession:
         headless: bool | None = None,
     ) -> None:
         try:
+            # Start proxy relay if configured
+            proxy_server: dict[str, str] | None = None
+            if self.settings.proxy.enabled:
+                self._proxy_relay = ProxyRelay(self.settings.proxy)
+                self._proxy_relay.start()
+                proxy_server = {"server": self._proxy_relay.http_proxy_url}
+                logger.info("Using proxy relay: %s", self._proxy_relay.http_proxy_url)
+
             self._playwright = sync_playwright().start()
 
             is_headless = headless if headless is not None else self.settings.browser.headless
@@ -89,6 +99,8 @@ class BrowserSession:
                 }
                 if ua:
                     ctx_kwargs["user_agent"] = ua
+                if proxy_server:
+                    ctx_kwargs["proxy"] = proxy_server
 
                 self._context = self._playwright.chromium.launch_persistent_context(
                     user_data_dir=str(profile_dir),
@@ -100,6 +112,8 @@ class BrowserSession:
                     "headless": is_headless,
                     "args": launch_args or None,
                 }
+                if proxy_server:
+                    browser_kwargs["proxy"] = proxy_server
                 self._browser = self._playwright.chromium.launch(**browser_kwargs)
 
                 ctx_opts: dict[str, Any] = {}
@@ -186,7 +200,7 @@ class BrowserSession:
         return page.content()
 
     def info(self) -> dict[str, Any]:
-        return {
+        result: dict[str, Any] = {
             "sessionId": self.session_id,
             "state": self.state,
             "startedAt": self.started_at,
@@ -194,6 +208,9 @@ class BrowserSession:
             "error": self.error,
             "pages": self.list_pages(),
         }
+        if self._proxy_relay and self._proxy_relay.is_running:
+            result["proxy"] = self._proxy_relay.http_proxy_url
+        return result
 
     def _cleanup(self) -> None:
         try:
@@ -211,9 +228,15 @@ class BrowserSession:
                 self._playwright.stop()
         except Exception:
             pass
+        try:
+            if self._proxy_relay:
+                self._proxy_relay.stop()
+        except Exception:
+            pass
         self._context = None
         self._browser = None
         self._playwright = None
+        self._proxy_relay = None
         self._pages.clear()
 
 

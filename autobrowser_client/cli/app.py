@@ -24,6 +24,7 @@ def _settings_from_options(
     profile_dir: Path | None = None,
     user_agent: str | None = None,
     timeout: int | None = None,
+    proxy: str | None = None,
 ) -> Settings:
     overrides: dict[str, Any] = {}
     if headless is not None:
@@ -34,10 +35,30 @@ def _settings_from_options(
         overrides.setdefault("browser", {})["userAgent"] = user_agent
     if timeout is not None:
         overrides.setdefault("timeouts", {})["actionMs"] = timeout
+        overrides.setdefault("timeouts", {})["navigationMs"] = timeout
+    if proxy is not None:
+        _apply_proxy_url(proxy, overrides)
 
     settings = load_settings(config_path=config, overrides=overrides or None)
     configure_logging(settings.logging.level, settings.logging.file)
     return settings
+
+
+def _apply_proxy_url(proxy_url: str, overrides: dict[str, Any]) -> None:
+    """Parse proxy URL like socks5://user:pass@host:port into overrides."""
+    from urllib.parse import urlparse
+
+    parsed = urlparse(proxy_url)
+    proxy_cfg = overrides.setdefault("proxy", {})
+    proxy_cfg["enabled"] = True
+    proxy_cfg["scheme"] = parsed.scheme or "socks5"
+    proxy_cfg["host"] = parsed.hostname
+    if parsed.port:
+        proxy_cfg["port"] = parsed.port
+    if parsed.username:
+        proxy_cfg["username"] = parsed.username
+    if parsed.password:
+        proxy_cfg["password"] = parsed.password
 
 
 @app.command("version")
@@ -76,9 +97,10 @@ def run_script(
     file: Annotated[Path, typer.Option("--file", exists=True, dir_okay=False)],
     config: Annotated[Path | None, typer.Option("--config", exists=False, dir_okay=False)] = None,
     profile: Annotated[str | None, typer.Option("--profile")] = None,
+    proxy: Annotated[str | None, typer.Option("--proxy", help="Proxy URL: socks5://user:pass@host:port")] = None,
     output_file: Annotated[Path | None, typer.Option("--output", help="Save result to file")] = None,
 ) -> None:
-    settings = _settings_from_options(config=config)
+    settings = _settings_from_options(config=config, proxy=proxy)
     script = load_script(file)
     effective_profile = profile or script.session.profile
     headless = script.session.headless
@@ -136,6 +158,7 @@ def run(
     user_agent: Annotated[str | None, typer.Option("--user-agent")] = None,
     headless: Annotated[bool | None, typer.Option("--headless/--headful")] = None,
     timeout: Annotated[int | None, typer.Option("--timeout")] = None,
+    proxy: Annotated[str | None, typer.Option("--proxy", help="Proxy URL: socks5://user:pass@host:port")] = None,
     output_file: Annotated[Path | None, typer.Option("--output", help="Save result to file")] = None,
     content_format: Annotated[str, typer.Option("--format", help="Content format: html or text")] = "html",
 ) -> None:
@@ -145,6 +168,7 @@ def run(
         profile_dir=profile_dir,
         user_agent=user_agent,
         timeout=timeout,
+        proxy=proxy,
     )
 
     manager = SessionManager(settings)
