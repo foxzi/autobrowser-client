@@ -10,3 +10,11 @@ Python client for launching and controlling a browser through CLI scripts and HT
 - HTTP API / HTTP API: [`docs/api.md`](docs/api.md)
 - Configuration / Конфигурация: [`docs/configuration.md`](docs/configuration.md)
 - CLI scripts / CLI-сценарии: [`docs/scripts.md`](docs/scripts.md)
+
+## Quick start
+
+```bash
+docker compose build cli
+docker compose run --rm cli version
+docker compose run --rm cli show-config
+```

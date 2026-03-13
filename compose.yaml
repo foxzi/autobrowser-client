@@ -1,0 +1,10 @@
+services:
+  cli:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: autobrowser-client:dev
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: ["version"]
