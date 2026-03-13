@@ -151,6 +151,21 @@ def run(
         session.stop()
 
 
+@app.command("serve")
+def serve(
+    config: Annotated[Path | None, typer.Option("--config", exists=False, dir_okay=False)] = None,
+    host: Annotated[str, typer.Option("--host")] = "127.0.0.1",
+    port: Annotated[int, typer.Option("--port")] = 8080,
+) -> None:
+    import uvicorn
+
+    from autobrowser_client.api.app import create_app
+
+    settings = _settings_from_options(config=config)
+    api_app = create_app(settings)
+    uvicorn.run(api_app, host=host, port=port)
+
+
 def main() -> None:
     try:
         app()
