@@ -130,7 +130,22 @@ def _timed(fn: Any, *args: Any, **kwargs: Any) -> tuple[Any, float]:
 # ---------------------------------------------------------------------------
 
 def create_app(settings: Settings) -> FastAPI:
-    app = FastAPI(title="autobrowser-client", version=__version__)
+    app = FastAPI(
+        title="autobrowser-client",
+        version=__version__,
+        description="HTTP API for browser automation with patchright.",
+        openapi_tags=[
+            {"name": "health", "description": "Health and readiness probes"},
+            {"name": "info", "description": "Server information"},
+            {"name": "profiles", "description": "Profile management"},
+            {"name": "sessions", "description": "Browser session lifecycle"},
+            {"name": "page-data", "description": "Cookies, headers, page content"},
+            {"name": "dom", "description": "DOM element interaction"},
+            {"name": "mouse", "description": "Mouse control"},
+            {"name": "keyboard", "description": "Keyboard control"},
+            {"name": "actions", "description": "Action chains"},
+        ],
+    )
     manager = SessionManager(settings)
 
     @app.exception_handler(AppError)
@@ -174,15 +189,15 @@ def create_app(settings: Settings) -> FastAPI:
     # Service endpoints
     # =======================================================================
 
-    @app.get("/health")
+    @app.get("/health", tags=["health"])
     async def health() -> dict[str, str]:
         return {"status": "ok"}
 
-    @app.get("/ready")
+    @app.get("/ready", tags=["health"])
     async def ready() -> dict[str, str]:
         return {"status": "ready"}
 
-    @app.get("/api/v1/info")
+    @app.get("/api/v1/info", tags=["info"])
     async def info() -> dict[str, object]:
         return {
             "name": "autobrowser-client",
@@ -194,7 +209,7 @@ def create_app(settings: Settings) -> FastAPI:
     # Profile management
     # =======================================================================
 
-    @app.post("/api/v1/profile/create")
+    @app.post("/api/v1/profile/create", tags=["profiles"])
     async def create_profile(body: dict[str, Any]) -> dict[str, Any]:
         name = body.get("name")
         if not name or not isinstance(name, str):
@@ -211,7 +226,7 @@ def create_app(settings: Settings) -> FastAPI:
         logger.info("Created profile: %s", name)
         return {"success": True, "profile": name, "path": str(profile_dir)}
 
-    @app.get("/api/v1/profiles")
+    @app.get("/api/v1/profiles", tags=["profiles"])
     async def list_profiles() -> dict[str, Any]:
         profiles_dir = Path(settings.profiles.dir)
         profiles: list[str] = []
@@ -225,7 +240,7 @@ def create_app(settings: Settings) -> FastAPI:
     # Session management
     # =======================================================================
 
-    @app.post("/api/v1/browser/start")
+    @app.post("/api/v1/browser/start", tags=["sessions"])
     async def browser_start(body: StartRequest) -> dict[str, Any]:
         session = await asyncio.to_thread(
             manager.create_session,
@@ -236,15 +251,15 @@ def create_app(settings: Settings) -> FastAPI:
         )
         return {"success": True, **session.info()}
 
-    @app.get("/api/v1/sessions")
+    @app.get("/api/v1/sessions", tags=["sessions"])
     async def list_sessions() -> dict[str, Any]:
         return {"success": True, "sessions": manager.list_sessions()}
 
-    @app.get("/api/v1/session/{session_id}")
+    @app.get("/api/v1/session/{session_id}", tags=["sessions"])
     async def get_session(session_id: str) -> dict[str, Any]:
         return {"success": True, **manager.get_session(session_id).info()}
 
-    @app.post("/api/v1/session/{session_id}/stop")
+    @app.post("/api/v1/session/{session_id}/stop", tags=["sessions"])
     async def stop_session(session_id: str) -> dict[str, Any]:
         session = await asyncio.to_thread(manager.stop_session, session_id)
         return {"success": True, **session.info()}
@@ -253,18 +268,18 @@ def create_app(settings: Settings) -> FastAPI:
     # Page data
     # =======================================================================
 
-    @app.get("/api/v1/session/{session_id}/cookies")
+    @app.get("/api/v1/session/{session_id}/cookies", tags=["page-data"])
     async def get_cookies(session_id: str) -> dict[str, Any]:
         session = manager.get_session(session_id)
         cookies = await asyncio.to_thread(session.get_cookies)
         return {"success": True, "sessionId": session_id, "cookies": cookies}
 
-    @app.get("/api/v1/session/{session_id}/headers")
+    @app.get("/api/v1/session/{session_id}/headers", tags=["page-data"])
     async def get_headers(session_id: str, page_id: str | None = None) -> dict[str, Any]:
         session = manager.get_session(session_id)
         return {"success": True, "sessionId": session_id, "headers": session.get_headers(page_id)}
 
-    @app.get("/api/v1/session/{session_id}/content")
+    @app.get("/api/v1/session/{session_id}/content", tags=["page-data"])
     async def get_content(session_id: str, page_id: str | None = None, fmt: str = "html") -> dict[str, Any]:
         session = manager.get_session(session_id)
         content = await asyncio.to_thread(session.get_content, page_id, fmt)
@@ -274,7 +289,7 @@ def create_app(settings: Settings) -> FastAPI:
     # DOM interaction
     # =======================================================================
 
-    @app.post("/api/v1/session/{session_id}/pages/{page_id}/elements/find")
+    @app.post("/api/v1/session/{session_id}/pages/{page_id}/elements/find", tags=["dom"])
     async def api_find(session_id: str, page_id: str, body: ElementRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         data, ms = await asyncio.to_thread(
@@ -283,7 +298,7 @@ def create_app(settings: Settings) -> FastAPI:
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": "find", "durationMs": ms, "result": data}
 
-    @app.post("/api/v1/session/{session_id}/pages/{page_id}/elements/find-all")
+    @app.post("/api/v1/session/{session_id}/pages/{page_id}/elements/find-all", tags=["dom"])
     async def api_find_all(session_id: str, page_id: str, body: ElementRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         data, ms = await asyncio.to_thread(
@@ -292,7 +307,7 @@ def create_app(settings: Settings) -> FastAPI:
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": "find-all", "durationMs": ms, "result": data}
 
-    @app.post("/api/v1/session/{session_id}/pages/{page_id}/elements/read")
+    @app.post("/api/v1/session/{session_id}/pages/{page_id}/elements/read", tags=["dom"])
     async def api_read(session_id: str, page_id: str, body: ElementRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         data, ms = await asyncio.to_thread(
@@ -301,7 +316,7 @@ def create_app(settings: Settings) -> FastAPI:
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": "read", "durationMs": ms, "result": data}
 
-    @app.post("/api/v1/session/{session_id}/pages/{page_id}/elements/click")
+    @app.post("/api/v1/session/{session_id}/pages/{page_id}/elements/click", tags=["dom"])
     async def api_click(session_id: str, page_id: str, body: ClickRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         _, ms = await asyncio.to_thread(
@@ -310,7 +325,7 @@ def create_app(settings: Settings) -> FastAPI:
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": "click", "durationMs": ms}
 
-    @app.post("/api/v1/session/{session_id}/pages/{page_id}/elements/hover")
+    @app.post("/api/v1/session/{session_id}/pages/{page_id}/elements/hover", tags=["dom"])
     async def api_hover(session_id: str, page_id: str, body: ElementRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         _, ms = await asyncio.to_thread(
@@ -319,7 +334,7 @@ def create_app(settings: Settings) -> FastAPI:
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": "hover", "durationMs": ms}
 
-    @app.post("/api/v1/session/{session_id}/pages/{page_id}/elements/focus")
+    @app.post("/api/v1/session/{session_id}/pages/{page_id}/elements/focus", tags=["dom"])
     async def api_focus(session_id: str, page_id: str, body: ElementRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         _, ms = await asyncio.to_thread(
@@ -328,7 +343,7 @@ def create_app(settings: Settings) -> FastAPI:
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": "focus", "durationMs": ms}
 
-    @app.post("/api/v1/session/{session_id}/pages/{page_id}/elements/fill")
+    @app.post("/api/v1/session/{session_id}/pages/{page_id}/elements/fill", tags=["dom"])
     async def api_fill(session_id: str, page_id: str, body: FillRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         _, ms = await asyncio.to_thread(
@@ -338,7 +353,7 @@ def create_app(settings: Settings) -> FastAPI:
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": "fill", "durationMs": ms}
 
-    @app.post("/api/v1/session/{session_id}/pages/{page_id}/elements/clear")
+    @app.post("/api/v1/session/{session_id}/pages/{page_id}/elements/clear", tags=["dom"])
     async def api_clear(session_id: str, page_id: str, body: ElementRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         _, ms = await asyncio.to_thread(
@@ -347,7 +362,7 @@ def create_app(settings: Settings) -> FastAPI:
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": "clear", "durationMs": ms}
 
-    @app.post("/api/v1/session/{session_id}/pages/{page_id}/elements/select")
+    @app.post("/api/v1/session/{session_id}/pages/{page_id}/elements/select", tags=["dom"])
     async def api_select(session_id: str, page_id: str, body: SelectRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         data, ms = await asyncio.to_thread(
@@ -356,7 +371,7 @@ def create_app(settings: Settings) -> FastAPI:
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": "select", "durationMs": ms, "result": {"selected": data}}
 
-    @app.post("/api/v1/session/{session_id}/pages/{page_id}/elements/check")
+    @app.post("/api/v1/session/{session_id}/pages/{page_id}/elements/check", tags=["dom"])
     async def api_check(session_id: str, page_id: str, body: CheckRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         action_name = "check" if body.checked else "uncheck"
@@ -366,7 +381,7 @@ def create_app(settings: Settings) -> FastAPI:
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": action_name, "durationMs": ms}
 
-    @app.post("/api/v1/session/{session_id}/pages/{page_id}/forms/submit")
+    @app.post("/api/v1/session/{session_id}/pages/{page_id}/forms/submit", tags=["dom"])
     async def api_submit(session_id: str, page_id: str, body: ElementRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         _, ms = await asyncio.to_thread(
@@ -375,7 +390,7 @@ def create_app(settings: Settings) -> FastAPI:
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": "submit", "durationMs": ms}
 
-    @app.post("/api/v1/session/{session_id}/pages/{page_id}/elements/wait")
+    @app.post("/api/v1/session/{session_id}/pages/{page_id}/elements/wait", tags=["dom"])
     async def api_wait(session_id: str, page_id: str, body: WaitRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         if body.locator:
@@ -394,7 +409,7 @@ def create_app(settings: Settings) -> FastAPI:
     # Mouse and keyboard
     # =======================================================================
 
-    @app.post("/api/v1/session/{session_id}/pages/{page_id}/mouse/move")
+    @app.post("/api/v1/session/{session_id}/pages/{page_id}/mouse/move", tags=["mouse"])
     async def api_mouse_move(session_id: str, page_id: str, body: MouseMoveRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         _, ms = await asyncio.to_thread(
@@ -403,7 +418,7 @@ def create_app(settings: Settings) -> FastAPI:
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": "mouse-move", "durationMs": ms}
 
-    @app.post("/api/v1/session/{session_id}/pages/{page_id}/mouse/move-to")
+    @app.post("/api/v1/session/{session_id}/pages/{page_id}/mouse/move-to", tags=["mouse"])
     async def api_mouse_move_to(session_id: str, page_id: str, body: ElementRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         data, ms = await asyncio.to_thread(
@@ -412,7 +427,7 @@ def create_app(settings: Settings) -> FastAPI:
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": "mouse-move-to", "durationMs": ms, "result": data}
 
-    @app.post("/api/v1/session/{session_id}/pages/{page_id}/mouse/scroll")
+    @app.post("/api/v1/session/{session_id}/pages/{page_id}/mouse/scroll", tags=["mouse"])
     async def api_scroll(session_id: str, page_id: str, body: ScrollRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         _, ms = await asyncio.to_thread(
@@ -421,7 +436,7 @@ def create_app(settings: Settings) -> FastAPI:
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": "scroll", "durationMs": ms}
 
-    @app.post("/api/v1/session/{session_id}/pages/{page_id}/mouse/scroll-to")
+    @app.post("/api/v1/session/{session_id}/pages/{page_id}/mouse/scroll-to", tags=["mouse"])
     async def api_scroll_to(session_id: str, page_id: str, body: ElementRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         _, ms = await asyncio.to_thread(
@@ -430,7 +445,7 @@ def create_app(settings: Settings) -> FastAPI:
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": "scroll-to", "durationMs": ms}
 
-    @app.post("/api/v1/session/{session_id}/pages/{page_id}/mouse/move-random")
+    @app.post("/api/v1/session/{session_id}/pages/{page_id}/mouse/move-random", tags=["mouse"])
     async def api_mouse_random(session_id: str, page_id: str, body: MouseRandomRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         data, ms = await asyncio.to_thread(
@@ -441,7 +456,7 @@ def create_app(settings: Settings) -> FastAPI:
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": "mouse-move-random", "durationMs": ms, "result": {"points": len(data)}}
 
-    @app.post("/api/v1/session/{session_id}/pages/{page_id}/keyboard/press")
+    @app.post("/api/v1/session/{session_id}/pages/{page_id}/keyboard/press", tags=["keyboard"])
     async def api_press(session_id: str, page_id: str, body: PressRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         _, ms = await asyncio.to_thread(
@@ -454,7 +469,7 @@ def create_app(settings: Settings) -> FastAPI:
     # Action chains
     # =======================================================================
 
-    @app.post("/api/v1/session/{session_id}/pages/{page_id}/actions/run")
+    @app.post("/api/v1/session/{session_id}/pages/{page_id}/actions/run", tags=["actions"])
     async def api_action_chain(session_id: str, page_id: str, body: ActionChainRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         results, ms = await asyncio.to_thread(
