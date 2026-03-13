@@ -1,0 +1,198 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "autobrowser-client scenario",
+  "description": "Schema for CLI script scenarios",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["steps"],
+  "properties": {
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "headless": {
+          "type": "boolean",
+          "default": true
+        },
+        "profile": {
+          "type": "string"
+        },
+        "profileDir": {
+          "type": "string"
+        },
+        "userAgent": {
+          "type": "string"
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/step"
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "file": {
+          "type": "string"
+        }
+      }
+    },
+    "stopOnError": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "$defs": {
+    "locator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "value"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["css", "xpath", "id", "name", "class", "text", "attribute"]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "waitUntil": {
+      "type": "string",
+      "enum": ["domcontentloaded", "load", "networkidle", "visible", "hidden"]
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action"],
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "open",
+            "wait",
+            "find",
+            "click",
+            "fill",
+            "press",
+            "scroll",
+            "get-content",
+            "get-cookies",
+            "get-headers",
+            "save"
+          ]
+        },
+        "url": {
+          "type": "string"
+        },
+        "locator": {
+          "$ref": "#/$defs/locator"
+        },
+        "value": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string",
+          "enum": ["html", "text"]
+        },
+        "waitUntil": {
+          "$ref": "#/$defs/waitUntil"
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "deltaX": {
+          "type": "integer"
+        },
+        "deltaY": {
+          "type": "integer"
+        },
+        "file": {
+          "type": "string"
+        },
+        "stopOnError": {
+          "type": "boolean"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "action": { "const": "open" } }
+          },
+          "then": {
+            "required": ["url"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "action": { "const": "find" } }
+          },
+          "then": {
+            "required": ["locator"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "action": { "const": "click" } }
+          },
+          "then": {
+            "required": ["locator"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "action": { "const": "fill" } }
+          },
+          "then": {
+            "required": ["locator", "value"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "action": { "const": "press" } }
+          },
+          "then": {
+            "required": ["key"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "action": { "const": "save" } }
+          },
+          "then": {
+            "required": ["file"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "action": { "const": "scroll" } }
+          },
+          "then": {
+            "anyOf": [
+              { "required": ["deltaX"] },
+              { "required": ["deltaY"] }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}
