@@ -7,7 +7,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
-from patchright.sync_api import sync_playwright, Playwright, Browser, BrowserContext, Page
+from patchright.sync_api import sync_playwright, Playwright, Browser, BrowserContext, Page, Request, Response
 
 from autobrowser_client.config import Settings
 from autobrowser_client.errors import BrowserStartError, SessionNotFoundError
@@ -23,6 +23,24 @@ class SessionState(StrEnum):
     FAILED = "failed"
 
 
+class HeadersEntry:
+    """Captured request/response headers for a single navigation."""
+
+    def __init__(self, url: str) -> None:
+        self.url = url
+        self.request_headers: dict[str, str] = {}
+        self.response_headers: dict[str, str] = {}
+        self.status_code: int | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "url": self.url,
+            "request": self.request_headers,
+            "response": self.response_headers,
+            "statusCode": self.status_code,
+        }
+
+
 class BrowserSession:
     def __init__(self, session_id: str, settings: Settings) -> None:
         self.session_id = session_id
@@ -36,6 +54,7 @@ class BrowserSession:
         self._browser: Browser | None = None
         self._context: BrowserContext | None = None
         self._pages: dict[str, Page] = {}
+        self._headers: dict[str, list[HeadersEntry]] = {}  # page_id -> headers list
 
     @property
     def context(self) -> BrowserContext:
@@ -91,15 +110,18 @@ class BrowserSession:
             if urls:
                 for url in urls:
                     page = self._context.new_page()
-                    page.goto(url, timeout=self.settings.timeouts.navigation_ms)
                     page_id = f"page_{len(self._pages)}"
                     self._pages[page_id] = page
+                    self._attach_listeners(page_id, page)
+                    page.goto(url, timeout=self.settings.timeouts.navigation_ms)
                     logger.info("Opened %s as %s", url, page_id)
             elif self._context.pages:
                 self._pages["page_0"] = self._context.pages[0]
+                self._attach_listeners("page_0", self._context.pages[0])
             else:
                 page = self._context.new_page()
                 self._pages["page_0"] = page
+                self._attach_listeners("page_0", page)
 
             self.state = SessionState.RUNNING
             logger.info("Session %s is running", self.session_id)
@@ -134,8 +156,28 @@ class BrowserSession:
     def list_pages(self) -> dict[str, str]:
         return {pid: page.url for pid, page in self._pages.items()}
 
+    def _attach_listeners(self, page_id: str, page: Page) -> None:
+        entries = self._headers.setdefault(page_id, [])
+
+        def on_response(response: Response) -> None:
+            request = response.request
+            if request.resource_type == "document":
+                entry = HeadersEntry(request.url)
+                entry.request_headers = dict(request.headers)
+                entry.response_headers = dict(response.headers)
+                entry.status_code = response.status
+                entries.append(entry)
+
+        page.on("response", on_response)
+
     def get_cookies(self) -> list[dict[str, Any]]:
         return self.context.cookies()
+
+    def get_headers(self, page_id: str | None = None) -> list[dict[str, Any]]:
+        pid = page_id or next(iter(self._pages), None)
+        if pid is None:
+            return []
+        return [e.to_dict() for e in self._headers.get(pid, [])]
 
     def get_content(self, page_id: str | None = None, fmt: str = "html") -> str:
         page = self.get_page(page_id)

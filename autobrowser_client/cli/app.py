@@ -7,6 +7,7 @@ from typing import Annotated, Any
 import typer
 
 from autobrowser_client import __version__
+from autobrowser_client.browser.service import SessionManager
 from autobrowser_client.config import Settings, load_settings
 from autobrowser_client.errors import AppError, NotImplementedAppError
 from autobrowser_client.logging_utils import configure_logging
@@ -103,6 +104,8 @@ def run(
     user_agent: Annotated[str | None, typer.Option("--user-agent")] = None,
     headless: Annotated[bool | None, typer.Option("--headless/--headful")] = None,
     timeout: Annotated[int | None, typer.Option("--timeout")] = None,
+    output_file: Annotated[Path | None, typer.Option("--output", help="Save result to file")] = None,
+    content_format: Annotated[str, typer.Option("--format", help="Content format: html or text")] = "html",
 ) -> None:
     settings = _settings_from_options(
         config=config,
@@ -112,19 +115,40 @@ def run(
         timeout=timeout,
     )
 
-    typer.echo(
-        json.dumps(
-            {
-                "success": True,
-                "mode": "dry-run",
-                "urls": url,
-                "profile": profile,
-                "settings": settings.safe_dump(),
-            },
-            indent=2,
-            ensure_ascii=False,
-        )
+    manager = SessionManager(settings)
+    session = manager.create_session(
+        urls=url,
+        profile=profile,
+        user_agent=user_agent,
+        headless=headless,
     )
+
+    try:
+        pages_data: dict[str, Any] = {}
+        for page_id in session.list_pages():
+            pages_data[page_id] = {
+                "url": session.get_page(page_id).url,
+                "headers": session.get_headers(page_id),
+                "content": session.get_content(page_id, fmt=content_format),
+            }
+
+        result = {
+            "success": True,
+            "sessionId": session.session_id,
+            "cookies": session.get_cookies(),
+            "pages": pages_data,
+        }
+
+        output = json.dumps(result, indent=2, ensure_ascii=False)
+
+        if output_file:
+            output_file.write_text(output, encoding="utf-8")
+            typer.echo(f"Result saved to {output_file}")
+        else:
+            typer.echo(output)
+
+    finally:
+        session.stop()
 
 
 def main() -> None:
