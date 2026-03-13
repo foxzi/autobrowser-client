@@ -1,0 +1,177 @@
+"""Scenario step executor for BrowserSession."""
+from __future__ import annotations
+
+import json
+import logging
+import time
+from pathlib import Path
+from typing import Any
+
+from autobrowser_client.browser.service import BrowserSession
+from autobrowser_client.scenario import ScriptStep, Locator
+
+logger = logging.getLogger(__name__)
+
+
+class StepResult:
+    def __init__(self, action: str, success: bool) -> None:
+        self.action = action
+        self.success = success
+        self.duration_ms: float = 0
+        self.data: Any = None
+        self.error: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {
+            "action": self.action,
+            "success": self.success,
+            "durationMs": round(self.duration_ms, 1),
+        }
+        if self.data is not None:
+            d["data"] = self.data
+        if self.error is not None:
+            d["error"] = self.error
+        return d
+
+
+def _resolve_locator(session: BrowserSession, locator: Locator, page_id: str | None = None) -> Any:
+    """Convert a Locator model to a Playwright locator object."""
+    page = session.get_page(page_id)
+    loc_type = locator.type
+    val = locator.value
+
+    if loc_type == "css":
+        return page.locator(val)
+    elif loc_type == "xpath":
+        return page.locator(f"xpath={val}")
+    elif loc_type == "id":
+        return page.locator(f"#{val}")
+    elif loc_type == "name":
+        return page.locator(f"[name='{val}']")
+    elif loc_type == "class":
+        return page.locator(f".{val}")
+    elif loc_type == "text":
+        return page.get_by_text(val)
+    elif loc_type == "attribute":
+        return page.locator(f"[{val}]")
+    else:
+        return page.locator(val)
+
+
+def execute_step(session: BrowserSession, step: ScriptStep, page_id: str | None = None) -> StepResult:
+    """Execute a single script step against a browser session."""
+    result = StepResult(step.action, success=True)
+    t0 = time.monotonic()
+
+    try:
+        page = session.get_page(page_id)
+        timeout = step.timeout or session.settings.timeouts.action_ms
+
+        if step.action == "open":
+            assert step.url is not None
+            page.goto(step.url, timeout=session.settings.timeouts.navigation_ms)
+            result.data = {"url": page.url}
+
+        elif step.action == "wait":
+            if step.wait_until == "networkidle":
+                page.wait_for_load_state("networkidle", timeout=timeout)
+            elif step.wait_until == "load":
+                page.wait_for_load_state("load", timeout=timeout)
+            elif step.wait_until == "domcontentloaded":
+                page.wait_for_load_state("domcontentloaded", timeout=timeout)
+            elif step.wait_until in {"visible", "hidden"}:
+                if step.locator:
+                    loc = _resolve_locator(session, step.locator, page_id)
+                    if step.wait_until == "visible":
+                        loc.wait_for(state="visible", timeout=timeout)
+                    else:
+                        loc.wait_for(state="hidden", timeout=timeout)
+                else:
+                    page.wait_for_timeout(timeout)
+            elif step.timeout:
+                page.wait_for_timeout(step.timeout)
+            else:
+                page.wait_for_load_state("load", timeout=timeout)
+
+        elif step.action == "find":
+            assert step.locator is not None
+            loc = _resolve_locator(session, step.locator, page_id)
+            loc.wait_for(state="attached", timeout=timeout)
+            count = loc.count()
+            result.data = {"found": count}
+
+        elif step.action == "click":
+            assert step.locator is not None
+            loc = _resolve_locator(session, step.locator, page_id)
+            loc.click(timeout=timeout)
+
+        elif step.action == "fill":
+            assert step.locator is not None
+            assert step.value is not None
+            loc = _resolve_locator(session, step.locator, page_id)
+            loc.fill(step.value, timeout=timeout)
+
+        elif step.action == "press":
+            assert step.key is not None
+            page.keyboard.press(step.key)
+
+        elif step.action == "scroll":
+            dx = step.delta_x or 0
+            dy = step.delta_y or 0
+            page.mouse.wheel(dx, dy)
+
+        elif step.action == "get-content":
+            fmt = step.format or "html"
+            content = session.get_content(page_id, fmt=fmt)
+            result.data = {"format": fmt, "length": len(content), "content": content}
+
+        elif step.action == "get-cookies":
+            cookies = session.get_cookies()
+            result.data = {"cookies": cookies}
+
+        elif step.action == "get-headers":
+            headers = session.get_headers(page_id)
+            result.data = {"headers": headers}
+
+        elif step.action == "save":
+            assert step.file is not None
+            fmt = step.format or "html"
+            content = session.get_content(page_id, fmt=fmt)
+            Path(step.file).write_text(content, encoding="utf-8")
+            result.data = {"file": step.file, "bytes": len(content.encode("utf-8"))}
+
+        else:
+            result.success = False
+            result.error = f"Unknown action: {step.action}"
+
+    except Exception as exc:
+        result.success = False
+        result.error = str(exc)
+        logger.warning("Step '%s' failed: %s", step.action, exc)
+
+    result.duration_ms = (time.monotonic() - t0) * 1000
+    return result
+
+
+def execute_script(
+    session: BrowserSession,
+    steps: list[ScriptStep],
+    stop_on_error: bool = True,
+    page_id: str | None = None,
+) -> list[dict[str, Any]]:
+    """Execute a full list of script steps, returning results."""
+    results: list[dict[str, Any]] = []
+    for i, step in enumerate(steps):
+        logger.info("Executing step %d/%d: %s", i + 1, len(steps), step.action)
+        step_result = execute_step(session, step, page_id)
+        results.append(step_result.to_dict())
+
+        if not step_result.success:
+            should_stop = stop_on_error
+            if step.stop_on_error is not None:
+                should_stop = step.stop_on_error
+            if should_stop:
+                logger.error("Stopping script at step %d due to error: %s", i + 1, step_result.error)
+                break
+
+    return results

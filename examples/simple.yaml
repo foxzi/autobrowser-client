@@ -1,0 +1,18 @@
+session:
+  headless: true
+
+steps:
+  - action: open
+    url: https://www.opennet.ru
+
+  - action: wait
+    waitUntil: load
+
+  - action: get-headers
+
+  - action: get-cookies
+
+  - action: get-content
+    format: text
+
+stopOnError: true

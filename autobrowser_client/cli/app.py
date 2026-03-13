@@ -7,6 +7,7 @@ from typing import Annotated, Any
 import typer
 
 from autobrowser_client import __version__
+from autobrowser_client.browser.executor import execute_script
 from autobrowser_client.browser.service import SessionManager
 from autobrowser_client.config import Settings, load_settings
 from autobrowser_client.errors import AppError, NotImplementedAppError
@@ -75,24 +76,55 @@ def run_script(
     file: Annotated[Path, typer.Option("--file", exists=True, dir_okay=False)],
     config: Annotated[Path | None, typer.Option("--config", exists=False, dir_okay=False)] = None,
     profile: Annotated[str | None, typer.Option("--profile")] = None,
+    output_file: Annotated[Path | None, typer.Option("--output", help="Save result to file")] = None,
 ) -> None:
     settings = _settings_from_options(config=config)
     script = load_script(file)
     effective_profile = profile or script.session.profile
-    typer.echo(
-        json.dumps(
-            {
-                "success": True,
-                "mode": "dry-run",
-                "profile": effective_profile,
-                "steps": [step.model_dump(by_alias=True, exclude_none=True) for step in script.steps],
-                "settings": settings.safe_dump(),
-            },
-            indent=2,
-            ensure_ascii=False,
-        )
+    headless = script.session.headless
+    user_agent = script.session.user_agent
+
+    manager = SessionManager(settings)
+    session = manager.create_session(
+        urls=script.pages or None,
+        profile=effective_profile,
+        user_agent=user_agent,
+        headless=headless,
     )
-    raise typer.Exit(code=0)
+
+    try:
+        results = execute_script(
+            session,
+            script.steps,
+            stop_on_error=script.stop_on_error,
+        )
+
+        all_ok = all(r["success"] for r in results)
+        output = {
+            "success": all_ok,
+            "sessionId": session.session_id,
+            "profile": effective_profile,
+            "steps": results,
+        }
+
+        if script.output.file:
+            Path(script.output.file).write_text(
+                json.dumps(output, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+
+        text = json.dumps(output, indent=2, ensure_ascii=False)
+
+        if output_file:
+            output_file.write_text(text, encoding="utf-8")
+            typer.echo(f"Result saved to {output_file}")
+        else:
+            typer.echo(text)
+
+        raise typer.Exit(code=0 if all_ok else 1)
+
+    finally:
+        session.stop()
 
 
 @app.command("run")
