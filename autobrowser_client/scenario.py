@@ -65,6 +65,7 @@ class ScriptStep(BaseModel):
     delta_x: int | None = Field(default=None, alias="deltaX")
     delta_y: int | None = Field(default=None, alias="deltaY")
     delay: int | None = None
+    index: int | None = None
     file: str | None = None
     stop_on_error: bool | None = Field(default=None, alias="stopOnError")
 

@@ -1,6 +1,6 @@
-# Прогрев профиля для Яндекса.
-# Запускается в headful режиме — если появится капча, решите вручную.
-# Браузер останется открытым 30 секунд для ручного взаимодействия.
+# Прогрев профиля Яндекса.
+# Имитирует реального пользователя: поиск, клик по результату, скролл, переход на Дзен.
+# Запускается в headful-режиме — если появится капча, решите вручную.
 #
 # Запуск:
 #   autobrowser run-script --file examples/yandex_warmup.yaml --profile yandex
@@ -10,11 +10,92 @@ session:
   userAgent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
 
 steps:
+  # --- Яндекс: поиск ---
   - action: open
     url: "https://ya.ru/"
 
-  # Ждём 30 секунд — время решить капчу если появится
   - action: wait
-    timeout: 30000
+    timeout: 3000
+
+  - action: type
+    locator:
+      type: css
+      value: "textarea#text"
+    value: "строительство дома из силикатного кирпича"
+    delay: 80
+    timeout: 10000
+
+  - action: wait
+    timeout: 2000
+
+  - action: press
+    key: "Enter"
+
+  # Ждём 15 секунд — если капча, пользователь решает вручную
+  - action: wait
+    timeout: 15000
+
+  # --- Яндекс: клик по второму результату ---
+  # Селектор берёт органические результаты (li.serp-item с заголовком OrganicTitle),
+  # index: 1 — второй по счёту (нулевой может быть рекламой)
+  - action: click
+    locator:
+      type: css
+      value: "li.serp-item:has(.OrganicTitle) .OrganicTitle-LinkText"
+    index: 1
+    timeout: 10000
+    stopOnError: false
+
+  - action: wait
+    waitUntil: load
+    timeout: 15000
+
+  # --- Скроллим страницу результата ---
+  - action: scroll
+    deltaY: 600
+
+  - action: wait
+    timeout: 1500
+
+  - action: scroll
+    deltaY: 400
+
+  - action: wait
+    timeout: 2000
+
+  # --- Дзен: открываем ---
+  - action: open
+    url: "https://dzen.ru/"
+
+  - action: wait
+    timeout: 5000
+
+  # --- Дзен: клик по 3-й новости ---
+  # article содержит карточки; первые могут быть навигацией,
+  # index: 3 берёт третью реальную карточку в ленте
+  - action: click
+    locator:
+      type: css
+      value: "article a[href*='/a/']"
+    index: 2
+    timeout: 10000
+    stopOnError: false
+
+  - action: wait
+    waitUntil: load
+    timeout: 15000
+
+  # Скроллим новость
+  - action: scroll
+    deltaY: 500
+
+  - action: wait
+    timeout: 1500
+
+  - action: scroll
+    deltaY: 300
+
+  - action: wait
+    timeout: 2000
 
 stopOnError: false

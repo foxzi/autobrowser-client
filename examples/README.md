@@ -40,11 +40,15 @@ autobrowser run-script --file examples/login.yaml --profile mysite
 
 ### yandex_warmup.yaml — Прогрев профиля Яндекса
 
-Открывает ya.ru в headful-режиме (с видимым окном браузера) и ждёт 30 секунд. За это время:
-- Записываются cookies в профиль
-- Если появится капча — можно решить вручную
+Имитирует поведение реального пользователя в headful-режиме (с видимым окном браузера):
+1. Заходит на ya.ru, вводит поисковый запрос посимвольно
+2. Ждёт 15 секунд — если появится капча, можно решить вручную
+3. Кликает по второму результату поиска
+4. Скроллит страницу результата
+5. Переходит на dzen.ru
+6. Кликает по 3-й новости в ленте, скроллит
 
-Запускается **один раз** перед основным поиском.
+Записывает cookies и данные в профиль. Запускается перед основным поиском.
 
 ```bash
 autobrowser run-script --file examples/yandex_warmup.yaml --profile yandex
@@ -84,9 +88,9 @@ autobrowser run-script --file examples/yandex_search.yaml --profile yandex --out
 | `open` | Открыть URL | `url` |
 | `wait` | Ждать (таймаут или событие) | `timeout` или `waitUntil` |
 | `find` | Найти элемент | `locator` |
-| `click` | Кликнуть по элементу | `locator` |
+| `click` | Кликнуть по элементу | `locator` (опционально `index`) |
 | `fill` | Мгновенно заполнить поле | `locator`, `value` |
-| `type` | Посимвольный ввод (имитация человека) | `locator`, `value` |
+| `type` | Посимвольный ввод (имитация человека) | `locator`, `value` (опционально `delay`) |
 | `press` | Нажать клавишу | `key` |
 | `scroll` | Прокрутить страницу | `deltaX` или `deltaY` |
 | `get-content` | Получить содержимое страницы | — |
@@ -136,11 +140,15 @@ autobrowser run-script --file examples/login.yaml --profile mysite
 
 ### yandex_warmup.yaml — Yandex profile warmup
 
-Opens ya.ru in headful mode (visible browser window) and waits 30 seconds. During this time:
-- Cookies are saved to the profile
-- If a captcha appears, it can be solved manually
+Simulates real user behavior in headful mode (visible browser window):
+1. Opens ya.ru, types a search query character by character
+2. Waits 15 seconds — if a captcha appears, it can be solved manually
+3. Clicks the second search result
+4. Scrolls the result page
+5. Navigates to dzen.ru
+6. Clicks the 3rd news article in the feed, scrolls it
 
-Run **once** before the main search.
+Saves cookies and data to the profile. Run before the main search.
 
 ```bash
 autobrowser run-script --file examples/yandex_warmup.yaml --profile yandex
@@ -180,9 +188,9 @@ autobrowser run-script --file examples/yandex_search.yaml --profile yandex --out
 | `open` | Navigate to URL | `url` |
 | `wait` | Wait (timeout or event) | `timeout` or `waitUntil` |
 | `find` | Find element | `locator` |
-| `click` | Click element | `locator` |
+| `click` | Click element | `locator` (optional `index`) |
 | `fill` | Instantly fill a field | `locator`, `value` |
-| `type` | Type character by character (human-like) | `locator`, `value` |
+| `type` | Type character by character (human-like) | `locator`, `value` (optional `delay`) |
 | `press` | Press a key | `key` |
 | `scroll` | Scroll page | `deltaX` or `deltaY` |
 | `get-content` | Get page content | — |

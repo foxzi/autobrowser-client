@@ -34,28 +34,37 @@ class StepResult:
         return d
 
 
-def _resolve_locator(session: BrowserSession, locator: Locator, page_id: str | None = None) -> Any:
+def _resolve_locator(
+    session: BrowserSession,
+    locator: Locator,
+    page_id: str | None = None,
+    index: int | None = None,
+) -> Any:
     """Convert a Locator model to a Playwright locator object."""
     page = session.get_page(page_id)
     loc_type = locator.type
     val = locator.value
 
     if loc_type == "css":
-        return page.locator(val)
+        loc = page.locator(val)
     elif loc_type == "xpath":
-        return page.locator(f"xpath={val}")
+        loc = page.locator(f"xpath={val}")
     elif loc_type == "id":
-        return page.locator(f"#{val}")
+        loc = page.locator(f"#{val}")
     elif loc_type == "name":
-        return page.locator(f"[name='{val}']")
+        loc = page.locator(f"[name='{val}']")
     elif loc_type == "class":
-        return page.locator(f".{val}")
+        loc = page.locator(f".{val}")
     elif loc_type == "text":
-        return page.get_by_text(val)
+        loc = page.get_by_text(val)
     elif loc_type == "attribute":
-        return page.locator(f"[{val}]")
+        loc = page.locator(f"[{val}]")
     else:
-        return page.locator(val)
+        loc = page.locator(val)
+
+    if index is not None:
+        loc = loc.nth(index)
+    return loc
 
 
 def execute_step(session: BrowserSession, step: ScriptStep, page_id: str | None = None) -> StepResult:
@@ -81,7 +90,7 @@ def execute_step(session: BrowserSession, step: ScriptStep, page_id: str | None 
                 page.wait_for_load_state("domcontentloaded", timeout=timeout)
             elif step.wait_until in {"visible", "hidden"}:
                 if step.locator:
-                    loc = _resolve_locator(session, step.locator, page_id)
+                    loc = _resolve_locator(session, step.locator, page_id, step.index)
                     if step.wait_until == "visible":
                         loc.wait_for(state="visible", timeout=timeout)
                     else:
@@ -95,26 +104,26 @@ def execute_step(session: BrowserSession, step: ScriptStep, page_id: str | None 
 
         elif step.action == "find":
             assert step.locator is not None
-            loc = _resolve_locator(session, step.locator, page_id)
+            loc = _resolve_locator(session, step.locator, page_id, step.index)
             loc.wait_for(state="attached", timeout=timeout)
             count = loc.count()
             result.data = {"found": count}
 
         elif step.action == "click":
             assert step.locator is not None
-            loc = _resolve_locator(session, step.locator, page_id)
+            loc = _resolve_locator(session, step.locator, page_id, step.index)
             loc.click(timeout=timeout)
 
         elif step.action == "fill":
             assert step.locator is not None
             assert step.value is not None
-            loc = _resolve_locator(session, step.locator, page_id)
+            loc = _resolve_locator(session, step.locator, page_id, step.index)
             loc.fill(step.value, timeout=timeout)
 
         elif step.action == "type":
             assert step.locator is not None
             assert step.value is not None
-            loc = _resolve_locator(session, step.locator, page_id)
+            loc = _resolve_locator(session, step.locator, page_id, step.index)
             loc.click(timeout=timeout)
             delay = step.delay or 50
             page.keyboard.type(step.value, delay=delay)
