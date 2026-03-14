@@ -45,6 +45,9 @@ browser:
   headless: true
   launchArgs: []
   userAgent: Mozilla/5.0
+  viewport:
+    width: 1280
+    height: 720
 
 profiles:
   dir: /data/profiles
@@ -89,6 +92,8 @@ All supported environment variables:
 ```env
 AUTOBROWSER_HEADLESS=true
 AUTOBROWSER_USER_AGENT=Mozilla/5.0
+AUTOBROWSER_VIEWPORT_WIDTH=1280
+AUTOBROWSER_VIEWPORT_HEIGHT=720
 AUTOBROWSER_PROFILE_DIR=/data/profiles
 AUTOBROWSER_API_HOST=127.0.0.1
 AUTOBROWSER_API_PORT=8080
@@ -195,6 +200,9 @@ browser:
   headless: true
   launchArgs: []
   userAgent: Mozilla/5.0
+  viewport:
+    width: 1280
+    height: 720
 
 profiles:
   dir: /data/profiles
@@ -239,6 +247,8 @@ output:
 ```env
 AUTOBROWSER_HEADLESS=true
 AUTOBROWSER_USER_AGENT=Mozilla/5.0
+AUTOBROWSER_VIEWPORT_WIDTH=1280
+AUTOBROWSER_VIEWPORT_HEIGHT=720
 AUTOBROWSER_PROFILE_DIR=/data/profiles
 AUTOBROWSER_API_HOST=127.0.0.1
 AUTOBROWSER_API_PORT=8080

@@ -36,6 +36,13 @@ class Locator(BaseModel):
     value: str
 
 
+class ViewportConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    width: int
+    height: int
+
+
 class SessionConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -44,6 +51,7 @@ class SessionConfig(BaseModel):
     profile_dir: str | None = Field(default=None, alias="profileDir")
     user_agent: str | None = Field(default=None, alias="userAgent")
     proxy: str | None = None
+    viewport: ViewportConfig | None = None
     timeout: int | None = None
 
 

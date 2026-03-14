@@ -240,6 +240,7 @@ Supported `waitUntil` values:
   "urls": ["https://example.com"],
   "profile": "test1",
   "userAgent": "Mozilla/5.0",
+  "viewport": {"width": 1920, "height": 1080},
   "timeout": 10000
 }
 ```

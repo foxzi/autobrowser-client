@@ -12,12 +12,20 @@ from autobrowser_client.errors import ConfigError
 from autobrowser_client.logging_utils import mask_mapping
 
 
+class ViewportSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    width: int = 1280
+    height: int = 720
+
+
 class BrowserSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     headless: bool = True
     launch_args: list[str] = Field(default_factory=list, alias="launchArgs")
     user_agent: str | None = Field(default=None, alias="userAgent")
+    viewport: ViewportSettings = Field(default_factory=ViewportSettings)
 
 
 class ProfilesSettings(BaseModel):
@@ -142,6 +150,8 @@ def _env_overrides(env: dict[str, str]) -> dict[str, Any]:
     mappings: list[tuple[str, tuple[str, ...], str]] = [
         ("AUTOBROWSER_HEADLESS", ("browser", "headless"), "bool"),
         ("AUTOBROWSER_USER_AGENT", ("browser", "userAgent"), "str"),
+        ("AUTOBROWSER_VIEWPORT_WIDTH", ("browser", "viewport", "width"), "int"),
+        ("AUTOBROWSER_VIEWPORT_HEIGHT", ("browser", "viewport", "height"), "int"),
         ("AUTOBROWSER_PROFILE_DIR", ("profiles", "dir"), "str"),
         ("AUTOBROWSER_API_HOST", ("api", "host"), "str"),
         ("AUTOBROWSER_API_PORT", ("api", "port"), "int"),

@@ -27,6 +27,16 @@
           "type": "string",
           "description": "Proxy URL, e.g. socks5://user:pass@host:port"
         },
+        "viewport": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["width", "height"],
+          "properties": {
+            "width": { "type": "integer", "minimum": 1 },
+            "height": { "type": "integer", "minimum": 1 }
+          },
+          "description": "Browser viewport size, e.g. {width: 1920, height: 1080}"
+        },
         "timeout": {
           "type": "integer",
           "minimum": 0

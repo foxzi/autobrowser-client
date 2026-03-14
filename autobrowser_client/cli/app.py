@@ -18,6 +18,17 @@ from autobrowser_client.scenario import load_script
 app = typer.Typer(help="CLI for autobrowser-client")
 
 
+def _parse_viewport(viewport_str: str) -> dict[str, int]:
+    """Parse viewport string like '1920x1080' into {width, height}."""
+    parts = viewport_str.lower().split("x")
+    if len(parts) != 2:
+        raise typer.BadParameter(f"Invalid viewport format: '{viewport_str}', expected WIDTHxHEIGHT (e.g. 1920x1080)")
+    try:
+        return {"width": int(parts[0]), "height": int(parts[1])}
+    except ValueError:
+        raise typer.BadParameter(f"Invalid viewport format: '{viewport_str}', expected WIDTHxHEIGHT (e.g. 1920x1080)")
+
+
 def _settings_from_options(
     config: Path | None,
     headless: bool | None = None,
@@ -25,6 +36,7 @@ def _settings_from_options(
     user_agent: str | None = None,
     timeout: int | None = None,
     proxy: str | None = None,
+    viewport: dict[str, int] | None = None,
 ) -> Settings:
     overrides: dict[str, Any] = {}
     if headless is not None:
@@ -38,6 +50,8 @@ def _settings_from_options(
         overrides.setdefault("timeouts", {})["navigationMs"] = timeout
     if proxy is not None:
         _apply_proxy_url(proxy, overrides)
+    if viewport is not None:
+        overrides.setdefault("browser", {})["viewport"] = viewport
 
     settings = load_settings(config_path=config, overrides=overrides or None)
     configure_logging(settings.logging.level, settings.logging.file)
@@ -98,11 +112,20 @@ def run_script(
     config: Annotated[Path | None, typer.Option("--config", exists=False, dir_okay=False)] = None,
     profile: Annotated[str | None, typer.Option("--profile")] = None,
     proxy: Annotated[str | None, typer.Option("--proxy", help="Proxy URL: socks5://user:pass@host:port")] = None,
+    viewport: Annotated[str | None, typer.Option("--viewport", help="Viewport size: WIDTHxHEIGHT (e.g. 1920x1080)")] = None,
     output_file: Annotated[Path | None, typer.Option("--output", help="Save result to file")] = None,
 ) -> None:
     script = load_script(file)
     effective_proxy = proxy or script.session.proxy
-    settings = _settings_from_options(config=config, proxy=effective_proxy)
+
+    # Viewport: CLI flag > scenario > config default
+    effective_viewport: dict[str, int] | None = None
+    if viewport:
+        effective_viewport = _parse_viewport(viewport)
+    elif script.session.viewport:
+        effective_viewport = {"width": script.session.viewport.width, "height": script.session.viewport.height}
+
+    settings = _settings_from_options(config=config, proxy=effective_proxy, viewport=effective_viewport)
     effective_profile = profile or script.session.profile
     headless = script.session.headless
     user_agent = script.session.user_agent
@@ -160,9 +183,11 @@ def run(
     headless: Annotated[bool | None, typer.Option("--headless/--headful")] = None,
     timeout: Annotated[int | None, typer.Option("--timeout")] = None,
     proxy: Annotated[str | None, typer.Option("--proxy", help="Proxy URL: socks5://user:pass@host:port")] = None,
+    viewport_str: Annotated[str | None, typer.Option("--viewport", help="Viewport size: WIDTHxHEIGHT (e.g. 1920x1080)")] = None,
     output_file: Annotated[Path | None, typer.Option("--output", help="Save result to file")] = None,
     content_format: Annotated[str, typer.Option("--format", help="Content format: html or text")] = "html",
 ) -> None:
+    vp = _parse_viewport(viewport_str) if viewport_str else None
     settings = _settings_from_options(
         config=config,
         headless=headless,
@@ -170,6 +195,7 @@ def run(
         user_agent=user_agent,
         timeout=timeout,
         proxy=proxy,
+        viewport=vp,
     )
 
     manager = SessionManager(settings)

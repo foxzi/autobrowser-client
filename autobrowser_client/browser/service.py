@@ -89,6 +89,7 @@ class BrowserSession:
         profile: str | None = None,
         user_agent: str | None = None,
         headless: bool | None = None,
+        viewport: dict[str, int] | None = None,
     ) -> None:
         try:
             # Start proxy relay if configured
@@ -103,6 +104,10 @@ class BrowserSession:
 
             is_headless = headless if headless is not None else self.settings.browser.headless
             ua = user_agent or self.settings.browser.user_agent
+            vp = viewport or {
+                "width": self.settings.browser.viewport.width,
+                "height": self.settings.browser.viewport.height,
+            }
 
             launch_args = list(self.settings.browser.launch_args)
 
@@ -119,6 +124,7 @@ class BrowserSession:
                     "channel": "chrome",
                     "headless": is_headless,
                     "args": launch_args or None,
+                    "viewport": vp,
                 }
                 if ua:
                     ctx_kwargs["user_agent"] = ua
@@ -139,7 +145,7 @@ class BrowserSession:
                     browser_kwargs["proxy"] = proxy_server
                 self._browser = self._playwright.chromium.launch(**browser_kwargs)
 
-                ctx_opts: dict[str, Any] = {}
+                ctx_opts: dict[str, Any] = {"viewport": vp}
                 if ua:
                     ctx_opts["user_agent"] = ua
                 self._context = self._browser.new_context(**ctx_opts)
@@ -316,6 +322,7 @@ class SessionManager:
         profile: str | None = None,
         user_agent: str | None = None,
         headless: bool | None = None,
+        viewport: dict[str, int] | None = None,
     ) -> BrowserSession:
         max_sessions = self.settings.api.max_sessions
         active = sum(1 for s in self._sessions.values() if s.state == SessionState.RUNNING)
@@ -325,7 +332,7 @@ class SessionManager:
         session_id = f"sess_{uuid.uuid4().hex[:12]}"
         session = BrowserSession(session_id, self.settings)
         self._sessions[session_id] = session
-        session.start(urls=urls, profile=profile, user_agent=user_agent, headless=headless)
+        session.start(urls=urls, profile=profile, user_agent=user_agent, headless=headless, viewport=viewport)
         return session
 
     def get_session(self, session_id: str) -> BrowserSession:

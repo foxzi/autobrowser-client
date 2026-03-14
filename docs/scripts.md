@@ -101,6 +101,7 @@ Typical fields:
 - `profileDir`
 - `userAgent`
 - `proxy` — proxy URL, e.g. `socks5://user:pass@host:port`
+- `viewport` — browser viewport size, e.g. `{width: 1920, height: 1080}`
 - `timeout`
 - extra browser launch arguments
 
@@ -113,10 +114,13 @@ session:
   profileDir: /data/profiles
   userAgent: Mozilla/5.0
   proxy: socks5://user:pass@host:port
+  viewport:
+    width: 1920
+    height: 1080
   timeout: 10000
 ```
 
-> The CLI flag `--proxy` overrides the value set in the scenario file.
+> The CLI flags `--proxy` and `--viewport` override the values set in the scenario file.
 
 ### `steps`
 
@@ -292,6 +296,7 @@ output:
 - `profileDir`
 - `userAgent`
 - `proxy` — URL прокси, например `socks5://user:pass@host:port`
+- `viewport` — размер окна браузера, например `{width: 1920, height: 1080}`
 - `timeout`
 - дополнительные параметры запуска браузера
 
@@ -304,10 +309,13 @@ session:
   profileDir: /data/profiles
   userAgent: Mozilla/5.0
   proxy: socks5://user:pass@host:port
+  viewport:
+    width: 1920
+    height: 1080
   timeout: 10000
 ```
 
-> CLI-флаг `--proxy` имеет приоритет над значением из файла сценария.
+> CLI-флаги `--proxy` и `--viewport` имеют приоритет над значениями из файла сценария.
 
 ### `steps`
 

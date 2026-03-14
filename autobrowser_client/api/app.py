@@ -23,11 +23,17 @@ logger = logging.getLogger(__name__)
 # Request models
 # ---------------------------------------------------------------------------
 
+class ViewportBody(BaseModel):
+    width: int
+    height: int
+
+
 class StartRequest(BaseModel):
     urls: list[str] = Field(default_factory=list)
     profile: str | None = None
     user_agent: str | None = Field(default=None, alias="userAgent")
     headless: bool | None = None
+    viewport: ViewportBody | None = None
     timeout: int | None = None
 
 
@@ -242,12 +248,14 @@ def create_app(settings: Settings) -> FastAPI:
 
     @app.post("/api/v1/browser/start", tags=["sessions"])
     async def browser_start(body: StartRequest) -> dict[str, Any]:
+        vp = {"width": body.viewport.width, "height": body.viewport.height} if body.viewport else None
         session = await asyncio.to_thread(
             manager.create_session,
             urls=body.urls or None,
             profile=body.profile,
             user_agent=body.user_agent,
             headless=body.headless,
+            viewport=vp,
         )
         return {"success": True, **session.info()}
 
