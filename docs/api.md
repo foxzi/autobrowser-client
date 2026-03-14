@@ -71,39 +71,126 @@ Authorization: Bearer <token>
 #### Session management
 
 - `POST /api/v1/browser/start` - start browser session
+- `GET /api/v1/sessions` - list all active sessions
 - `GET /api/v1/session/{id}` - get session status
 - `POST /api/v1/session/{id}/stop` - stop active session
 
 #### Profile management
 
 - `POST /api/v1/profile/create` - create profile
+- `GET /api/v1/profiles` - list all profiles
 
 #### Page data
 
 - `GET /api/v1/session/{id}/cookies` - get cookies
 - `GET /api/v1/session/{id}/headers` - get request and response headers
-- `GET /api/v1/session/{id}/content` - get page content
+- `GET /api/v1/session/{id}/content` - get page content (query param `fmt`: `html` or `text`)
 
 #### DOM interaction
 
-- `POST /api/v1/session/{id}/pages/{pageId}/elements/find`
-- `POST /api/v1/session/{id}/pages/{pageId}/elements/find-all`
-- `POST /api/v1/session/{id}/pages/{pageId}/elements/click`
-- `POST /api/v1/session/{id}/pages/{pageId}/elements/fill`
-- `POST /api/v1/session/{id}/pages/{pageId}/elements/select`
-- `POST /api/v1/session/{id}/pages/{pageId}/elements/check`
-- `POST /api/v1/session/{id}/pages/{pageId}/forms/submit`
+- `POST .../elements/find` - find element (body: `ElementRequest`)
+- `POST .../elements/find-all` - find all matching elements (body: `ElementRequest`)
+- `POST .../elements/read` - read element details: text, innerHTML, visible, enabled, checked, value (body: `ElementRequest`)
+- `POST .../elements/click` - click element (body: `ClickRequest`, optional `double: true`)
+- `POST .../elements/hover` - hover over element (body: `ElementRequest`)
+- `POST .../elements/focus` - focus element (body: `ElementRequest`)
+- `POST .../elements/fill` - fill input (body: `FillRequest`, optional `clearBefore: true`)
+- `POST .../elements/clear` - clear input (body: `ElementRequest`)
+- `POST .../elements/select` - select option (body: `SelectRequest`, `option: string | string[]`)
+- `POST .../elements/check` - check/uncheck checkbox (body: `CheckRequest`, `checked: bool`)
+- `POST .../elements/wait` - wait for element or navigation (body: `WaitRequest`)
+- `POST .../forms/submit` - submit form (body: `ElementRequest`)
+
+> All DOM paths are prefixed with `/api/v1/session/{id}/pages/{pageId}`.
 
 #### Mouse and keyboard
 
-- `POST /api/v1/session/{id}/pages/{pageId}/mouse/move`
-- `POST /api/v1/session/{id}/pages/{pageId}/mouse/scroll`
-- `POST /api/v1/session/{id}/pages/{pageId}/mouse/move-random`
-- `POST /api/v1/session/{id}/pages/{pageId}/keyboard/press`
+- `POST .../mouse/move` - move to coordinates (body: `MouseMoveRequest`)
+- `POST .../mouse/move-to` - move to element by locator (body: `ElementRequest`)
+- `POST .../mouse/scroll` - scroll by delta (body: `ScrollRequest`)
+- `POST .../mouse/scroll-to` - scroll to element (body: `ElementRequest`)
+- `POST .../mouse/move-random` - human-like random movement (body: `MouseRandomRequest`)
+- `POST .../keyboard/press` - press key (body: `PressRequest`)
+
+> All mouse/keyboard paths are prefixed with `/api/v1/session/{id}/pages/{pageId}`.
 
 #### Action chains
 
-- `POST /api/v1/session/{id}/pages/{pageId}/actions/run`
+- `POST /api/v1/session/{id}/pages/{pageId}/actions/run` - run a sequence of actions
+
+### Request models
+
+#### ElementRequest
+
+```json
+{ "locator": { "type": "css", "value": "..." }, "timeout": 10000 }
+```
+
+#### ClickRequest
+
+```json
+{ "locator": { "type": "css", "value": "..." }, "timeout": 10000, "double": false }
+```
+
+#### FillRequest
+
+```json
+{ "locator": { "type": "css", "value": "..." }, "value": "text", "clearBefore": false, "timeout": 10000 }
+```
+
+#### SelectRequest
+
+```json
+{ "locator": { "type": "css", "value": "..." }, "option": "value", "timeout": 10000 }
+```
+
+#### CheckRequest
+
+```json
+{ "locator": { "type": "css", "value": "..." }, "checked": true, "timeout": 10000 }
+```
+
+#### WaitRequest
+
+```json
+{ "locator": { "type": "css", "value": "..." }, "state": "visible", "timeout": 10000 }
+```
+
+Without locator (wait for navigation):
+
+```json
+{ "waitUntil": "load", "timeout": 10000 }
+```
+
+#### MouseMoveRequest
+
+```json
+{ "x": 100, "y": 200, "steps": 1 }
+```
+
+#### ScrollRequest
+
+```json
+{ "deltaX": 0, "deltaY": 500 }
+```
+
+#### MouseRandomRequest
+
+```json
+{ "startX": 0, "startY": 0, "endX": 500, "endY": 300, "steps": 25, "durationMs": 300, "jitter": 3.0 }
+```
+
+#### PressRequest
+
+```json
+{ "key": "Enter" }
+```
+
+#### ActionChainRequest
+
+```json
+{ "steps": [ { "action": "click", "locator": { "type": "css", "value": "..." } } ], "timeout": 10000 }
+```
 
 ### Shared request objects
 
@@ -210,39 +297,23 @@ Supported `waitUntil` values:
 
 ### Error codes
 
-Minimum shared error catalog:
-
-- `INVALID_ARGUMENT`
-- `UNAUTHORIZED`
-- `FORBIDDEN`
-- `SESSION_NOT_FOUND`
-- `PAGE_NOT_FOUND`
-- `PROFILE_NOT_FOUND`
-- `PROFILE_LOCKED`
-- `PROXY_UNAVAILABLE`
-- `BROWSER_START_FAILED`
-- `TIMEOUT`
-- `ELEMENT_NOT_FOUND`
-- `ELEMENT_NOT_INTERACTABLE`
-- `AMBIGUOUS_ELEMENT_MATCH`
-- `CONTENT_TOO_LARGE`
-- `INTERNAL_ERROR`
-
-Recommended HTTP status mapping:
-
-- `400` bad request
-- `401` unauthorized
-- `403` forbidden
-- `404` not found
-- `409` conflict
-- `422` validation error
-- `500` internal error
-- `502` upstream or browser start error
-- `504` timeout
+| Code | HTTP Status | Description |
+|------|-------------|-------------|
+| `INVALID_ARGUMENT` | 400 | Bad request or invalid parameter |
+| `CONFIG_ERROR` | 400 | Configuration error |
+| `UNAUTHORIZED` | 401 | Missing or invalid token |
+| `SESSION_NOT_FOUND` | 404 | Session ID not found |
+| `PAGE_NOT_FOUND` | 404 | Page ID not found |
+| `PROFILE_NOT_FOUND` | 404 | Profile does not exist |
+| `PROFILE_LOCKED` | 409 | Profile is locked by another session |
+| `NOT_IMPLEMENTED` | 501 | Feature not implemented |
+| `BROWSER_START_FAILED` | 502 | Browser failed to start |
+| `TIMEOUT` | 504 | Operation timed out |
+| `INTERNAL_ERROR` | 500 | Unexpected server error |
 
 ### OpenAPI
 
-The implementation should expose an OpenAPI specification and interactive documentation generated from the API models.
+Interactive documentation is available at `/docs` (Swagger UI) and `/openapi.json` when the server is running. These paths bypass token authentication.
 
 ## Русский
 
@@ -315,39 +386,126 @@ Authorization: Bearer <token>
 #### Управление сессиями
 
 - `POST /api/v1/browser/start` - запуск браузерной сессии
+- `GET /api/v1/sessions` - список всех активных сессий
 - `GET /api/v1/session/{id}` - получение статуса сессии
 - `POST /api/v1/session/{id}/stop` - остановка активной сессии
 
 #### Управление профилями
 
 - `POST /api/v1/profile/create` - создание профиля
+- `GET /api/v1/profiles` - список всех профилей
 
 #### Данные страницы
 
 - `GET /api/v1/session/{id}/cookies` - получение cookies
 - `GET /api/v1/session/{id}/headers` - получение заголовков запроса и ответа
-- `GET /api/v1/session/{id}/content` - получение содержимого страницы
+- `GET /api/v1/session/{id}/content` - получение содержимого страницы (query-параметр `fmt`: `html` или `text`)
 
 #### Работа с DOM
 
-- `POST /api/v1/session/{id}/pages/{pageId}/elements/find`
-- `POST /api/v1/session/{id}/pages/{pageId}/elements/find-all`
-- `POST /api/v1/session/{id}/pages/{pageId}/elements/click`
-- `POST /api/v1/session/{id}/pages/{pageId}/elements/fill`
-- `POST /api/v1/session/{id}/pages/{pageId}/elements/select`
-- `POST /api/v1/session/{id}/pages/{pageId}/elements/check`
-- `POST /api/v1/session/{id}/pages/{pageId}/forms/submit`
+- `POST .../elements/find` - поиск элемента (тело: `ElementRequest`)
+- `POST .../elements/find-all` - поиск всех совпадающих элементов (тело: `ElementRequest`)
+- `POST .../elements/read` - чтение элемента: text, innerHTML, visible, enabled, checked, value (тело: `ElementRequest`)
+- `POST .../elements/click` - клик по элементу (тело: `ClickRequest`, необязательное `double: true`)
+- `POST .../elements/hover` - наведение на элемент (тело: `ElementRequest`)
+- `POST .../elements/focus` - фокус на элемент (тело: `ElementRequest`)
+- `POST .../elements/fill` - заполнение поля (тело: `FillRequest`, необязательное `clearBefore: true`)
+- `POST .../elements/clear` - очистка поля (тело: `ElementRequest`)
+- `POST .../elements/select` - выбор опции (тело: `SelectRequest`, `option: string | string[]`)
+- `POST .../elements/check` - отметка/снятие чекбокса (тело: `CheckRequest`, `checked: bool`)
+- `POST .../elements/wait` - ожидание элемента или навигации (тело: `WaitRequest`)
+- `POST .../forms/submit` - отправка формы (тело: `ElementRequest`)
+
+> Все DOM-пути начинаются с `/api/v1/session/{id}/pages/{pageId}`.
 
 #### Мышь и клавиатура
 
-- `POST /api/v1/session/{id}/pages/{pageId}/mouse/move`
-- `POST /api/v1/session/{id}/pages/{pageId}/mouse/scroll`
-- `POST /api/v1/session/{id}/pages/{pageId}/mouse/move-random`
-- `POST /api/v1/session/{id}/pages/{pageId}/keyboard/press`
+- `POST .../mouse/move` - перемещение к координатам (тело: `MouseMoveRequest`)
+- `POST .../mouse/move-to` - перемещение к элементу по локатору (тело: `ElementRequest`)
+- `POST .../mouse/scroll` - прокрутка по дельте (тело: `ScrollRequest`)
+- `POST .../mouse/scroll-to` - прокрутка к элементу (тело: `ElementRequest`)
+- `POST .../mouse/move-random` - рандомное движение мыши (тело: `MouseRandomRequest`)
+- `POST .../keyboard/press` - нажатие клавиши (тело: `PressRequest`)
+
+> Все пути мыши/клавиатуры начинаются с `/api/v1/session/{id}/pages/{pageId}`.
 
 #### Цепочки действий
 
-- `POST /api/v1/session/{id}/pages/{pageId}/actions/run`
+- `POST /api/v1/session/{id}/pages/{pageId}/actions/run` - запуск последовательности действий
+
+### Модели запросов
+
+#### ElementRequest
+
+```json
+{ "locator": { "type": "css", "value": "..." }, "timeout": 10000 }
+```
+
+#### ClickRequest
+
+```json
+{ "locator": { "type": "css", "value": "..." }, "timeout": 10000, "double": false }
+```
+
+#### FillRequest
+
+```json
+{ "locator": { "type": "css", "value": "..." }, "value": "text", "clearBefore": false, "timeout": 10000 }
+```
+
+#### SelectRequest
+
+```json
+{ "locator": { "type": "css", "value": "..." }, "option": "value", "timeout": 10000 }
+```
+
+#### CheckRequest
+
+```json
+{ "locator": { "type": "css", "value": "..." }, "checked": true, "timeout": 10000 }
+```
+
+#### WaitRequest
+
+```json
+{ "locator": { "type": "css", "value": "..." }, "state": "visible", "timeout": 10000 }
+```
+
+Без локатора (ожидание навигации):
+
+```json
+{ "waitUntil": "load", "timeout": 10000 }
+```
+
+#### MouseMoveRequest
+
+```json
+{ "x": 100, "y": 200, "steps": 1 }
+```
+
+#### ScrollRequest
+
+```json
+{ "deltaX": 0, "deltaY": 500 }
+```
+
+#### MouseRandomRequest
+
+```json
+{ "startX": 0, "startY": 0, "endX": 500, "endY": 300, "steps": 25, "durationMs": 300, "jitter": 3.0 }
+```
+
+#### PressRequest
+
+```json
+{ "key": "Enter" }
+```
+
+#### ActionChainRequest
+
+```json
+{ "steps": [ { "action": "click", "locator": { "type": "css", "value": "..." } } ], "timeout": 10000 }
+```
 
 ### Общие объекты запроса
 
@@ -454,36 +612,20 @@ Authorization: Bearer <token>
 
 ### Коды ошибок
 
-Минимальный общий каталог ошибок:
-
-- `INVALID_ARGUMENT`
-- `UNAUTHORIZED`
-- `FORBIDDEN`
-- `SESSION_NOT_FOUND`
-- `PAGE_NOT_FOUND`
-- `PROFILE_NOT_FOUND`
-- `PROFILE_LOCKED`
-- `PROXY_UNAVAILABLE`
-- `BROWSER_START_FAILED`
-- `TIMEOUT`
-- `ELEMENT_NOT_FOUND`
-- `ELEMENT_NOT_INTERACTABLE`
-- `AMBIGUOUS_ELEMENT_MATCH`
-- `CONTENT_TOO_LARGE`
-- `INTERNAL_ERROR`
-
-Рекомендуемое соответствие HTTP-статусов:
-
-- `400` bad request
-- `401` unauthorized
-- `403` forbidden
-- `404` not found
-- `409` conflict
-- `422` validation error
-- `500` internal error
-- `502` upstream or browser start error
-- `504` timeout
+| Код | HTTP-статус | Описание |
+|-----|-------------|----------|
+| `INVALID_ARGUMENT` | 400 | Некорректный запрос или параметр |
+| `CONFIG_ERROR` | 400 | Ошибка конфигурации |
+| `UNAUTHORIZED` | 401 | Отсутствующий или недействительный токен |
+| `SESSION_NOT_FOUND` | 404 | Сессия не найдена |
+| `PAGE_NOT_FOUND` | 404 | Страница не найдена |
+| `PROFILE_NOT_FOUND` | 404 | Профиль не существует |
+| `PROFILE_LOCKED` | 409 | Профиль заблокирован другой сессией |
+| `NOT_IMPLEMENTED` | 501 | Функция не реализована |
+| `BROWSER_START_FAILED` | 502 | Браузер не удалось запустить |
+| `TIMEOUT` | 504 | Таймаут операции |
+| `INTERNAL_ERROR` | 500 | Непредвиденная ошибка сервера |
 
 ### OpenAPI
 
-Реализация должна предоставлять OpenAPI-спецификацию и интерактивную документацию, генерируемую из моделей API.
+Интерактивная документация доступна по адресу `/docs` (Swagger UI) и `/openapi.json` при запущенном сервере. Эти пути не требуют токена аутентификации.
