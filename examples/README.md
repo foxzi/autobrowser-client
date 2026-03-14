@@ -1,0 +1,191 @@
+# Examples / Примеры сценариев
+
+## RU
+
+Примеры YAML-сценариев для `autobrowser run-script`. Каждый файл — готовый к запуску сценарий.
+
+### Установка
+
+```bash
+# Локально
+pip install -e .
+
+# Или через Docker
+docker compose build
+```
+
+### simple.yaml — Проверка антидетекта
+
+Открывает [Scrapfly Automation Detector](https://scrapfly.io/web-scraping-tools/automation-detector) и собирает headers, cookies и текстовое содержимое страницы. Работает в headless-режиме.
+
+```bash
+autobrowser run-script --file examples/simple.yaml
+```
+
+С сохранением результата в файл:
+
+```bash
+autobrowser run-script --file examples/simple.yaml --output /tmp/simple.json
+```
+
+### login.yaml — Авторизация на сайте
+
+Шаблон сценария авторизации: открывает страницу логина, заполняет поля username/password, нажимает submit, ждёт загрузки и сохраняет HTML. Использует профиль для сохранения сессии.
+
+> Замените URL, селекторы и учётные данные на реальные перед запуском.
+
+```bash
+autobrowser run-script --file examples/login.yaml --profile mysite
+```
+
+### yandex_warmup.yaml — Прогрев профиля Яндекса
+
+Открывает ya.ru в headful-режиме (с видимым окном браузера) и ждёт 30 секунд. За это время:
+- Записываются cookies в профиль
+- Если появится капча — можно решить вручную
+
+Запускается **один раз** перед основным поиском.
+
+```bash
+autobrowser run-script --file examples/yandex_warmup.yaml --profile yandex
+```
+
+### yandex_search.yaml — Поиск в Яндексе
+
+Заходит на ya.ru, вводит поисковый запрос посимвольно (`action: type`, `delay: 80ms`) и получает текстовое содержимое страницы результатов. Работает в headful-режиме с профилем.
+
+Посимвольный ввод (`type` вместо `fill`) нужен для обхода детектора ботов Яндекса — мгновенное заполнение поля вызывает капчу.
+
+**Перед первым запуском прогрейте профиль:**
+
+```bash
+autobrowser run-script --file examples/yandex_warmup.yaml --profile yandex
+```
+
+**Запуск поиска:**
+
+```bash
+autobrowser run-script --file examples/yandex_search.yaml --profile yandex --output /tmp/yandex.json
+```
+
+### Общие параметры CLI
+
+| Параметр | Описание |
+|----------|----------|
+| `--file` | Путь к YAML/JSON сценарию |
+| `--profile` | Имя профиля браузера (сохраняет cookies и данные между запусками) |
+| `--proxy` | Прокси: `socks5://user:pass@host:port` |
+| `--output` | Файл для сохранения результатов в JSON |
+
+### Доступные действия в сценариях
+
+| Действие | Описание | Обязательные поля |
+|----------|----------|-------------------|
+| `open` | Открыть URL | `url` |
+| `wait` | Ждать (таймаут или событие) | `timeout` или `waitUntil` |
+| `find` | Найти элемент | `locator` |
+| `click` | Кликнуть по элементу | `locator` |
+| `fill` | Мгновенно заполнить поле | `locator`, `value` |
+| `type` | Посимвольный ввод (имитация человека) | `locator`, `value` |
+| `press` | Нажать клавишу | `key` |
+| `scroll` | Прокрутить страницу | `deltaX` или `deltaY` |
+| `get-content` | Получить содержимое страницы | — |
+| `get-cookies` | Получить cookies | — |
+| `get-headers` | Получить HTTP-заголовки | — |
+| `save` | Сохранить содержимое в файл | `file` |
+
+---
+
+## EN
+
+YAML scenario examples for `autobrowser run-script`. Each file is a ready-to-run scenario.
+
+### Installation
+
+```bash
+# Local
+pip install -e .
+
+# Or via Docker
+docker compose build
+```
+
+### simple.yaml — Anti-detection check
+
+Opens [Scrapfly Automation Detector](https://scrapfly.io/web-scraping-tools/automation-detector) and collects headers, cookies and text content. Runs in headless mode.
+
+```bash
+autobrowser run-script --file examples/simple.yaml
+```
+
+Save result to file:
+
+```bash
+autobrowser run-script --file examples/simple.yaml --output /tmp/simple.json
+```
+
+### login.yaml — Website authentication
+
+Template for login automation: opens login page, fills username/password fields, clicks submit, waits for load and saves HTML. Uses profile to persist session.
+
+> Replace URL, selectors and credentials with real values before running.
+
+```bash
+autobrowser run-script --file examples/login.yaml --profile mysite
+```
+
+### yandex_warmup.yaml — Yandex profile warmup
+
+Opens ya.ru in headful mode (visible browser window) and waits 30 seconds. During this time:
+- Cookies are saved to the profile
+- If a captcha appears, it can be solved manually
+
+Run **once** before the main search.
+
+```bash
+autobrowser run-script --file examples/yandex_warmup.yaml --profile yandex
+```
+
+### yandex_search.yaml — Yandex search
+
+Navigates to ya.ru, types a search query character by character (`action: type`, `delay: 80ms`) and retrieves the text content of the search results page. Runs in headful mode with a profile.
+
+Character-by-character input (`type` instead of `fill`) is required to bypass Yandex bot detection — instant field filling triggers a captcha.
+
+**Warm up the profile before first run:**
+
+```bash
+autobrowser run-script --file examples/yandex_warmup.yaml --profile yandex
+```
+
+**Run the search:**
+
+```bash
+autobrowser run-script --file examples/yandex_search.yaml --profile yandex --output /tmp/yandex.json
+```
+
+### Common CLI parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| `--file` | Path to YAML/JSON scenario |
+| `--profile` | Browser profile name (persists cookies and data between runs) |
+| `--proxy` | Proxy: `socks5://user:pass@host:port` |
+| `--output` | File to save JSON results |
+
+### Available scenario actions
+
+| Action | Description | Required fields |
+|--------|-------------|-----------------|
+| `open` | Navigate to URL | `url` |
+| `wait` | Wait (timeout or event) | `timeout` or `waitUntil` |
+| `find` | Find element | `locator` |
+| `click` | Click element | `locator` |
+| `fill` | Instantly fill a field | `locator`, `value` |
+| `type` | Type character by character (human-like) | `locator`, `value` |
+| `press` | Press a key | `key` |
+| `scroll` | Scroll page | `deltaX` or `deltaY` |
+| `get-content` | Get page content | — |
+| `get-cookies` | Get cookies | — |
+| `get-headers` | Get HTTP headers | — |
+| `save` | Save content to file | `file` |
