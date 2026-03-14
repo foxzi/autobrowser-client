@@ -129,6 +129,22 @@ autobrowser run --url https://example.com --headless --timeout 10000
 autobrowser run-script --file scenario.yaml --profile test1
 ```
 
+### Platform spoofing
+
+When `userAgent` contains a non-Linux OS identifier (e.g. Windows or macOS), the browser automatically adjusts `navigator.platform`, `navigator.userAgentData.platform`, and Client Hints (Sec-CH-UA-Platform) to match. This prevents antibot systems from detecting a mismatch between the UA string and JavaScript platform properties.
+
+Supported platforms:
+- **Windows**: `navigator.platform` = `Win32`, Client Hints platform = `Windows`
+- **macOS**: `navigator.platform` = `MacIntel`, Client Hints platform = `macOS`
+- **Linux**: no spoofing needed (native OS)
+
+Example — pretend to be a Windows machine:
+
+```yaml
+session:
+  userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+```
+
 ### Rules for secrets
 
 - API tokens, proxy passwords, and sensitive headers must not be printed in full in logs.
@@ -282,6 +298,22 @@ autobrowser run --url https://example.com --headless --timeout 10000
 
 ```bash
 autobrowser run-script --file scenario.yaml --profile test1
+```
+
+### Подмена платформы (platform spoofing)
+
+Если `userAgent` содержит идентификатор другой ОС (например, Windows или macOS), браузер автоматически подменяет `navigator.platform`, `navigator.userAgentData.platform` и Client Hints (Sec-CH-UA-Platform), чтобы они соответствовали UA-строке. Это предотвращает обнаружение несоответствия антибот-системами.
+
+Поддерживаемые платформы:
+- **Windows**: `navigator.platform` = `Win32`, Client Hints = `Windows`
+- **macOS**: `navigator.platform` = `MacIntel`, Client Hints = `macOS`
+- **Linux**: подмена не нужна (родная ОС)
+
+Пример — притвориться Windows-машиной:
+
+```yaml
+session:
+  userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
 ```
 
 ### Правила для секретов

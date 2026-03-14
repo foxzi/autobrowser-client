@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import threading
 import time
 import uuid
@@ -16,6 +17,84 @@ from autobrowser_client.profiles.manager import ProfileLock
 from autobrowser_client.proxy.relay import ProxyRelay
 
 logger = logging.getLogger(__name__)
+
+
+def _detect_platform_from_ua(user_agent: str) -> dict[str, Any] | None:
+    """Detect OS from User-Agent string and return CDP userAgentMetadata params.
+
+    Returns None if the UA matches the real OS (Linux) — no spoofing needed.
+    """
+    ua = user_agent.lower()
+
+    # Extract Chrome version from UA
+    chrome_match = re.search(r"chrome/(\d+\.\d+\.\d+\.\d+)", ua)
+    chrome_ver = chrome_match.group(1) if chrome_match else "130.0.0.0"
+    chrome_major = chrome_ver.split(".")[0]
+
+    brands = [
+        {"brand": "Chromium", "version": chrome_ver},
+        {"brand": "Google Chrome", "version": chrome_ver},
+        {"brand": "Not/A)Brand", "version": "24.0.0.0"},
+    ]
+
+    if "windows nt" in ua:
+        # Extract Windows version (e.g. "Windows NT 10.0")
+        nt_match = re.search(r"windows nt (\d+\.\d+)", ua)
+        nt_ver = nt_match.group(1) if nt_match else "10.0"
+        return {
+            "platform": "Win32",
+            "userAgentMetadata": {
+                "platform": "Windows",
+                "platformVersion": f"{nt_ver}.0",
+                "architecture": "x86",
+                "model": "",
+                "mobile": False,
+                "fullVersionList": brands,
+                "fullVersion": chrome_ver,
+                "bitness": "64",
+                "wow64": False,
+            },
+        }
+
+    if "macintosh" in ua or "mac os x" in ua:
+        # Extract macOS version (e.g. "Mac OS X 10_15_7")
+        mac_match = re.search(r"mac os x (\d+[_\.]\d+[_\.]\d+)", ua)
+        mac_ver = mac_match.group(1).replace("_", ".") if mac_match else "14.0.0"
+        return {
+            "platform": "MacIntel",
+            "userAgentMetadata": {
+                "platform": "macOS",
+                "platformVersion": mac_ver,
+                "architecture": "arm",
+                "model": "",
+                "mobile": False,
+                "fullVersionList": brands,
+                "fullVersion": chrome_ver,
+                "bitness": "64",
+                "wow64": False,
+            },
+        }
+
+    # Linux UA on Linux host — no spoofing needed
+    return None
+
+
+def _apply_platform_spoof(context: BrowserContext, page: Page, user_agent: str) -> None:
+    """Apply CDP platform override if UA indicates a different OS."""
+    platform_data = _detect_platform_from_ua(user_agent)
+    if platform_data is None:
+        return
+
+    try:
+        cdp = context.new_cdp_session(page)
+        cdp.send("Emulation.setUserAgentOverride", {
+            "userAgent": user_agent,
+            "platform": platform_data["platform"],
+            "userAgentMetadata": platform_data["userAgentMetadata"],
+        })
+        logger.debug("Applied platform spoof: %s", platform_data["platform"])
+    except Exception as exc:
+        logger.warning("Failed to apply platform spoof: %s", exc)
 
 
 class SessionState(StrEnum):
@@ -165,6 +244,11 @@ class BrowserSession:
                 page = self._context.new_page()
                 self._pages["page_0"] = page
                 self._attach_listeners("page_0", page)
+
+            # Apply platform spoof if UA indicates a different OS
+            if ua:
+                for page in self._pages.values():
+                    _apply_platform_spoof(self._context, page, ua)
 
             self.state = SessionState.RUNNING
             logger.info("Session %s is running", self.session_id)
