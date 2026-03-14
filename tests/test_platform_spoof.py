@@ -63,6 +63,56 @@ def test_detect_macos_14():
     assert result["userAgentMetadata"]["platformVersion"] == "14.0.0"
 
 
+# --- Android ---
+
+def test_detect_android_14():
+    ua = "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36"
+    result = _detect_platform_from_ua(ua)
+    assert result is not None
+    assert result["platform"] == "Linux armv8l"
+    assert result["mobile"] is True
+    meta = result["userAgentMetadata"]
+    assert meta["platform"] == "Android"
+    assert meta["platformVersion"] == "14"
+    assert meta["architecture"] == "arm"
+    assert meta["mobile"] is True
+    assert meta["model"] == "SM-S918B"
+
+
+def test_detect_android_13_pixel():
+    ua = "Mozilla/5.0 (Linux; Android 13; Pixel 7 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+    result = _detect_platform_from_ua(ua)
+    assert result is not None
+    assert result["platform"] == "Linux armv8l"
+    assert result["mobile"] is True
+    meta = result["userAgentMetadata"]
+    assert meta["platform"] == "Android"
+    assert meta["platformVersion"] == "13"
+    assert meta["model"] == "Pixel 7 Pro"
+
+
+def test_detect_android_no_model():
+    ua = "Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Mobile Safari/537.36"
+    result = _detect_platform_from_ua(ua)
+    assert result is not None
+    assert result["mobile"] is True
+    meta = result["userAgentMetadata"]
+    assert meta["platform"] == "Android"
+    assert meta["platformVersion"] == "12"
+
+
+def test_windows_not_mobile():
+    ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+    result = _detect_platform_from_ua(ua)
+    assert result["mobile"] is False
+
+
+def test_mac_not_mobile():
+    ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+    result = _detect_platform_from_ua(ua)
+    assert result["mobile"] is False
+
+
 # --- Linux (no spoofing) ---
 
 def test_detect_linux_returns_none():

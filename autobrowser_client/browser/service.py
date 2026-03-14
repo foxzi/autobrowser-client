@@ -43,6 +43,7 @@ def _detect_platform_from_ua(user_agent: str) -> dict[str, Any] | None:
         nt_ver = nt_match.group(1) if nt_match else "10.0"
         return {
             "platform": "Win32",
+            "mobile": False,
             "userAgentMetadata": {
                 "platform": "Windows",
                 "platformVersion": f"{nt_ver}.0",
@@ -62,12 +63,36 @@ def _detect_platform_from_ua(user_agent: str) -> dict[str, Any] | None:
         mac_ver = mac_match.group(1).replace("_", ".") if mac_match else "14.0.0"
         return {
             "platform": "MacIntel",
+            "mobile": False,
             "userAgentMetadata": {
                 "platform": "macOS",
                 "platformVersion": mac_ver,
                 "architecture": "arm",
                 "model": "",
                 "mobile": False,
+                "fullVersionList": brands,
+                "fullVersion": chrome_ver,
+                "bitness": "64",
+                "wow64": False,
+            },
+        }
+
+    if "android" in ua:
+        # Extract Android version (e.g. "Android 14" or "Android 13")
+        android_match = re.search(r"android (\d+(?:\.\d+)*)", ua)
+        android_ver = android_match.group(1) if android_match else "14"
+        # Extract device model (e.g. "SM-S918B" from "SM-S918B Build/")
+        model_match = re.search(r";\s*([^;)]+?)\s*(?:Build|MIUI|\))", user_agent)
+        model = model_match.group(1).strip() if model_match else ""
+        return {
+            "platform": "Linux armv8l",
+            "mobile": True,
+            "userAgentMetadata": {
+                "platform": "Android",
+                "platformVersion": android_ver,
+                "architecture": "arm",
+                "model": model,
+                "mobile": True,
                 "fullVersionList": brands,
                 "fullVersion": chrome_ver,
                 "bitness": "64",
@@ -190,6 +215,10 @@ class BrowserSession:
 
             launch_args = list(self.settings.browser.launch_args)
 
+            # Detect mobile UA to set is_mobile/has_touch on context
+            platform_info = _detect_platform_from_ua(ua) if ua else None
+            is_mobile_ua = platform_info["mobile"] if platform_info else False
+
             if profile:
                 profile_dir = Path(self.settings.profiles.dir) / profile
                 profile_dir.mkdir(parents=True, exist_ok=True)
@@ -209,6 +238,9 @@ class BrowserSession:
                     ctx_kwargs["user_agent"] = ua
                 if proxy_server:
                     ctx_kwargs["proxy"] = proxy_server
+                if is_mobile_ua:
+                    ctx_kwargs["is_mobile"] = True
+                    ctx_kwargs["has_touch"] = True
 
                 self._context = self._playwright.chromium.launch_persistent_context(
                     user_data_dir=str(profile_dir),
@@ -227,6 +259,9 @@ class BrowserSession:
                 ctx_opts: dict[str, Any] = {"viewport": vp}
                 if ua:
                     ctx_opts["user_agent"] = ua
+                if is_mobile_ua:
+                    ctx_opts["is_mobile"] = True
+                    ctx_opts["has_touch"] = True
                 self._context = self._browser.new_context(**ctx_opts)
 
             if urls:
