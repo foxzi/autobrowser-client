@@ -122,15 +122,25 @@ session:
 
 Each step must include `action` and action-specific fields.
 
-Supported action groups:
+Supported actions:
 
-- navigation: `open`, `wait`
-- element search: `find`
-- element interaction: `click`, `dblclick`, `hover`, `focus`, `fill`, `clear`, `select`, `check`, `uncheck`, `press`, `submit`
-- mouse actions: `move`, `scroll`, `move-random`
-- screenshots: `screenshot`
-- data extraction: `get-content`, `get-cookies`, `get-headers`, `get-attributes`, `get-text`
-- output: `save`
+| Action | Description | Required fields | Optional fields |
+|--------|-------------|-----------------|-----------------|
+| `open` | Navigate to URL | `url` | `waitUntil`, `timeout` |
+| `wait` | Wait for event or timeout | `waitUntil` or `timeout` | `locator` (for `visible`/`hidden`) |
+| `find` | Find element(s) | `locator` | `index`, `timeout` |
+| `click` | Click element | `locator` | `index`, `timeout` |
+| `fill` | Instantly fill a field | `locator`, `value` | `index`, `timeout` |
+| `type` | Type character by character (human-like) | `locator`, `value` | `delay` (ms, default 50), `index`, `timeout` |
+| `press` | Press a key | `key` | — |
+| `scroll` | Scroll page | `deltaX` or `deltaY` | — |
+| `screenshot` | Take a page screenshot | `file` | `fullPage` (default false) |
+| `get-content` | Get page content | — | `format` (`html` or `text`) |
+| `get-cookies` | Get cookies | — | — |
+| `get-headers` | Get HTTP headers | — | — |
+| `save` | Save content to file | `file` | `format` (`html` or `text`) |
+
+All steps support optional `stopOnError` to override the global `stopOnError` setting.
 
 ### Locator format
 
@@ -303,15 +313,25 @@ session:
 
 Каждый шаг должен содержать поле `action` и набор параметров, зависящих от действия.
 
-Поддерживаемые группы действий:
+Поддерживаемые действия:
 
-- навигация: `open`, `wait`
-- поиск элемента: `find`
-- действия над элементом: `click`, `dblclick`, `hover`, `focus`, `fill`, `clear`, `select`, `check`, `uncheck`, `press`, `submit`
-- действия мышью: `move`, `scroll`, `move-random`
-- скриншоты: `screenshot`
-- получение данных: `get-content`, `get-cookies`, `get-headers`, `get-attributes`, `get-text`
-- вывод результата: `save`
+| Действие | Описание | Обязательные поля | Необязательные поля |
+|----------|----------|-------------------|---------------------|
+| `open` | Открыть URL | `url` | `waitUntil`, `timeout` |
+| `wait` | Ждать событие или таймаут | `waitUntil` или `timeout` | `locator` (для `visible`/`hidden`) |
+| `find` | Найти элемент(ы) | `locator` | `index`, `timeout` |
+| `click` | Кликнуть по элементу | `locator` | `index`, `timeout` |
+| `fill` | Мгновенно заполнить поле | `locator`, `value` | `index`, `timeout` |
+| `type` | Посимвольный ввод (имитация человека) | `locator`, `value` | `delay` (мс, по умолчанию 50), `index`, `timeout` |
+| `press` | Нажать клавишу | `key` | — |
+| `scroll` | Прокрутить страницу | `deltaX` или `deltaY` | — |
+| `screenshot` | Сделать скриншот страницы | `file` | `fullPage` (по умолчанию false) |
+| `get-content` | Получить содержимое страницы | — | `format` (`html` или `text`) |
+| `get-cookies` | Получить cookies | — | — |
+| `get-headers` | Получить HTTP-заголовки | — | — |
+| `save` | Сохранить содержимое в файл | `file` | `format` (`html` или `text`) |
+
+Каждый шаг поддерживает необязательное поле `stopOnError` для переопределения глобальной настройки `stopOnError`.
 
 ### Формат локатора
 
