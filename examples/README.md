@@ -80,6 +80,30 @@ autobrowser run-script --file examples/yandex_warmup.yaml --profile yandex
 autobrowser run-script --file examples/yandex_search.yaml --profile yandex --output /tmp/yandex.json
 ```
 
+### fingerprint_com.yaml — Тест fingerprint.com
+
+Посещает [fingerprint.com/demo/](https://fingerprint.com/demo/), ждёт асинхронный анализ отпечатка браузера (visitor ID, smart signals) и сохраняет результат:
+- `output/fingerprint_com.png` — полноразмерный скриншот
+- `output/fingerprint_com.txt` — текст страницы с visitor ID, браузером, IP, bot detection, VPN detection, incognito detection, tampering score
+
+Полезно для проверки, что patchright не определяется как бот. Ожидаемый результат: `bot: notDetected`, `tampering: false`, `antiDetectBrowser: false`.
+
+```bash
+autobrowser run-script --file examples/fingerprint_com.yaml
+```
+
+### amiunique.yaml — Уникальность отпечатка браузера
+
+Посещает [amiunique.org/fingerprint](https://amiunique.org/fingerprint), принимает cookies (баннер), ждёт загрузки JS-атрибутов и сохраняет результат:
+- `output/amiunique.png` — полноразмерный скриншот с таблицами отпечатков
+- `output/amiunique.txt` — текст с HTTP-заголовками, JS-атрибутами и показателями уникальности
+
+Показывает, насколько уникален отпечаток браузера среди всех посетителей. Включает данные по User-Agent, языкам, разрешению экрана, шрифтам, Canvas, WebGL и другим параметрам.
+
+```bash
+autobrowser run-script --file examples/amiunique.yaml
+```
+
 ### Общие параметры CLI
 
 | Параметр | Описание |
@@ -190,6 +214,30 @@ autobrowser run-script --file examples/yandex_warmup.yaml --profile yandex
 
 ```bash
 autobrowser run-script --file examples/yandex_search.yaml --profile yandex --output /tmp/yandex.json
+```
+
+### fingerprint_com.yaml — Fingerprint.com test
+
+Visits [fingerprint.com/demo/](https://fingerprint.com/demo/), waits for async browser fingerprint analysis (visitor ID, smart signals) and saves the result:
+- `output/fingerprint_com.png` — full-page screenshot
+- `output/fingerprint_com.txt` — page text with visitor ID, browser, IP, bot detection, VPN detection, incognito detection, tampering score
+
+Useful for verifying that patchright is not detected as a bot. Expected result: `bot: notDetected`, `tampering: false`, `antiDetectBrowser: false`.
+
+```bash
+autobrowser run-script --file examples/fingerprint_com.yaml
+```
+
+### amiunique.yaml — Browser fingerprint uniqueness
+
+Visits [amiunique.org/fingerprint](https://amiunique.org/fingerprint), accepts the cookie banner, waits for JS attributes to load and saves the result:
+- `output/amiunique.png` — full-page screenshot with fingerprint tables
+- `output/amiunique.txt` — text with HTTP headers, JS attributes and uniqueness metrics
+
+Shows how unique the browser fingerprint is among all visitors. Includes data on User-Agent, languages, screen resolution, fonts, Canvas, WebGL and other parameters.
+
+```bash
+autobrowser run-script --file examples/amiunique.yaml
 ```
 
 ### Common CLI parameters

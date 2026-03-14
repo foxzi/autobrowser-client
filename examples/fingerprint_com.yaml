@@ -1,0 +1,37 @@
+# Fingerprint.com Demo - browser identification and smart signals test
+# Visits fingerprint.com/demo/, waits for async fingerprint analysis,
+# takes a full-page screenshot and saves fingerprint data to files.
+#
+# Output:
+#   output/fingerprint_com.png  - full-page screenshot
+#   output/fingerprint_com.txt  - page text with visitor ID, browser, IP, signals
+
+session:
+  headless: true
+  viewport:
+    width: 1920
+    height: 1080
+  userAgent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+
+steps:
+  - action: open
+    url: https://fingerprint.com/demo/
+
+  # Wait for the visitor ID to load (replaces "Loading visitor ID")
+  - action: wait
+    waitUntil: networkidle
+    timeout: 20000
+
+  # Extra wait for JS fingerprint analysis to complete
+  - action: wait
+    timeout: 5000
+
+  - action: screenshot
+    file: output/fingerprint_com.png
+    fullPage: true
+
+  - action: save
+    file: output/fingerprint_com.txt
+    format: text
+
+stopOnError: true

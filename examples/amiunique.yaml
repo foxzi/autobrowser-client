@@ -1,0 +1,44 @@
+# AmIUnique.org - browser fingerprint uniqueness test
+# Visits amiunique.org/fingerprint, accepts cookies, waits for
+# JS attributes to load, takes a screenshot and saves fingerprint data.
+#
+# Output:
+#   output/amiunique.png  - full-page screenshot with fingerprint tables
+#   output/amiunique.txt  - page text with HTTP headers, JS attributes, uniqueness
+
+session:
+  headless: true
+  viewport:
+    width: 1920
+    height: 1080
+  userAgent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+
+steps:
+  - action: open
+    url: https://amiunique.org/fingerprint
+
+  - action: wait
+    waitUntil: load
+    timeout: 15000
+
+  # Accept cookies banner
+  - action: click
+    locator:
+      type: css
+      value: "[role='status'] button:last-child"
+    timeout: 5000
+    stopOnError: false
+
+  # Wait for JavaScript attributes table to finish loading
+  - action: wait
+    timeout: 8000
+
+  - action: screenshot
+    file: output/amiunique.png
+    fullPage: true
+
+  - action: save
+    file: output/amiunique.txt
+    format: text
+
+stopOnError: true
