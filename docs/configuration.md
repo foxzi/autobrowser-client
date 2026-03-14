@@ -64,10 +64,13 @@ timeouts:
 
 proxy:
   enabled: false
+  scheme: socks5
   host: 127.0.0.1
   port: 1080
   username: ""
   password: ""
+  socks2httpBin: ""       # path to socks2http binary, auto-detected via PATH if empty
+  localPort: 0            # 0 = auto-select free port
 
 logging:
   level: INFO
@@ -81,7 +84,7 @@ output:
 
 ### Environment variables
 
-Recommended environment variables:
+All supported environment variables:
 
 ```env
 AUTOBROWSER_HEADLESS=true
@@ -90,17 +93,23 @@ AUTOBROWSER_PROFILE_DIR=/data/profiles
 AUTOBROWSER_API_HOST=127.0.0.1
 AUTOBROWSER_API_PORT=8080
 AUTOBROWSER_API_TOKEN=
+AUTOBROWSER_API_MAX_SESSIONS=10
 AUTOBROWSER_LOG_LEVEL=INFO
+AUTOBROWSER_LOG_FILE=
 AUTOBROWSER_PROXY_ENABLED=false
+AUTOBROWSER_PROXY_SCHEME=socks5
 AUTOBROWSER_PROXY_HOST=127.0.0.1
 AUTOBROWSER_PROXY_PORT=1080
 AUTOBROWSER_PROXY_USERNAME=
 AUTOBROWSER_PROXY_PASSWORD=
+AUTOBROWSER_SOCKS2HTTP_BIN=
+AUTOBROWSER_PROXY_LOCAL_PORT=0
 AUTOBROWSER_TIMEOUT_STARTUP_MS=30000
 AUTOBROWSER_TIMEOUT_ACTION_MS=10000
 AUTOBROWSER_TIMEOUT_NAVIGATION_MS=30000
 AUTOBROWSER_SESSION_IDLE_MS=300000
 AUTOBROWSER_MAX_CONTENT_BYTES=1048576
+AUTOBROWSER_CONTENT_FORMAT=html
 ```
 
 ### CLI override examples
@@ -205,10 +214,13 @@ timeouts:
 
 proxy:
   enabled: false
+  scheme: socks5
   host: 127.0.0.1
   port: 1080
   username: ""
   password: ""
+  socks2httpBin: ""       # путь к бинарнику socks2http, автоопределение через PATH если пусто
+  localPort: 0            # 0 = автовыбор свободного порта
 
 logging:
   level: INFO
@@ -222,7 +234,7 @@ output:
 
 ### Переменные окружения
 
-Рекомендуемые переменные окружения:
+Все поддерживаемые переменные окружения:
 
 ```env
 AUTOBROWSER_HEADLESS=true
@@ -231,17 +243,23 @@ AUTOBROWSER_PROFILE_DIR=/data/profiles
 AUTOBROWSER_API_HOST=127.0.0.1
 AUTOBROWSER_API_PORT=8080
 AUTOBROWSER_API_TOKEN=
+AUTOBROWSER_API_MAX_SESSIONS=10
 AUTOBROWSER_LOG_LEVEL=INFO
+AUTOBROWSER_LOG_FILE=
 AUTOBROWSER_PROXY_ENABLED=false
+AUTOBROWSER_PROXY_SCHEME=socks5
 AUTOBROWSER_PROXY_HOST=127.0.0.1
 AUTOBROWSER_PROXY_PORT=1080
 AUTOBROWSER_PROXY_USERNAME=
 AUTOBROWSER_PROXY_PASSWORD=
+AUTOBROWSER_SOCKS2HTTP_BIN=
+AUTOBROWSER_PROXY_LOCAL_PORT=0
 AUTOBROWSER_TIMEOUT_STARTUP_MS=30000
 AUTOBROWSER_TIMEOUT_ACTION_MS=10000
 AUTOBROWSER_TIMEOUT_NAVIGATION_MS=30000
 AUTOBROWSER_SESSION_IDLE_MS=300000
 AUTOBROWSER_MAX_CONTENT_BYTES=1048576
+AUTOBROWSER_CONTENT_FORMAT=html
 ```
 
 ### Примеры переопределения через CLI
