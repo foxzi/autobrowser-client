@@ -54,6 +54,13 @@ Profile data is stored in `{profiles.dir}/{profile_name}/`.
 1. If the profile directory does not exist, it is created automatically.
 2. On subsequent runs with the same profile name, all stored data is restored.
 3. Profile data persists until manually deleted from the filesystem.
+4. When a profile is in use, a `profile.lock` file with the PID is created. Attempting to use a locked profile raises `ProfileLockedError`.
+5. Stale lock files (where the PID no longer exists) are cleaned up automatically.
+
+#### Profile management via API
+
+- `POST /api/v1/profile/create` - create a new profile directory
+- `GET /api/v1/profiles` - list all profiles
 
 ### Proxy
 
@@ -113,6 +120,15 @@ autobrowser run --url https://example.com --proxy socks5://user:pass@host:1080
 ```
 
 The `--proxy` flag accepts a URL in the format `scheme://user:pass@host:port`.
+
+Proxy can also be specified directly in YAML scenario files:
+
+```yaml
+session:
+  proxy: socks5://user:pass@host:port
+```
+
+> The CLI `--proxy` flag takes priority over the scenario value.
 
 #### Proxy readiness check
 
@@ -211,6 +227,13 @@ POST /api/v1/browser/start
 1. Если директория профиля не существует, она создаётся автоматически.
 2. При последующих запусках с тем же именем профиля все данные восстанавливаются.
 3. Данные профиля сохраняются до ручного удаления из файловой системы.
+4. При использовании профиля создаётся файл `profile.lock` с PID. Попытка использовать заблокированный профиль вызывает `ProfileLockedError`.
+5. Устаревшие lock-файлы (PID которых больше не существует) очищаются автоматически.
+
+#### Управление профилями через API
+
+- `POST /api/v1/profile/create` - создание директории профиля
+- `GET /api/v1/profiles` - список всех профилей
 
 ### Прокси
 
@@ -270,6 +293,15 @@ autobrowser run --url https://example.com --proxy socks5://user:pass@host:1080
 ```
 
 Флаг `--proxy` принимает URL в формате `scheme://user:pass@host:port`.
+
+Прокси также можно указать прямо в YAML-сценарии:
+
+```yaml
+session:
+  proxy: socks5://user:pass@host:port
+```
+
+> CLI-флаг `--proxy` имеет приоритет над значением из сценария.
 
 #### Проверка готовности прокси
 
