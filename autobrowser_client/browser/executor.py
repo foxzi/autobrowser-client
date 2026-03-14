@@ -137,6 +137,14 @@ def execute_step(session: BrowserSession, step: ScriptStep, page_id: str | None 
             dy = step.delta_y or 0
             page.mouse.wheel(dx, dy)
 
+        elif step.action == "screenshot":
+            assert step.file is not None
+            out = Path(step.file)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            page.screenshot(path=str(out), full_page=step.full_page)
+            size = out.stat().st_size
+            result.data = {"file": step.file, "fullPage": step.full_page, "bytes": size}
+
         elif step.action == "get-content":
             fmt = step.format or "html"
             content = session.get_content(page_id, fmt=fmt)

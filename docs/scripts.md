@@ -125,6 +125,7 @@ Supported action groups:
 - element search: `find`
 - element interaction: `click`, `dblclick`, `hover`, `focus`, `fill`, `clear`, `select`, `check`, `uncheck`, `press`, `submit`
 - mouse actions: `move`, `scroll`, `move-random`
+- screenshots: `screenshot`
 - data extraction: `get-content`, `get-cookies`, `get-headers`, `get-attributes`, `get-text`
 - output: `save`
 
@@ -302,6 +303,7 @@ session:
 - поиск элемента: `find`
 - действия над элементом: `click`, `dblclick`, `hover`, `focus`, `fill`, `clear`, `select`, `check`, `uncheck`, `press`, `submit`
 - действия мышью: `move`, `scroll`, `move-random`
+- скриншоты: `screenshot`
 - получение данных: `get-content`, `get-cookies`, `get-headers`, `get-attributes`, `get-text`
 - вывод результата: `save`
 

@@ -1,0 +1,17 @@
+session:
+  headless: true
+  userAgent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+
+steps:
+  - action: open
+    url: https://scrapfly.io/web-scraping-tools/automation-detector
+
+  - action: wait
+    waitUntil: networkidle
+    timeout: 15000
+
+  - action: screenshot
+    file: output/scrapfly_detector.png
+    fullPage: true
+
+stopOnError: true

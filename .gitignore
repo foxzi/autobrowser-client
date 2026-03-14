@@ -8,3 +8,4 @@ build/
 .mypy_cache/
 .profiles/
 profiles/
+output/

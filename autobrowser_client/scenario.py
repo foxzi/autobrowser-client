@@ -19,6 +19,7 @@ ActionName = Literal[
     "type",
     "press",
     "scroll",
+    "screenshot",
     "get-content",
     "get-cookies",
     "get-headers",
@@ -66,6 +67,7 @@ class ScriptStep(BaseModel):
     delta_y: int | None = Field(default=None, alias="deltaY")
     delay: int | None = None
     index: int | None = None
+    full_page: bool = Field(default=False, alias="fullPage")
     file: str | None = None
     stop_on_error: bool | None = Field(default=None, alias="stopOnError")
 
@@ -81,8 +83,8 @@ class ScriptStep(BaseModel):
             raise ValueError("'press' step requires 'key'")
         if self.action == "scroll" and self.delta_x is None and self.delta_y is None:
             raise ValueError("'scroll' step requires 'deltaX' or 'deltaY'")
-        if self.action == "save" and not self.file:
-            raise ValueError("'save' step requires 'file'")
+        if self.action in {"save", "screenshot"} and not self.file:
+            raise ValueError(f"'{self.action}' step requires 'file'")
         return self
 
 

@@ -88,8 +88,10 @@
             "find",
             "click",
             "fill",
+            "type",
             "press",
             "scroll",
+            "screenshot",
             "get-content",
             "get-cookies",
             "get-headers",
@@ -124,6 +126,18 @@
         },
         "deltaY": {
           "type": "integer"
+        },
+        "delay": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fullPage": {
+          "type": "boolean",
+          "default": false
         },
         "file": {
           "type": "string"
@@ -163,6 +177,22 @@
           },
           "then": {
             "required": ["locator", "value"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "action": { "const": "type" } }
+          },
+          "then": {
+            "required": ["locator", "value"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "action": { "const": "screenshot" } }
+          },
+          "then": {
+            "required": ["file"]
           }
         },
         {

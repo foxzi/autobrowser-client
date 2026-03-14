@@ -38,6 +38,14 @@ autobrowser run-script --file examples/simple.yaml --output /tmp/simple.json
 autobrowser run-script --file examples/login.yaml --profile mysite
 ```
 
+### screenshot.yaml — Скриншот страницы
+
+Открывает [Scrapfly Automation Detector](https://scrapfly.io/web-scraping-tools/automation-detector), ждёт полной загрузки и сохраняет полноразмерный скриншот страницы в `output/scrapfly_detector.png`.
+
+```bash
+autobrowser run-script --file examples/screenshot.yaml
+```
+
 ### yandex_warmup.yaml — Прогрев профиля Яндекса
 
 Имитирует поведение реального пользователя в headful-режиме (с видимым окном браузера):
@@ -93,6 +101,7 @@ autobrowser run-script --file examples/yandex_search.yaml --profile yandex --out
 | `type` | Посимвольный ввод (имитация человека) | `locator`, `value` (опционально `delay`) |
 | `press` | Нажать клавишу | `key` |
 | `scroll` | Прокрутить страницу | `deltaX` или `deltaY` |
+| `screenshot` | Сделать скриншот страницы | `file` (опционально `fullPage`) |
 | `get-content` | Получить содержимое страницы | — |
 | `get-cookies` | Получить cookies | — |
 | `get-headers` | Получить HTTP-заголовки | — |
@@ -136,6 +145,14 @@ Template for login automation: opens login page, fills username/password fields,
 
 ```bash
 autobrowser run-script --file examples/login.yaml --profile mysite
+```
+
+### screenshot.yaml — Page screenshot
+
+Opens [Scrapfly Automation Detector](https://scrapfly.io/web-scraping-tools/automation-detector), waits for full load and saves a full-page screenshot to `output/scrapfly_detector.png`.
+
+```bash
+autobrowser run-script --file examples/screenshot.yaml
 ```
 
 ### yandex_warmup.yaml — Yandex profile warmup
@@ -193,6 +210,7 @@ autobrowser run-script --file examples/yandex_search.yaml --profile yandex --out
 | `type` | Type character by character (human-like) | `locator`, `value` (optional `delay`) |
 | `press` | Press a key | `key` |
 | `scroll` | Scroll page | `deltaX` or `deltaY` |
+| `screenshot` | Take a page screenshot | `file` (optional `fullPage`) |
 | `get-content` | Get page content | — |
 | `get-cookies` | Get cookies | — |
 | `get-headers` | Get HTTP headers | — |
