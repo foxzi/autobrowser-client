@@ -100,8 +100,9 @@ def run_script(
     proxy: Annotated[str | None, typer.Option("--proxy", help="Proxy URL: socks5://user:pass@host:port")] = None,
     output_file: Annotated[Path | None, typer.Option("--output", help="Save result to file")] = None,
 ) -> None:
-    settings = _settings_from_options(config=config, proxy=proxy)
     script = load_script(file)
+    effective_proxy = proxy or script.session.proxy
+    settings = _settings_from_options(config=config, proxy=effective_proxy)
     effective_profile = profile or script.session.profile
     headless = script.session.headless
     user_agent = script.session.user_agent

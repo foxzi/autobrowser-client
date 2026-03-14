@@ -23,6 +23,10 @@
         "userAgent": {
           "type": "string"
         },
+        "proxy": {
+          "type": "string",
+          "description": "Proxy URL, e.g. socks5://user:pass@host:port"
+        },
         "timeout": {
           "type": "integer",
           "minimum": 0

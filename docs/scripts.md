@@ -100,7 +100,7 @@ Typical fields:
 - `profile`
 - `profileDir`
 - `userAgent`
-- `proxy`
+- `proxy` — proxy URL, e.g. `socks5://user:pass@host:port`
 - `timeout`
 - extra browser launch arguments
 
@@ -112,8 +112,11 @@ session:
   profile: test1
   profileDir: /data/profiles
   userAgent: Mozilla/5.0
+  proxy: socks5://user:pass@host:port
   timeout: 10000
 ```
+
+> The CLI flag `--proxy` overrides the value set in the scenario file.
 
 ### `steps`
 
@@ -278,7 +281,7 @@ output:
 - `profile`
 - `profileDir`
 - `userAgent`
-- `proxy`
+- `proxy` — URL прокси, например `socks5://user:pass@host:port`
 - `timeout`
 - дополнительные параметры запуска браузера
 
@@ -290,8 +293,11 @@ session:
   profile: test1
   profileDir: /data/profiles
   userAgent: Mozilla/5.0
+  proxy: socks5://user:pass@host:port
   timeout: 10000
 ```
+
+> CLI-флаг `--proxy` имеет приоритет над значением из файла сценария.
 
 ### `steps`
 

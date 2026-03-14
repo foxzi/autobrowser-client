@@ -86,8 +86,10 @@ autobrowser run-script --file examples/yandex_search.yaml --profile yandex --out
 |----------|----------|
 | `--file` | Путь к YAML/JSON сценарию |
 | `--profile` | Имя профиля браузера (сохраняет cookies и данные между запусками) |
-| `--proxy` | Прокси: `socks5://user:pass@host:port` |
+| `--proxy` | Прокси: `socks5://user:pass@host:port` (переопределяет `session.proxy` из сценария) |
 | `--output` | Файл для сохранения результатов в JSON |
+
+> Прокси также можно указать в секции `session` сценария: `proxy: socks5://user:pass@host:port`. CLI-флаг `--proxy` имеет приоритет.
 
 ### Доступные действия в сценариях
 
@@ -195,8 +197,10 @@ autobrowser run-script --file examples/yandex_search.yaml --profile yandex --out
 |-----------|-------------|
 | `--file` | Path to YAML/JSON scenario |
 | `--profile` | Browser profile name (persists cookies and data between runs) |
-| `--proxy` | Proxy: `socks5://user:pass@host:port` |
+| `--proxy` | Proxy: `socks5://user:pass@host:port` (overrides `session.proxy` from scenario) |
 | `--output` | File to save JSON results |
+
+> Proxy can also be set in the scenario `session` section: `proxy: socks5://user:pass@host:port`. The `--proxy` CLI flag takes priority.
 
 ### Available scenario actions
 

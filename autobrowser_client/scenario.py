@@ -43,6 +43,7 @@ class SessionConfig(BaseModel):
     profile: str | None = None
     profile_dir: str | None = Field(default=None, alias="profileDir")
     user_agent: str | None = Field(default=None, alias="userAgent")
+    proxy: str | None = None
     timeout: int | None = None
 
 
