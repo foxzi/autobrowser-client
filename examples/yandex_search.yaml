@@ -1,0 +1,49 @@
+# Поиск в Яндексе через ya.ru.
+# Использует профиль для сохранения куки между запусками.
+# Текст вводится посимвольно (action: type) для имитации реального пользователя.
+#
+# Первый запуск — прогрейте профиль:
+#   autobrowser run-script --file examples/yandex_warmup.yaml --profile yandex
+#
+# Запуск поиска:
+#   autobrowser run-script --file examples/yandex_search.yaml --profile yandex --output /tmp/yandex.json
+
+session:
+  headless: false
+  userAgent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+
+steps:
+  - action: open
+    url: "https://ya.ru/"
+
+  - action: wait
+    timeout: 3000
+
+  # Медленный посимвольный ввод (delay в мс между символами)
+  - action: type
+    locator:
+      type: css
+      value: "textarea#text"
+    value: "строительство дома из силикатного кирпича"
+    delay: 80
+    timeout: 10000
+
+  # Пауза — пусть появятся саджесты
+  - action: wait
+    timeout: 2000
+
+  - action: press
+    key: "Enter"
+
+  # Ждём загрузки страницы результатов
+  - action: wait
+    waitUntil: load
+    timeout: 15000
+
+  - action: wait
+    timeout: 3000
+
+  - action: get-content
+    format: text
+
+stopOnError: true

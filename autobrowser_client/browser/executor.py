@@ -111,6 +111,14 @@ def execute_step(session: BrowserSession, step: ScriptStep, page_id: str | None 
             loc = _resolve_locator(session, step.locator, page_id)
             loc.fill(step.value, timeout=timeout)
 
+        elif step.action == "type":
+            assert step.locator is not None
+            assert step.value is not None
+            loc = _resolve_locator(session, step.locator, page_id)
+            loc.click(timeout=timeout)
+            delay = step.delay or 50
+            page.keyboard.type(step.value, delay=delay)
+
         elif step.action == "press":
             assert step.key is not None
             page.keyboard.press(step.key)

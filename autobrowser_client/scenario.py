@@ -16,6 +16,7 @@ ActionName = Literal[
     "find",
     "click",
     "fill",
+    "type",
     "press",
     "scroll",
     "get-content",
@@ -63,6 +64,7 @@ class ScriptStep(BaseModel):
     timeout: int | None = None
     delta_x: int | None = Field(default=None, alias="deltaX")
     delta_y: int | None = Field(default=None, alias="deltaY")
+    delay: int | None = None
     file: str | None = None
     stop_on_error: bool | None = Field(default=None, alias="stopOnError")
 
@@ -70,10 +72,10 @@ class ScriptStep(BaseModel):
     def validate_action_payload(self) -> "ScriptStep":
         if self.action == "open" and not self.url:
             raise ValueError("'open' step requires 'url'")
-        if self.action in {"find", "click", "fill"} and not self.locator:
+        if self.action in {"find", "click", "fill", "type"} and not self.locator:
             raise ValueError(f"'{self.action}' step requires 'locator'")
-        if self.action == "fill" and self.value is None:
-            raise ValueError("'fill' step requires 'value'")
+        if self.action in {"fill", "type"} and self.value is None:
+            raise ValueError(f"'{self.action}' step requires 'value'")
         if self.action == "press" and not self.key:
             raise ValueError("'press' step requires 'key'")
         if self.action == "scroll" and self.delta_x is None and self.delta_y is None:
