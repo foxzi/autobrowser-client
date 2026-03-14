@@ -136,13 +136,23 @@ When `userAgent` contains a non-Linux OS identifier (e.g. Windows or macOS), the
 Supported platforms:
 - **Windows**: `navigator.platform` = `Win32`, Client Hints platform = `Windows`
 - **macOS**: `navigator.platform` = `MacIntel`, Client Hints platform = `macOS`
+- **Android**: `navigator.platform` = `Linux armv8l`, Client Hints platform = `Android`, device model extracted from UA
 - **Linux**: no spoofing needed (native OS)
+
+For mobile User-Agent strings (Android), the browser context is automatically configured with `is_mobile: true` and `has_touch: true`. This affects viewport behavior and enables touch event emulation.
 
 Example — pretend to be a Windows machine:
 
 ```yaml
 session:
   userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+```
+
+Example — pretend to be an Android device:
+
+```yaml
+session:
+  userAgent: "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36"
 ```
 
 ### Rules for secrets
@@ -307,13 +317,23 @@ autobrowser run-script --file scenario.yaml --profile test1
 Поддерживаемые платформы:
 - **Windows**: `navigator.platform` = `Win32`, Client Hints = `Windows`
 - **macOS**: `navigator.platform` = `MacIntel`, Client Hints = `macOS`
+- **Android**: `navigator.platform` = `Linux armv8l`, Client Hints = `Android`, модель устройства извлекается из UA
 - **Linux**: подмена не нужна (родная ОС)
+
+Для мобильных User-Agent строк (Android) контекст браузера автоматически настраивается с `is_mobile: true` и `has_touch: true`. Это влияет на поведение viewport и включает эмуляцию тач-событий.
 
 Пример — притвориться Windows-машиной:
 
 ```yaml
 session:
   userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+```
+
+Пример — притвориться Android-устройством:
+
+```yaml
+session:
+  userAgent: "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36"
 ```
 
 ### Правила для секретов

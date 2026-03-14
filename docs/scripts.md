@@ -122,6 +122,8 @@ session:
 
 > The CLI flags `--proxy` and `--viewport` override the values set in the scenario file.
 
+> When an Android User-Agent is specified, the browser context is automatically configured with `is_mobile: true` and `has_touch: true`, enabling mobile viewport behavior and touch event emulation.
+
 ### `steps`
 
 Each step must include `action` and action-specific fields.
@@ -316,6 +318,8 @@ session:
 ```
 
 > CLI-флаги `--proxy` и `--viewport` имеют приоритет над значениями из файла сценария.
+
+> При указании Android User-Agent контекст браузера автоматически настраивается с `is_mobile: true` и `has_touch: true`, включая мобильное поведение viewport и эмуляцию тач-событий.
 
 ### `steps`
 

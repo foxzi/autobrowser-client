@@ -139,6 +139,27 @@ Before starting the browser, the relay waits up to 5 seconds for the local port 
 - Proxy credentials are masked in logs and `safe_dump()` output
 - Password appears as `****` in configuration dumps
 
+### Platform spoofing
+
+When a non-Linux User-Agent is used, the browser automatically adjusts JavaScript platform properties via CDP to match the UA string:
+
+| UA contains | `navigator.platform` | Client Hints platform | Mobile context |
+|-------------|---------------------|-----------------------|----------------|
+| Windows | `Win32` | `Windows` | No |
+| macOS | `MacIntel` | `macOS` | No |
+| Android | `Linux armv8l` | `Android` | Yes (`is_mobile`, `has_touch`) |
+| Linux | No spoofing | No spoofing | No |
+
+Spoofed properties:
+- `navigator.platform`
+- `navigator.userAgentData.platform` (Client Hints)
+- `Sec-CH-UA-Platform` header
+- Chrome version and brand list in `userAgentData`
+
+For Android UAs, the device model is extracted (e.g. `SM-S918B`, `Pixel 7 Pro`) and included in Client Hints metadata.
+
+Mobile User-Agents automatically enable `is_mobile: true` and `has_touch: true` on the browser context, which affects viewport behavior and touch event emulation.
+
 ### Data storage
 
 #### Content output
@@ -311,6 +332,27 @@ session:
 
 - Учётные данные прокси маскируются в логах и выводе `safe_dump()`
 - Пароль отображается как `****` в дампах конфигурации
+
+### Подмена платформы (platform spoofing)
+
+При использовании User-Agent, отличного от Linux, браузер автоматически подменяет JavaScript-свойства платформы через CDP для соответствия UA-строке:
+
+| UA содержит | `navigator.platform` | Client Hints platform | Мобильный контекст |
+|-------------|---------------------|-----------------------|--------------------|
+| Windows | `Win32` | `Windows` | Нет |
+| macOS | `MacIntel` | `macOS` | Нет |
+| Android | `Linux armv8l` | `Android` | Да (`is_mobile`, `has_touch`) |
+| Linux | Без подмены | Без подмены | Нет |
+
+Подменяемые свойства:
+- `navigator.platform`
+- `navigator.userAgentData.platform` (Client Hints)
+- Заголовок `Sec-CH-UA-Platform`
+- Версия Chrome и список брендов в `userAgentData`
+
+Для Android UA модель устройства извлекается автоматически (например, `SM-S918B`, `Pixel 7 Pro`) и включается в метаданные Client Hints.
+
+Мобильные User-Agent автоматически включают `is_mobile: true` и `has_touch: true` в контексте браузера, что влияет на поведение viewport и эмуляцию тач-событий.
 
 ### Хранение данных
 
