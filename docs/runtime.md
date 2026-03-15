@@ -224,13 +224,13 @@ When `fingerprint: true` is set in a scenario, the browser injects JavaScript th
 |-----|-----------------|
 | Canvas (`getImageData`) | Adds deterministic noise to pixel data based on seed |
 | WebGL (`RENDERER` / `VENDOR`) | Overrides GPU strings with values from a pool |
-| AudioContext (`getFloatFrequencyData`) | Adds micro-noise to frequency data |
+| AudioContext (`getFloatFrequencyData`, `getChannelData`) | Adds micro-noise to frequency and audio buffer data |
 | ClientRects (`getBoundingClientRect`) | Adds sub-pixel noise to element coordinates |
 | Fonts (`measureText`) | Adds micro-noise to text width measurements |
 
 #### How it works
 
-1. On first run with `fingerprint: true`, a `fingerprint.json` is generated in the profile directory with a random seed, GPU strings, and per-API toggles.
+1. On first run with `fingerprint: true`, a `fingerprint.json` is generated in the profile directory with a random seed, GPU strings, and per-API toggles. The GPU profile pool is selected automatically based on the User-Agent: Android UA gets mobile GPUs (Qualcomm Adreno, ARM Mali), Linux UA gets OpenGL/Mesa drivers, Windows UA gets Direct3D11 profiles.
 2. On subsequent runs, the same `fingerprint.json` is loaded, ensuring the profile always produces the same fingerprint.
 3. The fingerprint config is baked into a JavaScript injection script and executed via `context.add_init_script()` before any page content loads.
 4. The injection uses a seeded PRNG (mulberry32) so all noise is deterministic — same seed always produces the same modifications.
@@ -538,13 +538,13 @@ session:
 |-----|---------------|
 | Canvas (`getImageData`) | Добавление детерминированного шума к пиксельным данным на основе seed |
 | WebGL (`RENDERER` / `VENDOR`) | Подмена строк GPU значениями из пула |
-| AudioContext (`getFloatFrequencyData`) | Добавление микро-шума к частотным данным |
+| AudioContext (`getFloatFrequencyData`, `getChannelData`) | Добавление микро-шума к частотным данным и аудиобуферу |
 | ClientRects (`getBoundingClientRect`) | Добавление субпиксельного шума к координатам элементов |
 | Fonts (`measureText`) | Добавление микро-шума к измерениям ширины текста |
 
 #### Как это работает
 
-1. При первом запуске с `fingerprint: true` в директории профиля создаётся `fingerprint.json` со случайным seed, строками GPU и флагами для каждого API.
+1. При первом запуске с `fingerprint: true` в директории профиля создаётся `fingerprint.json` со случайным seed, строками GPU и флагами для каждого API. Пул GPU-профилей выбирается автоматически на основе User-Agent: Android UA получает мобильные GPU (Qualcomm Adreno, ARM Mali), Linux UA — драйверы OpenGL/Mesa, Windows UA — профили Direct3D11.
 2. При последующих запусках загружается тот же `fingerprint.json`, обеспечивая постоянство отпечатка профиля.
 3. Конфиг отпечатка встраивается в JavaScript-скрипт инъекции и выполняется через `context.add_init_script()` до загрузки любого контента страницы.
 4. Инъекция использует ГПСЧ с seed (mulberry32), поэтому весь шум детерминирован — один и тот же seed всегда даёт одинаковые модификации.
