@@ -44,6 +44,21 @@ class ViewportConfig(BaseModel):
     height: int
 
 
+class FingerprintOverrides(BaseModel):
+    """Optional fingerprint overrides in scenario."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    seed: int | None = None
+    canvas: bool | None = None
+    webgl: bool | None = None
+    webgl_vendor: str | None = Field(default=None, alias="webglVendor")
+    webgl_renderer: str | None = Field(default=None, alias="webglRenderer")
+    audio: bool | None = None
+    client_rects: bool | None = Field(default=None, alias="clientRects")
+    fonts: bool | None = None
+
+
 class SessionConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -55,6 +70,7 @@ class SessionConfig(BaseModel):
     viewport: ViewportConfig | None = None
     timeout: int | None = None
     preserve_session: bool = Field(default=False, alias="preserveSession")
+    fingerprint: FingerprintOverrides | bool | None = None
 
 
 class ScriptOutput(BaseModel):

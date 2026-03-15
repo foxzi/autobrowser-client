@@ -16,6 +16,10 @@ from patchright.sync_api import sync_playwright, Playwright, Browser, BrowserCon
 
 from autobrowser_client.config import Settings
 from autobrowser_client.errors import BrowserStartError, SessionNotFoundError
+from autobrowser_client.fingerprint.config import (
+    FingerprintConfig, load_fingerprint, merge_fingerprint,
+)
+from autobrowser_client.fingerprint.inject import build_injection_script
 from autobrowser_client.profiles.manager import ProfileLock
 from autobrowser_client.proxy.relay import ProxyRelay
 
@@ -199,6 +203,7 @@ class BrowserSession:
         headless: bool | None = None,
         viewport: dict[str, int] | None = None,
         preserve_session: bool = False,
+        fingerprint: FingerprintConfig | bool | dict[str, Any] | None = None,
     ) -> None:
         try:
             # Start proxy relay if configured
@@ -273,6 +278,13 @@ class BrowserSession:
                     ctx_opts["is_mobile"] = True
                     ctx_opts["has_touch"] = True
                 self._context = self._browser.new_context(**ctx_opts)
+
+            # Apply fingerprint spoofing
+            fp_config = self._resolve_fingerprint(fingerprint, is_mobile_ua)
+            if fp_config:
+                script = build_injection_script(fp_config)
+                self._context.add_init_script(script)
+                logger.info("Fingerprint spoofing enabled (seed=%d)", fp_config.seed)
 
             # Determine URLs to open: explicit > saved tabs (if preserveSession) > blank
             effective_urls = list(urls) if urls else []
@@ -379,6 +391,46 @@ class BrowserSession:
         except Exception as exc:
             logger.warning("Failed to load %s: %s", tabs_path, exc)
         return []
+
+    def _resolve_fingerprint(
+        self,
+        fingerprint: FingerprintConfig | bool | dict[str, Any] | None,
+        mobile: bool = False,
+    ) -> FingerprintConfig | None:
+        """Resolve fingerprint config from argument + profile file.
+
+        Returns None if fingerprinting should be disabled.
+        """
+        # Explicitly disabled
+        if fingerprint is False:
+            return None
+
+        # Already a FingerprintConfig object
+        if isinstance(fingerprint, FingerprintConfig):
+            return fingerprint
+
+        # Load base from profile if available
+        base: FingerprintConfig | None = None
+        if self._profile_dir:
+            base = load_fingerprint(self._profile_dir, mobile=mobile)
+
+        # fingerprint=True or None with profile -> use base
+        if fingerprint is True or fingerprint is None:
+            return base
+
+        # fingerprint is a dict of overrides
+        if isinstance(fingerprint, dict):
+            if base:
+                return merge_fingerprint(base, fingerprint)
+            # No profile — need at least a seed to generate
+            from autobrowser_client.fingerprint.config import generate_fingerprint
+            base = generate_fingerprint(
+                seed=fingerprint.get("seed"),
+                mobile=mobile,
+            )
+            return merge_fingerprint(base, fingerprint)
+
+        return base
 
     def get_page(self, page_id: str | None = None) -> Page:
         if not self._pages:
@@ -518,6 +570,7 @@ class SessionManager:
         headless: bool | None = None,
         viewport: dict[str, int] | None = None,
         preserve_session: bool = False,
+        fingerprint: FingerprintConfig | bool | dict[str, Any] | None = None,
     ) -> BrowserSession:
         with self._lock:
             max_sessions = self.settings.api.max_sessions
@@ -532,6 +585,7 @@ class SessionManager:
             urls=urls, profile=profile, user_agent=user_agent,
             headless=headless, viewport=viewport,
             preserve_session=preserve_session,
+            fingerprint=fingerprint,
         )
         return session
 

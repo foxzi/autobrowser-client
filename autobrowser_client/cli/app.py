@@ -106,6 +106,37 @@ def validate_script(
     )
 
 
+@app.command("generate-fingerprint")
+def generate_fingerprint_cmd(
+    profile: Annotated[str, typer.Option("--profile", help="Profile directory path")],
+    mobile: Annotated[bool, typer.Option("--mobile/--desktop", help="Generate mobile or desktop GPU profile")] = False,
+    seed: Annotated[int | None, typer.Option("--seed", help="Fixed seed value")] = None,
+    force: Annotated[bool, typer.Option("--force", help="Overwrite existing fingerprint.json")] = False,
+) -> None:
+    """Generate fingerprint.json for a browser profile."""
+    from autobrowser_client.fingerprint.config import (
+        FINGERPRINT_FILE,
+        generate_fingerprint,
+        save_fingerprint,
+    )
+
+    profile_dir = Path(profile)
+    if not profile_dir.exists():
+        profile_dir.mkdir(parents=True, exist_ok=True)
+        typer.echo(f"Created profile directory: {profile_dir}")
+
+    fp_path = profile_dir / FINGERPRINT_FILE
+    if fp_path.exists() and not force:
+        typer.echo(f"fingerprint.json already exists at {fp_path}")
+        typer.echo("Use --force to overwrite")
+        raise typer.Exit(code=1)
+
+    fp = generate_fingerprint(seed=seed, mobile=mobile)
+    save_fingerprint(profile_dir, fp)
+
+    typer.echo(json.dumps(fp.to_js_config(), indent=2, ensure_ascii=False))
+
+
 @app.command("run-script")
 def run_script(
     file: Annotated[Path, typer.Option("--file", exists=True, dir_okay=False)],
@@ -132,6 +163,17 @@ def run_script(
     user_agent = script.session.user_agent
     effective_preserve = preserve_session or script.session.preserve_session
 
+    # Resolve fingerprint: scenario value can be bool, dict of overrides, or None
+    fp_arg: bool | dict | None = None
+    fp_raw = script.session.fingerprint
+    if isinstance(fp_raw, bool):
+        fp_arg = fp_raw
+    elif fp_raw is not None:
+        # FingerprintOverrides model -> dict of non-None fields
+        fp_arg = {k: v for k, v in fp_raw.model_dump(by_alias=True).items() if v is not None}
+        if not fp_arg:
+            fp_arg = True  # fingerprint: {} means enable
+
     manager = SessionManager(settings)
     session = manager.create_session(
         urls=script.pages or None,
@@ -139,6 +181,7 @@ def run_script(
         user_agent=user_agent,
         headless=headless,
         preserve_session=effective_preserve,
+        fingerprint=fp_arg,
     )
 
     try:
