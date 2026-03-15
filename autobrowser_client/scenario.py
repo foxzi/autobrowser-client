@@ -24,6 +24,7 @@ ActionName = Literal[
     "get-cookies",
     "get-headers",
     "save",
+    "browse-tabs",
 ]
 LocatorType = Literal["css", "xpath", "id", "name", "class", "text", "attribute"]
 WaitUntil = Literal["domcontentloaded", "load", "networkidle", "visible", "hidden"]
@@ -66,6 +67,7 @@ class ScriptStep(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     action: ActionName
+    page: str | None = None
     url: str | None = None
     locator: Locator | None = None
     value: str | None = None

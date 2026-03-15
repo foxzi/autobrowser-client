@@ -146,6 +146,9 @@ Supported actions:
 | `get-cookies` | Get cookies | — | — |
 | `get-headers` | Get HTTP headers | — | — |
 | `save` | Save content to file | `file` | `format` (`html` or `text`) |
+| `browse-tabs` | Bring each tab to front, wait, scroll | — | `deltaY` (scroll amount, default 400), `timeout` |
+
+All steps support optional `page` field to target a specific tab (e.g. `page: page_1`). Default is the first page.
 
 All steps support optional `stopOnError` to override the global `stopOnError` setting.
 
@@ -344,6 +347,9 @@ session:
 | `get-cookies` | Получить cookies | — | — |
 | `get-headers` | Получить HTTP-заголовки | — | — |
 | `save` | Сохранить содержимое в файл | `file` | `format` (`html` или `text`) |
+| `browse-tabs` | Переключить каждый таб, подождать, прокрутить | — | `deltaY` (величина прокрутки, по умолчанию 400), `timeout` |
+
+Каждый шаг поддерживает необязательное поле `page` для указания конкретной вкладки (например `page: page_1`). По умолчанию используется первая страница.
 
 Каждый шаг поддерживает необязательное поле `stopOnError` для переопределения глобальной настройки `stopOnError`.
 

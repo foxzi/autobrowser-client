@@ -1,0 +1,25 @@
+# Browse saved tabs
+#
+# Restores tabs from a previous session (tabs.json) and scrolls through each one.
+# Requires a profile with previously saved tabs (preserveSession: true).
+#
+# Usage:
+#   autobrowser run-script --file examples/browse.yaml --profile my-profile
+#
+# The profile must contain tabs.json from a previous run with preserveSession.
+
+session:
+  headless: false
+  preserveSession: true
+
+steps:
+  # Wait for pages to finish loading
+  - action: wait
+    timeout: 3000
+
+  # Visit each tab: bring to front, wait for load, scroll
+  - action: browse-tabs
+    deltaY: 500
+    timeout: 15000
+
+stopOnError: false

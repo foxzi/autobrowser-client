@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+import random
 import time
 from pathlib import Path
 from typing import Any
@@ -71,7 +72,8 @@ def execute_step(session: BrowserSession, step: ScriptStep, page_id: str | None 
     t0 = time.monotonic()
 
     try:
-        page = session.get_page(page_id)
+        effective_page_id = step.page or page_id
+        page = session.get_page(effective_page_id)
         timeout = step.timeout or session.settings.timeouts.action_ms
 
         if step.action == "open":
@@ -89,7 +91,7 @@ def execute_step(session: BrowserSession, step: ScriptStep, page_id: str | None 
                 page.wait_for_load_state("domcontentloaded", timeout=timeout)
             elif step.wait_until in {"visible", "hidden"}:
                 if step.locator:
-                    loc = _resolve_locator(session, step.locator, page_id, step.index)
+                    loc = _resolve_locator(session, step.locator, effective_page_id, step.index)
                     if step.wait_until == "visible":
                         loc.wait_for(state="visible", timeout=timeout)
                     else:
@@ -104,7 +106,7 @@ def execute_step(session: BrowserSession, step: ScriptStep, page_id: str | None 
         elif step.action == "find":
             if not step.locator:
                 raise AppError(ErrorCode.INVALID_ARGUMENT, "find action requires 'locator'")
-            loc = _resolve_locator(session, step.locator, page_id, step.index)
+            loc = _resolve_locator(session, step.locator, effective_page_id, step.index)
             loc.wait_for(state="attached", timeout=timeout)
             count = loc.count()
             result.data = {"found": count}
@@ -112,7 +114,7 @@ def execute_step(session: BrowserSession, step: ScriptStep, page_id: str | None 
         elif step.action == "click":
             if not step.locator:
                 raise AppError(ErrorCode.INVALID_ARGUMENT, "click action requires 'locator'")
-            loc = _resolve_locator(session, step.locator, page_id, step.index)
+            loc = _resolve_locator(session, step.locator, effective_page_id, step.index)
             loc.click(timeout=timeout)
 
         elif step.action == "fill":
@@ -120,7 +122,7 @@ def execute_step(session: BrowserSession, step: ScriptStep, page_id: str | None 
                 raise AppError(ErrorCode.INVALID_ARGUMENT, "fill action requires 'locator'")
             if step.value is None:
                 raise AppError(ErrorCode.INVALID_ARGUMENT, "fill action requires 'value'")
-            loc = _resolve_locator(session, step.locator, page_id, step.index)
+            loc = _resolve_locator(session, step.locator, effective_page_id, step.index)
             loc.fill(step.value, timeout=timeout)
 
         elif step.action == "type":
@@ -128,7 +130,7 @@ def execute_step(session: BrowserSession, step: ScriptStep, page_id: str | None 
                 raise AppError(ErrorCode.INVALID_ARGUMENT, "type action requires 'locator'")
             if step.value is None:
                 raise AppError(ErrorCode.INVALID_ARGUMENT, "type action requires 'value'")
-            loc = _resolve_locator(session, step.locator, page_id, step.index)
+            loc = _resolve_locator(session, step.locator, effective_page_id, step.index)
             loc.click(timeout=timeout)
             delay = step.delay or 50
             page.keyboard.type(step.value, delay=delay)
@@ -154,7 +156,7 @@ def execute_step(session: BrowserSession, step: ScriptStep, page_id: str | None 
 
         elif step.action == "get-content":
             fmt = step.format or "html"
-            content = session.get_content(page_id, fmt=fmt)
+            content = session.get_content(effective_page_id, fmt=fmt)
             result.data = {"format": fmt, "length": len(content), "content": content}
 
         elif step.action == "get-cookies":
@@ -162,7 +164,7 @@ def execute_step(session: BrowserSession, step: ScriptStep, page_id: str | None 
             result.data = {"cookies": cookies}
 
         elif step.action == "get-headers":
-            headers = session.get_headers(page_id)
+            headers = session.get_headers(effective_page_id)
             result.data = {"headers": headers}
 
         elif step.action == "save":
@@ -170,10 +172,31 @@ def execute_step(session: BrowserSession, step: ScriptStep, page_id: str | None 
                 raise AppError(ErrorCode.INVALID_ARGUMENT, "save action requires 'file'")
             out = _validate_output_path(step.file)
             fmt = step.format or "html"
-            content = session.get_content(page_id, fmt=fmt)
+            content = session.get_content(effective_page_id, fmt=fmt)
             out.parent.mkdir(parents=True, exist_ok=True)
             out.write_text(content, encoding="utf-8")
             result.data = {"file": step.file, "bytes": len(content.encode("utf-8"))}
+
+        elif step.action == "browse-tabs":
+            pages = session.list_pages()
+            scroll_dy = step.delta_y or 400
+            visited = []
+            for pid, url in pages.items():
+                if url in {"about:blank", "chrome://newtab/"}:
+                    continue
+                try:
+                    p = session.get_page(pid)
+                    p.bring_to_front()
+                    p.wait_for_load_state("load", timeout=timeout)
+                    # Scroll down a few times
+                    for _ in range(random.randint(2, 5)):
+                        p.mouse.wheel(0, scroll_dy)
+                        p.wait_for_timeout(random.randint(500, 2000))
+                    visited.append({"page": pid, "url": url})
+                except Exception as exc:
+                    logger.warning("browse-tabs: failed on %s (%s): %s", pid, url, exc)
+                    visited.append({"page": pid, "url": url, "error": str(exc)})
+            result.data = {"visited": visited, "count": len(visited)}
 
         else:
             result.success = False
