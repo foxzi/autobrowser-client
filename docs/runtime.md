@@ -214,6 +214,69 @@ For Android UAs, the device model is extracted (e.g. `SM-S918B`, `Pixel 7 Pro`) 
 
 Mobile User-Agents automatically enable `is_mobile: true` and `has_touch: true` on the browser context, which affects viewport behavior and touch event emulation.
 
+### Fingerprint spoofing
+
+When `fingerprint: true` is set in a scenario, the browser injects JavaScript that modifies browser APIs to produce a unique but consistent fingerprint for each profile.
+
+#### Spoofed APIs
+
+| API | Spoofing method |
+|-----|-----------------|
+| Canvas (`getImageData`) | Adds deterministic noise to pixel data based on seed |
+| WebGL (`RENDERER` / `VENDOR`) | Overrides GPU strings with values from a pool |
+| AudioContext (`getFloatFrequencyData`) | Adds micro-noise to frequency data |
+| ClientRects (`getBoundingClientRect`) | Adds sub-pixel noise to element coordinates |
+| Fonts (`measureText`) | Adds micro-noise to text width measurements |
+
+#### How it works
+
+1. On first run with `fingerprint: true`, a `fingerprint.json` is generated in the profile directory with a random seed, GPU strings, and per-API toggles.
+2. On subsequent runs, the same `fingerprint.json` is loaded, ensuring the profile always produces the same fingerprint.
+3. The fingerprint config is baked into a JavaScript injection script and executed via `context.add_init_script()` before any page content loads.
+4. The injection uses a seeded PRNG (mulberry32) so all noise is deterministic — same seed always produces the same modifications.
+
+#### Fingerprint config file
+
+The `fingerprint.json` file is stored in the profile directory alongside `tabs.json`:
+
+```json
+{
+  "seed": 1234567890,
+  "canvas": true,
+  "webgl": true,
+  "webglVendor": "Google Inc. (NVIDIA)",
+  "webglRenderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "audio": true,
+  "clientRects": true,
+  "fonts": true
+}
+```
+
+#### CLI command
+
+Generate a fingerprint config for a profile directory:
+
+```bash
+autobrowser generate-fingerprint --profile work/my-profile/profile
+autobrowser generate-fingerprint --profile work/my-profile/profile --mobile
+autobrowser generate-fingerprint --profile work/my-profile/profile --seed 42
+autobrowser generate-fingerprint --profile work/my-profile/profile --force  # overwrite existing
+```
+
+#### Scenario overrides
+
+Individual fingerprint fields can be overridden in the scenario file:
+
+```yaml
+session:
+  fingerprint:
+    seed: 12345
+    canvas: true
+    webgl: false
+```
+
+Overrides are merged on top of the existing `fingerprint.json` (or a freshly generated one). The merged result is used for the session but is **not** saved back to disk.
+
 ### Data storage
 
 #### Content output
@@ -461,6 +524,69 @@ session:
 Для Android UA модель устройства извлекается автоматически (например, `SM-S918B`, `Pixel 7 Pro`) и включается в метаданные Client Hints.
 
 Мобильные User-Agent автоматически включают `is_mobile: true` и `has_touch: true` в контексте браузера, что влияет на поведение viewport и эмуляцию тач-событий.
+
+### Подмена отпечатка браузера (fingerprint spoofing)
+
+При указании `fingerprint: true` в сценарии браузер инжектирует JavaScript, который модифицирует API браузера для создания уникального, но постоянного отпечатка для каждого профиля.
+
+#### Подменяемые API
+
+| API | Метод подмены |
+|-----|---------------|
+| Canvas (`getImageData`) | Добавление детерминированного шума к пиксельным данным на основе seed |
+| WebGL (`RENDERER` / `VENDOR`) | Подмена строк GPU значениями из пула |
+| AudioContext (`getFloatFrequencyData`) | Добавление микро-шума к частотным данным |
+| ClientRects (`getBoundingClientRect`) | Добавление субпиксельного шума к координатам элементов |
+| Fonts (`measureText`) | Добавление микро-шума к измерениям ширины текста |
+
+#### Как это работает
+
+1. При первом запуске с `fingerprint: true` в директории профиля создаётся `fingerprint.json` со случайным seed, строками GPU и флагами для каждого API.
+2. При последующих запусках загружается тот же `fingerprint.json`, обеспечивая постоянство отпечатка профиля.
+3. Конфиг отпечатка встраивается в JavaScript-скрипт инъекции и выполняется через `context.add_init_script()` до загрузки любого контента страницы.
+4. Инъекция использует ГПСЧ с seed (mulberry32), поэтому весь шум детерминирован — один и тот же seed всегда даёт одинаковые модификации.
+
+#### Файл конфига отпечатка
+
+Файл `fingerprint.json` хранится в директории профиля рядом с `tabs.json`:
+
+```json
+{
+  "seed": 1234567890,
+  "canvas": true,
+  "webgl": true,
+  "webglVendor": "Google Inc. (NVIDIA)",
+  "webglRenderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "audio": true,
+  "clientRects": true,
+  "fonts": true
+}
+```
+
+#### CLI-команда
+
+Генерация конфига отпечатка для директории профиля:
+
+```bash
+autobrowser generate-fingerprint --profile work/my-profile/profile
+autobrowser generate-fingerprint --profile work/my-profile/profile --mobile
+autobrowser generate-fingerprint --profile work/my-profile/profile --seed 42
+autobrowser generate-fingerprint --profile work/my-profile/profile --force  # перезаписать существующий
+```
+
+#### Переопределения в сценарии
+
+Отдельные поля отпечатка можно переопределить в файле сценария:
+
+```yaml
+session:
+  fingerprint:
+    seed: 12345
+    canvas: true
+    webgl: false
+```
+
+Переопределения объединяются поверх существующего `fingerprint.json` (или только что сгенерированного). Результат используется для сессии, но **не** сохраняется обратно на диск.
 
 ### Хранение данных
 

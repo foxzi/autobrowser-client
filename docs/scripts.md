@@ -104,6 +104,7 @@ Typical fields:
 - `viewport` — browser viewport size, e.g. `{width: 1920, height: 1080}`
 - `timeout`
 - `preserveSession` — save open tabs to `tabs.json` on stop, restore them on next start (default: `false`)
+- `fingerprint` — enable browser fingerprint spoofing (default: `null` / disabled). Accepts `true`, `false`, or an object with overrides.
 
 Example:
 
@@ -119,11 +120,37 @@ session:
     height: 1080
   timeout: 10000
   preserveSession: true
+  fingerprint: true
 ```
 
 > The CLI flags `--proxy`, `--viewport`, and `--preserve-session` override the values set in the scenario file.
 
 > When an Android User-Agent is specified, the browser context is automatically configured with `is_mobile: true` and `has_touch: true`, enabling mobile viewport behavior and touch event emulation.
+
+#### Fingerprint overrides
+
+The `fingerprint` field accepts three forms:
+
+```yaml
+# Enable with auto-generated config (stored in profile/fingerprint.json)
+fingerprint: true
+
+# Disable
+fingerprint: false
+
+# Override specific fields
+fingerprint:
+  seed: 12345
+  canvas: true
+  webgl: true
+  webglVendor: "Google Inc. (NVIDIA)"
+  webglRenderer: "ANGLE (NVIDIA, GeForce RTX 3060)"
+  audio: true
+  clientRects: true
+  fonts: true
+```
+
+Available override fields: `seed`, `canvas`, `webgl`, `webglVendor`, `webglRenderer`, `audio`, `clientRects`, `fonts`.
 
 ### `steps`
 
@@ -305,6 +332,7 @@ output:
 - `viewport` — размер окна браузера, например `{width: 1920, height: 1080}`
 - `timeout`
 - `preserveSession` — сохранять открытые вкладки в `tabs.json` при остановке, восстанавливать при следующем запуске (по умолчанию: `false`)
+- `fingerprint` — включить подмену отпечатка браузера (по умолчанию: `null` / выключено). Принимает `true`, `false` или объект с переопределениями.
 
 Пример:
 
@@ -320,11 +348,37 @@ session:
     height: 1080
   timeout: 10000
   preserveSession: true
+  fingerprint: true
 ```
 
 > CLI-флаги `--proxy`, `--viewport` и `--preserve-session` имеют приоритет над значениями из файла сценария.
 
 > При указании Android User-Agent контекст браузера автоматически настраивается с `is_mobile: true` и `has_touch: true`, включая мобильное поведение viewport и эмуляцию тач-событий.
+
+#### Переопределение отпечатка
+
+Поле `fingerprint` принимает три формы:
+
+```yaml
+# Включить с автогенерацией конфига (сохраняется в profile/fingerprint.json)
+fingerprint: true
+
+# Выключить
+fingerprint: false
+
+# Переопределить конкретные поля
+fingerprint:
+  seed: 12345
+  canvas: true
+  webgl: true
+  webglVendor: "Google Inc. (NVIDIA)"
+  webglRenderer: "ANGLE (NVIDIA, GeForce RTX 3060)"
+  audio: true
+  clientRects: true
+  fonts: true
+```
+
+Доступные поля для переопределения: `seed`, `canvas`, `webgl`, `webglVendor`, `webglRenderer`, `audio`, `clientRects`, `fonts`.
 
 ### `steps`
 

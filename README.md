@@ -23,6 +23,7 @@ Python client for launching and controlling a browser through CLI scripts and HT
 | `autobrowser run-script --file scenario.yaml` | Run YAML/JSON scenario |
 | `autobrowser run --url https://example.com` | Open URL and collect data |
 | `autobrowser serve` | Start HTTP API server |
+| `autobrowser generate-fingerprint --profile DIR` | Generate fingerprint.json for a profile |
 
 Common flags: `--config`, `--profile`, `--proxy`, `--viewport`, `--output`, `--headless/--headful`, `--timeout`, `--preserve-session`.
 
