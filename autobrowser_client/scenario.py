@@ -53,6 +53,7 @@ class SessionConfig(BaseModel):
     proxy: str | None = None
     viewport: ViewportConfig | None = None
     timeout: int | None = None
+    preserve_session: bool = Field(default=False, alias="preserveSession")
 
 
 class ScriptOutput(BaseModel):

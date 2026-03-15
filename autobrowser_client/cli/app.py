@@ -114,6 +114,7 @@ def run_script(
     proxy: Annotated[str | None, typer.Option("--proxy", help="Proxy URL: socks5://user:pass@host:port")] = None,
     viewport: Annotated[str | None, typer.Option("--viewport", help="Viewport size: WIDTHxHEIGHT (e.g. 1920x1080)")] = None,
     output_file: Annotated[Path | None, typer.Option("--output", help="Save result to file")] = None,
+    preserve_session: Annotated[bool, typer.Option("--preserve-session", help="Save open tabs for next session")] = False,
 ) -> None:
     script = load_script(file)
     effective_proxy = proxy or script.session.proxy
@@ -129,6 +130,7 @@ def run_script(
     effective_profile = profile or script.session.profile
     headless = script.session.headless
     user_agent = script.session.user_agent
+    effective_preserve = preserve_session or script.session.preserve_session
 
     manager = SessionManager(settings)
     session = manager.create_session(
@@ -136,6 +138,7 @@ def run_script(
         profile=effective_profile,
         user_agent=user_agent,
         headless=headless,
+        preserve_session=effective_preserve,
     )
 
     try:
@@ -170,7 +173,7 @@ def run_script(
         raise typer.Exit(code=0 if all_ok else 1)
 
     finally:
-        session.stop()
+        session.stop(preserve_session=effective_preserve)
 
 
 @app.command("run")
