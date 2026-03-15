@@ -2,18 +2,16 @@
 from __future__ import annotations
 
 import logging
-import math
 import random
 import time
-from typing import Any, Literal
+from typing import Any
 
 from patchright.sync_api import Page, Locator as PwLocator
 
 from autobrowser_client.browser.service import BrowserSession
+from autobrowser_client.scenario import LocatorType
 
 logger = logging.getLogger(__name__)
-
-LocatorType = Literal["css", "xpath", "id", "name", "class", "text", "attribute"]
 
 
 def resolve_locator(page: Page, loc_type: LocatorType, value: str) -> PwLocator:

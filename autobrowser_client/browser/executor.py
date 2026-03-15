@@ -7,10 +7,27 @@ import time
 from pathlib import Path
 from typing import Any
 
+from autobrowser_client.browser.actions import resolve_locator
 from autobrowser_client.browser.service import BrowserSession
+from autobrowser_client.errors import AppError, ErrorCode
 from autobrowser_client.scenario import ScriptStep, Locator
 
 logger = logging.getLogger(__name__)
+
+
+def _validate_output_path(file_path: str) -> Path:
+    """Validate that a file path is safe (no path traversal, no absolute paths)."""
+    p = Path(file_path)
+    if p.is_absolute():
+        raise AppError(ErrorCode.INVALID_ARGUMENT, f"Absolute paths are not allowed: {file_path}")
+    try:
+        resolved = p.resolve()
+        cwd = Path.cwd().resolve()
+        if not str(resolved).startswith(str(cwd)):
+            raise AppError(ErrorCode.INVALID_ARGUMENT, f"Path traversal is not allowed: {file_path}")
+    except (OSError, ValueError) as exc:
+        raise AppError(ErrorCode.INVALID_ARGUMENT, f"Invalid file path: {file_path}") from exc
+    return p
 
 
 class StepResult:
@@ -42,26 +59,7 @@ def _resolve_locator(
 ) -> Any:
     """Convert a Locator model to a Playwright locator object."""
     page = session.get_page(page_id)
-    loc_type = locator.type
-    val = locator.value
-
-    if loc_type == "css":
-        loc = page.locator(val)
-    elif loc_type == "xpath":
-        loc = page.locator(f"xpath={val}")
-    elif loc_type == "id":
-        loc = page.locator(f"#{val}")
-    elif loc_type == "name":
-        loc = page.locator(f"[name='{val}']")
-    elif loc_type == "class":
-        loc = page.locator(f".{val}")
-    elif loc_type == "text":
-        loc = page.get_by_text(val)
-    elif loc_type == "attribute":
-        loc = page.locator(f"[{val}]")
-    else:
-        loc = page.locator(val)
-
+    loc = resolve_locator(page, locator.type, locator.value)
     if index is not None:
         loc = loc.nth(index)
     return loc
@@ -77,7 +75,8 @@ def execute_step(session: BrowserSession, step: ScriptStep, page_id: str | None 
         timeout = step.timeout or session.settings.timeouts.action_ms
 
         if step.action == "open":
-            assert step.url is not None
+            if not step.url:
+                raise AppError(ErrorCode.INVALID_ARGUMENT, "open action requires 'url'")
             page.goto(step.url, timeout=session.settings.timeouts.navigation_ms)
             result.data = {"url": page.url}
 
@@ -103,33 +102,40 @@ def execute_step(session: BrowserSession, step: ScriptStep, page_id: str | None 
                 page.wait_for_load_state("load", timeout=timeout)
 
         elif step.action == "find":
-            assert step.locator is not None
+            if not step.locator:
+                raise AppError(ErrorCode.INVALID_ARGUMENT, "find action requires 'locator'")
             loc = _resolve_locator(session, step.locator, page_id, step.index)
             loc.wait_for(state="attached", timeout=timeout)
             count = loc.count()
             result.data = {"found": count}
 
         elif step.action == "click":
-            assert step.locator is not None
+            if not step.locator:
+                raise AppError(ErrorCode.INVALID_ARGUMENT, "click action requires 'locator'")
             loc = _resolve_locator(session, step.locator, page_id, step.index)
             loc.click(timeout=timeout)
 
         elif step.action == "fill":
-            assert step.locator is not None
-            assert step.value is not None
+            if not step.locator:
+                raise AppError(ErrorCode.INVALID_ARGUMENT, "fill action requires 'locator'")
+            if step.value is None:
+                raise AppError(ErrorCode.INVALID_ARGUMENT, "fill action requires 'value'")
             loc = _resolve_locator(session, step.locator, page_id, step.index)
             loc.fill(step.value, timeout=timeout)
 
         elif step.action == "type":
-            assert step.locator is not None
-            assert step.value is not None
+            if not step.locator:
+                raise AppError(ErrorCode.INVALID_ARGUMENT, "type action requires 'locator'")
+            if step.value is None:
+                raise AppError(ErrorCode.INVALID_ARGUMENT, "type action requires 'value'")
             loc = _resolve_locator(session, step.locator, page_id, step.index)
             loc.click(timeout=timeout)
             delay = step.delay or 50
             page.keyboard.type(step.value, delay=delay)
 
         elif step.action == "press":
-            assert step.key is not None
+            if not step.key:
+                raise AppError(ErrorCode.INVALID_ARGUMENT, "press action requires 'key'")
             page.keyboard.press(step.key)
 
         elif step.action == "scroll":
@@ -138,8 +144,9 @@ def execute_step(session: BrowserSession, step: ScriptStep, page_id: str | None 
             page.mouse.wheel(dx, dy)
 
         elif step.action == "screenshot":
-            assert step.file is not None
-            out = Path(step.file)
+            if not step.file:
+                raise AppError(ErrorCode.INVALID_ARGUMENT, "screenshot action requires 'file'")
+            out = _validate_output_path(step.file)
             out.parent.mkdir(parents=True, exist_ok=True)
             page.screenshot(path=str(out), full_page=step.full_page)
             size = out.stat().st_size
@@ -159,10 +166,13 @@ def execute_step(session: BrowserSession, step: ScriptStep, page_id: str | None 
             result.data = {"headers": headers}
 
         elif step.action == "save":
-            assert step.file is not None
+            if not step.file:
+                raise AppError(ErrorCode.INVALID_ARGUMENT, "save action requires 'file'")
+            out = _validate_output_path(step.file)
             fmt = step.format or "html"
             content = session.get_content(page_id, fmt=fmt)
-            Path(step.file).write_text(content, encoding="utf-8")
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(content, encoding="utf-8")
             result.data = {"file": step.file, "bytes": len(content.encode("utf-8"))}
 
         else:

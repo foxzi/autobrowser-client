@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import hmac
 import logging
 import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
@@ -110,6 +112,10 @@ class ActionChainRequest(BaseModel):
     timeout: int = 10000
 
 
+class CreateProfileRequest(BaseModel):
+    name: str
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -136,10 +142,18 @@ def _timed(fn: Any, *args: Any, **kwargs: Any) -> tuple[Any, float]:
 # ---------------------------------------------------------------------------
 
 def create_app(settings: Settings) -> FastAPI:
+    manager = SessionManager(settings)
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):  # type: ignore[no-untyped-def]
+        yield
+        manager.stop_all()
+
     app = FastAPI(
         title="autobrowser-client",
         version=__version__,
         description="HTTP API for browser automation with patchright.",
+        lifespan=lifespan,
         openapi_tags=[
             {"name": "health", "description": "Health and readiness probes"},
             {"name": "info", "description": "Server information"},
@@ -152,7 +166,6 @@ def create_app(settings: Settings) -> FastAPI:
             {"name": "actions", "description": "Action chains"},
         ],
     )
-    manager = SessionManager(settings)
 
     @app.exception_handler(AppError)
     async def app_error_handler(_request: Request, exc: AppError) -> JSONResponse:
@@ -178,7 +191,7 @@ def create_app(settings: Settings) -> FastAPI:
                     return await call_next(request)
                 auth = request.headers.get("authorization", "")
                 expected = f"Bearer {settings.api.token}"
-                if auth != expected:
+                if not hmac.compare_digest(auth, expected):
                     return StarletteJSON(
                         status_code=401,
                         content={"success": False, "error": {"code": "UNAUTHORIZED", "message": "Invalid or missing token"}},
@@ -186,10 +199,6 @@ def create_app(settings: Settings) -> FastAPI:
                 return await call_next(request)
 
         app.add_middleware(TokenAuthMiddleware)
-
-    @app.on_event("shutdown")
-    def shutdown() -> None:
-        manager.stop_all()
 
     # =======================================================================
     # Service endpoints
@@ -216,11 +225,8 @@ def create_app(settings: Settings) -> FastAPI:
     # =======================================================================
 
     @app.post("/api/v1/profile/create", tags=["profiles"])
-    async def create_profile(body: dict[str, Any]) -> dict[str, Any]:
-        name = body.get("name")
-        if not name or not isinstance(name, str):
-            raise HTTPException(status_code=400, detail="Field 'name' is required")
-        name = name.strip()
+    async def create_profile(body: CreateProfileRequest) -> dict[str, Any]:
+        name = body.name.strip()
         if not name or "/" in name or "\\" in name or name.startswith("."):
             raise HTTPException(status_code=400, detail="Invalid profile name")
         profile_dir = Path(settings.profiles.dir) / name

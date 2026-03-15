@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field
@@ -15,8 +15,8 @@ from autobrowser_client.logging_utils import mask_mapping
 class ViewportSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    width: int = 1280
-    height: int = 720
+    width: int = Field(default=1280, gt=0)
+    height: int = Field(default=720, gt=0)
 
 
 class BrowserSettings(BaseModel):
@@ -32,25 +32,24 @@ class ProfilesSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     dir: str = ".profiles"
-    reuse: bool = True
 
 
 class ApiSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     host: str = "127.0.0.1"
-    port: int = 8080
+    port: int = Field(default=8080, ge=1, le=65535)
     token: str | None = None
-    max_sessions: int = Field(default=10, alias="maxSessions")
+    max_sessions: int = Field(default=10, ge=1, alias="maxSessions")
 
 
 class TimeoutsSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    startup_ms: int = Field(default=30000, alias="startupMs")
-    action_ms: int = Field(default=10000, alias="actionMs")
-    navigation_ms: int = Field(default=30000, alias="navigationMs")
-    idle_session_ms: int = Field(default=300000, alias="idleSessionMs")
+    startup_ms: int = Field(default=30000, ge=0, alias="startupMs")
+    action_ms: int = Field(default=10000, ge=0, alias="actionMs")
+    navigation_ms: int = Field(default=30000, ge=0, alias="navigationMs")
+    idle_session_ms: int = Field(default=300000, ge=0, alias="idleSessionMs")
 
 
 class ProxySettings(BaseModel):
@@ -59,14 +58,14 @@ class ProxySettings(BaseModel):
     enabled: bool = False
     scheme: str = "socks5"
     host: str | None = None
-    port: int | None = None
+    port: int | None = Field(default=None, ge=1, le=65535)
     username: str | None = None
     password: str | None = None
     socks2http_bin: str = Field(
-        default="/home/piligrim/Work/golang/socks2http/build/socks2http",
+        default="",
         alias="socks2httpBin",
     )
-    local_port: int = Field(default=0, alias="localPort")
+    local_port: int = Field(default=0, ge=0, le=65535, alias="localPort")
 
     def proxy_url(self) -> str | None:
         """Build upstream proxy URL for socks2http."""
@@ -82,19 +81,25 @@ class ProxySettings(BaseModel):
         return f"{self.scheme}://{auth}{self.host}:{p}"
 
 
+LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+
+
 class LoggingSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    level: str = "INFO"
+    level: LogLevel = "INFO"
     file: str | None = None
     mask_secrets: bool = Field(default=True, alias="maskSecrets")
+
+
+ContentFormat = Literal["html", "text"]
 
 
 class OutputSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    max_content_bytes: int = Field(default=1048576, alias="maxContentBytes")
-    content_format: str = Field(default="html", alias="contentFormat")
+    max_content_bytes: int = Field(default=1048576, ge=0, alias="maxContentBytes")
+    content_format: ContentFormat = Field(default="html", alias="contentFormat")
 
 
 class Settings(BaseModel):
