@@ -46,8 +46,6 @@ WORKDIR /app
 # Install Python dependencies
 COPY pyproject.toml README.md ./
 COPY autobrowser_client ./autobrowser_client
-COPY docs ./docs
-COPY tz.md ./tz.md
 
 RUN pip install --upgrade pip && pip install .
 

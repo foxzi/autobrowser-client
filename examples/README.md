@@ -4,16 +4,6 @@
 
 Примеры YAML-сценариев для `autobrowser run-script`. Каждый файл — готовый к запуску сценарий.
 
-### Установка
-
-```bash
-# Локально
-pip install -e .
-
-# Или через Docker
-docker compose build
-```
-
 ### simple.yaml — Проверка антидетекта
 
 Открывает [Scrapfly Automation Detector](https://scrapfly.io/web-scraping-tools/automation-detector) и собирает headers, cookies и текстовое содержимое страницы. Работает в headless-режиме.
@@ -104,51 +94,11 @@ autobrowser run-script --file examples/fingerprint_com.yaml
 autobrowser run-script --file examples/amiunique.yaml
 ```
 
-### Общие параметры CLI
-
-| Параметр | Описание |
-|----------|----------|
-| `--file` | Путь к YAML/JSON сценарию |
-| `--profile` | Имя профиля браузера (сохраняет cookies и данные между запусками) |
-| `--proxy` | Прокси: `socks5://user:pass@host:port` (переопределяет `session.proxy` из сценария) |
-| `--viewport` | Размер окна: `WIDTHxHEIGHT`, например `1920x1080` (переопределяет `session.viewport`) |
-| `--output` | Файл для сохранения результатов в JSON |
-
-> Прокси также можно указать в секции `session` сценария: `proxy: socks5://user:pass@host:port`. CLI-флаг `--proxy` имеет приоритет.
-
-### Доступные действия в сценариях
-
-| Действие | Описание | Обязательные поля |
-|----------|----------|-------------------|
-| `open` | Открыть URL | `url` |
-| `wait` | Ждать (таймаут или событие) | `timeout` или `waitUntil` |
-| `find` | Найти элемент | `locator` |
-| `click` | Кликнуть по элементу | `locator` (опционально `index`) |
-| `fill` | Мгновенно заполнить поле | `locator`, `value` |
-| `type` | Посимвольный ввод (имитация человека) | `locator`, `value` (опционально `delay`) |
-| `press` | Нажать клавишу | `key` |
-| `scroll` | Прокрутить страницу | `deltaX` или `deltaY` |
-| `screenshot` | Сделать скриншот страницы | `file` (опционально `fullPage`) |
-| `get-content` | Получить содержимое страницы | — |
-| `get-cookies` | Получить cookies | — |
-| `get-headers` | Получить HTTP-заголовки | — |
-| `save` | Сохранить содержимое в файл | `file` |
-
 ---
 
 ## EN
 
 YAML scenario examples for `autobrowser run-script`. Each file is a ready-to-run scenario.
-
-### Installation
-
-```bash
-# Local
-pip install -e .
-
-# Or via Docker
-docker compose build
-```
 
 ### simple.yaml — Anti-detection check
 
@@ -239,33 +189,3 @@ Shows how unique the browser fingerprint is among all visitors. Includes data on
 ```bash
 autobrowser run-script --file examples/amiunique.yaml
 ```
-
-### Common CLI parameters
-
-| Parameter | Description |
-|-----------|-------------|
-| `--file` | Path to YAML/JSON scenario |
-| `--profile` | Browser profile name (persists cookies and data between runs) |
-| `--proxy` | Proxy: `socks5://user:pass@host:port` (overrides `session.proxy` from scenario) |
-| `--viewport` | Viewport size: `WIDTHxHEIGHT`, e.g. `1920x1080` (overrides `session.viewport`) |
-| `--output` | File to save JSON results |
-
-> Proxy can also be set in the scenario `session` section: `proxy: socks5://user:pass@host:port`. The `--proxy` CLI flag takes priority.
-
-### Available scenario actions
-
-| Action | Description | Required fields |
-|--------|-------------|-----------------|
-| `open` | Navigate to URL | `url` |
-| `wait` | Wait (timeout or event) | `timeout` or `waitUntil` |
-| `find` | Find element | `locator` |
-| `click` | Click element | `locator` (optional `index`) |
-| `fill` | Instantly fill a field | `locator`, `value` |
-| `type` | Type character by character (human-like) | `locator`, `value` (optional `delay`) |
-| `press` | Press a key | `key` |
-| `scroll` | Scroll page | `deltaX` or `deltaY` |
-| `screenshot` | Take a page screenshot | `file` (optional `fullPage`) |
-| `get-content` | Get page content | — |
-| `get-cookies` | Get cookies | — |
-| `get-headers` | Get HTTP headers | — |
-| `save` | Save content to file | `file` |

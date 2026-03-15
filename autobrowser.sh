@@ -37,9 +37,9 @@ ensure_venv() {
 }
 
 ensure_patchright() {
-    if ! "$PATCHRIGHT" install --dry-run chromium >/dev/null 2>&1; then
-        echo "Installing patchright chromium browser..."
-        "$PATCHRIGHT" install chromium
+    if ! "$PATCHRIGHT" install --dry-run chrome >/dev/null 2>&1; then
+        echo "Installing patchright chrome browser..."
+        "$PATCHRIGHT" install chrome
     fi
 }
 
@@ -53,8 +53,8 @@ cmd_setup() {
     echo "Installing project in editable mode..."
     "$PIP" install -e ".[dev]"
 
-    echo "Installing patchright chromium browser..."
-    "$PATCHRIGHT" install chromium
+    echo "Installing patchright chrome browser..."
+    "$PATCHRIGHT" install chrome
 
     echo "Setup complete."
     echo "Run '$(basename "$0") run version' to verify."
