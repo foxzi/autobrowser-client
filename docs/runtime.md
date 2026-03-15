@@ -11,13 +11,11 @@ Browser profiles store user data (cookies, localStorage, session storage) betwee
 ```yaml
 profiles:
   dir: ".profiles"
-  reuse: true
 ```
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `dir` | `.profiles` | Base directory for profile storage |
-| `reuse` | `true` | Reuse existing profiles between runs |
 
 Environment variable: `AUTOBROWSER_PROFILE_DIR`
 
@@ -56,6 +54,62 @@ Profile data is stored in `{profiles.dir}/{profile_name}/`.
 3. Profile data persists until manually deleted from the filesystem.
 4. When a profile is in use, a `profile.lock` file with the PID is created. Attempting to use a locked profile raises `ProfileLockedError`.
 5. Stale lock files (where the PID no longer exists) are cleaned up automatically.
+
+#### Session preservation (tab save/restore)
+
+When `preserveSession: true` is set in a scenario or `--preserve-session` is passed on the CLI, the browser:
+
+- **On stop:** saves all open tab URLs to `tabs.json` in the profile directory.
+- **On start:** restores tabs from `tabs.json` (if no explicit `urls` are provided).
+
+Without `preserveSession`, `tabs.json` is neither read nor written. The file remains on disk as a backup until the next run with `preserveSession: true`.
+
+**How it works:**
+
+1. Before session stop (with `preserveSession`), all non-blank page URLs are written to `{profile_dir}/tabs.json`.
+2. On next start (with `preserveSession`), if no `urls` are passed and `tabs.json` exists, the saved URLs are opened.
+3. Without `preserveSession`, the file is not touched — it stays as a backup.
+4. Additionally, `--restore-last-session` Chromium flag is always added for persistent contexts, allowing Chromium's own session restore as a fallback.
+5. All pages from the context (including Chromium-restored ones) are registered and tracked.
+
+**Priority of tab sources (when `preserveSession: true`):**
+
+1. Explicit `urls` parameter (highest priority)
+2. `tabs.json` from profile directory
+3. Chromium's built-in session restore (`--restore-last-session`)
+4. Single blank page (fallback)
+
+**Example scenario with session preservation:**
+
+```yaml
+session:
+  headless: false
+  profile: my-profile
+  preserveSession: true
+
+steps:
+  - action: open
+    url: "https://example.com"
+  - action: open
+    url: "https://example.org"
+```
+
+After this scenario completes, `tabs.json` in the profile directory will contain:
+
+```json
+[
+  "https://example.com",
+  "https://example.org"
+]
+```
+
+The next run with `profile: my-profile` (without explicit URLs) will restore both tabs.
+
+**CLI usage:**
+
+```bash
+autobrowser run-script --file warmup.yaml --preserve-session
+```
 
 #### Profile management via API
 
@@ -205,13 +259,11 @@ Environment variable: `AUTOBROWSER_SESSION_IDLE_MS`
 ```yaml
 profiles:
   dir: ".profiles"
-  reuse: true
 ```
 
 | Параметр | По умолчанию | Описание |
 |----------|--------------|----------|
 | `dir` | `.profiles` | Базовая директория для хранения профилей |
-| `reuse` | `true` | Повторное использование профилей между запусками |
 
 Переменная окружения: `AUTOBROWSER_PROFILE_DIR`
 
@@ -250,6 +302,62 @@ POST /api/v1/browser/start
 3. Данные профиля сохраняются до ручного удаления из файловой системы.
 4. При использовании профиля создаётся файл `profile.lock` с PID. Попытка использовать заблокированный профиль вызывает `ProfileLockedError`.
 5. Устаревшие lock-файлы (PID которых больше не существует) очищаются автоматически.
+
+#### Сохранение сессии (сохранение/восстановление вкладок)
+
+Когда в сценарии указано `preserveSession: true` или передан CLI-флаг `--preserve-session`, браузер:
+
+- **При остановке:** сохраняет URL всех открытых вкладок в файл `tabs.json` в директории профиля.
+- **При запуске:** восстанавливает вкладки из `tabs.json` (если не указаны явные `urls`).
+
+Без `preserveSession` файл `tabs.json` не читается и не записывается. Файл остаётся на диске как резервная копия до следующего запуска с `preserveSession: true`.
+
+**Как это работает:**
+
+1. Перед остановкой сессии (с `preserveSession`) все URL непустых страниц записываются в `{profile_dir}/tabs.json`.
+2. При следующем запуске (с `preserveSession`), если `urls` не переданы и `tabs.json` существует, сохранённые URL открываются.
+3. Без `preserveSession` файл не затрагивается — остаётся как резервная копия.
+4. Дополнительно для persistent-контекстов всегда добавляется флаг Chromium `--restore-last-session`, позволяющий встроенное восстановление сессии как запасной механизм.
+5. Все страницы из контекста (включая восстановленные Chromium) регистрируются и отслеживаются.
+
+**Приоритет источников вкладок (при `preserveSession: true`):**
+
+1. Явный параметр `urls` (высший приоритет)
+2. `tabs.json` из директории профиля
+3. Встроенное восстановление Chromium (`--restore-last-session`)
+4. Одна пустая страница (запасной вариант)
+
+**Пример сценария с сохранением сессии:**
+
+```yaml
+session:
+  headless: false
+  profile: my-profile
+  preserveSession: true
+
+steps:
+  - action: open
+    url: "https://example.com"
+  - action: open
+    url: "https://example.org"
+```
+
+После выполнения этого сценария `tabs.json` в директории профиля будет содержать:
+
+```json
+[
+  "https://example.com",
+  "https://example.org"
+]
+```
+
+Следующий запуск с `profile: my-profile` (без явных URL) восстановит обе вкладки.
+
+**Использование через CLI:**
+
+```bash
+autobrowser run-script --file warmup.yaml --preserve-session
+```
 
 #### Управление профилями через API
 

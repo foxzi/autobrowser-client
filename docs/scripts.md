@@ -103,7 +103,7 @@ Typical fields:
 - `proxy` — proxy URL, e.g. `socks5://user:pass@host:port`
 - `viewport` — browser viewport size, e.g. `{width: 1920, height: 1080}`
 - `timeout`
-- extra browser launch arguments
+- `preserveSession` — save open tabs to `tabs.json` on stop, restore them on next start (default: `false`)
 
 Example:
 
@@ -118,9 +118,10 @@ session:
     width: 1920
     height: 1080
   timeout: 10000
+  preserveSession: true
 ```
 
-> The CLI flags `--proxy` and `--viewport` override the values set in the scenario file.
+> The CLI flags `--proxy`, `--viewport`, and `--preserve-session` override the values set in the scenario file.
 
 > When an Android User-Agent is specified, the browser context is automatically configured with `is_mobile: true` and `has_touch: true`, enabling mobile viewport behavior and touch event emulation.
 
@@ -300,7 +301,7 @@ output:
 - `proxy` — URL прокси, например `socks5://user:pass@host:port`
 - `viewport` — размер окна браузера, например `{width: 1920, height: 1080}`
 - `timeout`
-- дополнительные параметры запуска браузера
+- `preserveSession` — сохранять открытые вкладки в `tabs.json` при остановке, восстанавливать при следующем запуске (по умолчанию: `false`)
 
 Пример:
 
@@ -315,9 +316,10 @@ session:
     width: 1920
     height: 1080
   timeout: 10000
+  preserveSession: true
 ```
 
-> CLI-флаги `--proxy` и `--viewport` имеют приоритет над значениями из файла сценария.
+> CLI-флаги `--proxy`, `--viewport` и `--preserve-session` имеют приоритет над значениями из файла сценария.
 
 > При указании Android User-Agent контекст браузера автоматически настраивается с `is_mobile: true` и `has_touch: true`, включая мобильное поведение viewport и эмуляцию тач-событий.
 

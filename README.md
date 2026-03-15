@@ -24,7 +24,7 @@ Python client for launching and controlling a browser through CLI scripts and HT
 | `autobrowser run --url https://example.com` | Open URL and collect data |
 | `autobrowser serve` | Start HTTP API server |
 
-Common flags: `--config`, `--profile`, `--proxy`, `--viewport`, `--output`, `--headless/--headful`, `--timeout`.
+Common flags: `--config`, `--profile`, `--proxy`, `--viewport`, `--output`, `--headless/--headful`, `--timeout`, `--preserve-session`.
 
 ## Quick start
 
