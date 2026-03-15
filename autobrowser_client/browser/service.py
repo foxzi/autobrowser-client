@@ -17,7 +17,7 @@ from patchright.sync_api import sync_playwright, Playwright, Browser, BrowserCon
 from autobrowser_client.config import Settings
 from autobrowser_client.errors import BrowserStartError, SessionNotFoundError
 from autobrowser_client.fingerprint.config import (
-    FingerprintConfig, load_fingerprint, merge_fingerprint,
+    FingerprintConfig, Platform, load_fingerprint, merge_fingerprint,
 )
 from autobrowser_client.fingerprint.inject import build_injection_script
 from autobrowser_client.profiles.manager import ProfileLock
@@ -279,8 +279,17 @@ class BrowserSession:
                     ctx_opts["has_touch"] = True
                 self._context = self._browser.new_context(**ctx_opts)
 
+            # Determine platform for fingerprint GPU pool selection
+            fp_platform: Platform = "windows"
+            if is_mobile_ua:
+                fp_platform = "android"
+            elif platform_info and platform_info.get("platform") == "Linux x86_64":
+                fp_platform = "linux"
+            elif ua and "Linux" in ua and "Android" not in ua:
+                fp_platform = "linux"
+
             # Apply fingerprint spoofing
-            fp_config = self._resolve_fingerprint(fingerprint, is_mobile_ua)
+            fp_config = self._resolve_fingerprint(fingerprint, fp_platform)
             if fp_config:
                 script = build_injection_script(fp_config)
                 self._context.add_init_script(script)
@@ -395,7 +404,7 @@ class BrowserSession:
     def _resolve_fingerprint(
         self,
         fingerprint: FingerprintConfig | bool | dict[str, Any] | None,
-        mobile: bool = False,
+        platform: Platform = "windows",
     ) -> FingerprintConfig | None:
         """Resolve fingerprint config from argument + profile file.
 
@@ -412,7 +421,7 @@ class BrowserSession:
         # Load base from profile if available
         base: FingerprintConfig | None = None
         if self._profile_dir:
-            base = load_fingerprint(self._profile_dir, mobile=mobile)
+            base = load_fingerprint(self._profile_dir, platform=platform)
 
         # fingerprint=True or None with profile -> use base
         if fingerprint is True or fingerprint is None:
@@ -426,7 +435,7 @@ class BrowserSession:
             from autobrowser_client.fingerprint.config import generate_fingerprint
             base = generate_fingerprint(
                 seed=fingerprint.get("seed"),
-                mobile=mobile,
+                platform=platform,
             )
             return merge_fingerprint(base, fingerprint)
 

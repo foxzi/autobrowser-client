@@ -109,16 +109,21 @@ def validate_script(
 @app.command("generate-fingerprint")
 def generate_fingerprint_cmd(
     profile: Annotated[str, typer.Option("--profile", help="Profile directory path")],
-    mobile: Annotated[bool, typer.Option("--mobile/--desktop", help="Generate mobile or desktop GPU profile")] = False,
+    platform: Annotated[str, typer.Option("--platform", help="Target platform: windows, linux, android")] = "windows",
     seed: Annotated[int | None, typer.Option("--seed", help="Fixed seed value")] = None,
     force: Annotated[bool, typer.Option("--force", help="Overwrite existing fingerprint.json")] = False,
 ) -> None:
     """Generate fingerprint.json for a browser profile."""
     from autobrowser_client.fingerprint.config import (
         FINGERPRINT_FILE,
+        Platform,
         generate_fingerprint,
         save_fingerprint,
     )
+
+    if platform not in ("windows", "linux", "android"):
+        typer.echo(f"Unknown platform: {platform}. Use: windows, linux, android")
+        raise typer.Exit(code=1)
 
     profile_dir = Path(profile)
     if not profile_dir.exists():
@@ -131,7 +136,7 @@ def generate_fingerprint_cmd(
         typer.echo("Use --force to overwrite")
         raise typer.Exit(code=1)
 
-    fp = generate_fingerprint(seed=seed, mobile=mobile)
+    fp = generate_fingerprint(seed=seed, platform=platform)  # type: ignore[arg-type]
     save_fingerprint(profile_dir, fp)
 
     typer.echo(json.dumps(fp.to_js_config(), indent=2, ensure_ascii=False))

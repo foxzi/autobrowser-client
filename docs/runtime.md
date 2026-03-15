@@ -258,10 +258,13 @@ Generate a fingerprint config for a profile directory:
 
 ```bash
 autobrowser generate-fingerprint --profile work/my-profile/profile
-autobrowser generate-fingerprint --profile work/my-profile/profile --mobile
+autobrowser generate-fingerprint --profile work/my-profile/profile --platform linux
+autobrowser generate-fingerprint --profile work/my-profile/profile --platform android
 autobrowser generate-fingerprint --profile work/my-profile/profile --seed 42
 autobrowser generate-fingerprint --profile work/my-profile/profile --force  # overwrite existing
 ```
+
+Available platforms: `windows` (default), `linux`, `android`. Each platform uses a dedicated GPU profile pool with realistic vendor/renderer strings for that OS.
 
 #### Scenario overrides
 
@@ -569,10 +572,13 @@ session:
 
 ```bash
 autobrowser generate-fingerprint --profile work/my-profile/profile
-autobrowser generate-fingerprint --profile work/my-profile/profile --mobile
+autobrowser generate-fingerprint --profile work/my-profile/profile --platform linux
+autobrowser generate-fingerprint --profile work/my-profile/profile --platform android
 autobrowser generate-fingerprint --profile work/my-profile/profile --seed 42
 autobrowser generate-fingerprint --profile work/my-profile/profile --force  # перезаписать существующий
 ```
+
+Доступные платформы: `windows` (по умолчанию), `linux`, `android`. Каждая платформа использует свой пул GPU-профилей с реалистичными строками vendor/renderer для данной ОС.
 
 #### Переопределения в сценарии
 

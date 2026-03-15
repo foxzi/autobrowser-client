@@ -5,7 +5,7 @@ import json
 import logging
 import random
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -13,8 +13,10 @@ logger = logging.getLogger(__name__)
 
 FINGERPRINT_FILE = "fingerprint.json"
 
-# Popular WebGL renderer/vendor pairs (desktop)
-WEBGL_PROFILES = [
+Platform = Literal["windows", "linux", "android"]
+
+# WebGL renderer/vendor pairs: Windows (ANGLE + Direct3D11)
+WEBGL_PROFILES_WINDOWS = [
     {
         "vendor": "Google Inc. (NVIDIA)",
         "renderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 1660 SUPER Direct3D11 vs_5_0 ps_5_0, D3D11)",
@@ -30,6 +32,10 @@ WEBGL_PROFILES = [
     {
         "vendor": "Google Inc. (NVIDIA)",
         "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 2060 Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    },
+    {
+        "vendor": "Google Inc. (NVIDIA)",
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4060 Direct3D11 vs_5_0 ps_5_0, D3D11)",
     },
     {
         "vendor": "Google Inc. (AMD)",
@@ -53,8 +59,48 @@ WEBGL_PROFILES = [
     },
 ]
 
-# Popular WebGL renderer/vendor pairs (mobile / Android)
-WEBGL_PROFILES_MOBILE = [
+# WebGL renderer/vendor pairs: Linux (ANGLE + OpenGL / Vulkan, Mesa drivers)
+WEBGL_PROFILES_LINUX = [
+    {
+        "vendor": "Google Inc. (NVIDIA)",
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 1660 SUPER, OpenGL 4.5)",
+    },
+    {
+        "vendor": "Google Inc. (NVIDIA)",
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060, OpenGL 4.5)",
+    },
+    {
+        "vendor": "Google Inc. (NVIDIA)",
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 2060, OpenGL 4.5)",
+    },
+    {
+        "vendor": "Google Inc. (Intel)",
+        "renderer": "ANGLE (Intel, Mesa Intel(R) UHD Graphics 630 (CFL GT2), OpenGL 4.6)",
+    },
+    {
+        "vendor": "Google Inc. (Intel)",
+        "renderer": "ANGLE (Intel, Mesa Intel(R) Iris(R) Xe Graphics (ADL GT2), OpenGL 4.6)",
+    },
+    {
+        "vendor": "Google Inc. (Intel)",
+        "renderer": "ANGLE (Intel, Mesa Intel(R) UHD Graphics 620 (WHL GT2), OpenGL 4.6)",
+    },
+    {
+        "vendor": "Google Inc. (AMD)",
+        "renderer": "ANGLE (AMD, AMD Radeon RX 580 (radeonsi, polaris10, LLVM 15.0.7, DRM 3.49, 6.1.0), OpenGL 4.6)",
+    },
+    {
+        "vendor": "Google Inc. (AMD)",
+        "renderer": "ANGLE (AMD, AMD Radeon RX 5700 XT (radeonsi, navi10, LLVM 15.0.7, DRM 3.49, 6.1.0), OpenGL 4.6)",
+    },
+    {
+        "vendor": "Google Inc. (NVIDIA)",
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 1050 Ti, OpenGL 4.5)",
+    },
+]
+
+# WebGL renderer/vendor pairs: Android (mobile GPUs)
+WEBGL_PROFILES_ANDROID = [
     {
         "vendor": "Qualcomm",
         "renderer": "Adreno (TM) 730",
@@ -68,6 +114,14 @@ WEBGL_PROFILES_MOBILE = [
         "renderer": "Adreno (TM) 640",
     },
     {
+        "vendor": "Qualcomm",
+        "renderer": "Adreno (TM) 620",
+    },
+    {
+        "vendor": "Qualcomm",
+        "renderer": "Adreno (TM) 619",
+    },
+    {
         "vendor": "ARM",
         "renderer": "Mali-G78",
     },
@@ -75,7 +129,21 @@ WEBGL_PROFILES_MOBILE = [
         "vendor": "ARM",
         "renderer": "Mali-G77",
     },
+    {
+        "vendor": "ARM",
+        "renderer": "Mali-G710",
+    },
+    {
+        "vendor": "ARM",
+        "renderer": "Mali-G510",
+    },
 ]
+
+_GPU_POOLS: dict[str, list[dict[str, str]]] = {
+    "windows": WEBGL_PROFILES_WINDOWS,
+    "linux": WEBGL_PROFILES_LINUX,
+    "android": WEBGL_PROFILES_ANDROID,
+}
 
 
 class FingerprintConfig(BaseModel):
@@ -106,16 +174,28 @@ class FingerprintConfig(BaseModel):
         }
 
 
-def generate_fingerprint(seed: int | None = None, mobile: bool = False) -> FingerprintConfig:
+def generate_fingerprint(
+    seed: int | None = None,
+    platform: Platform = "windows",
+    *,
+    mobile: bool = False,
+) -> FingerprintConfig:
     """Generate a random fingerprint config.
 
-    If seed is not provided, a random one is generated.
+    Args:
+        seed: Fixed seed value. Random if not provided.
+        platform: Target platform for GPU profile selection.
+        mobile: Deprecated, use platform="android" instead.
     """
+    # Backward compat: mobile=True -> android
+    if mobile:
+        platform = "android"
+
     if seed is None:
         seed = random.randint(100000, 999999999)
 
     rng = random.Random(seed)
-    pool = WEBGL_PROFILES_MOBILE if mobile else WEBGL_PROFILES
+    pool = _GPU_POOLS.get(platform, WEBGL_PROFILES_WINDOWS)
     gpu = rng.choice(pool)
 
     return FingerprintConfig.model_validate({
@@ -130,7 +210,12 @@ def generate_fingerprint(seed: int | None = None, mobile: bool = False) -> Finge
     })
 
 
-def load_fingerprint(profile_dir: Path, mobile: bool = False) -> FingerprintConfig:
+def load_fingerprint(
+    profile_dir: Path,
+    platform: Platform = "windows",
+    *,
+    mobile: bool = False,
+) -> FingerprintConfig:
     """Load fingerprint from profile dir, or generate and save if missing."""
     fp_path = profile_dir / FINGERPRINT_FILE
     if fp_path.exists():
@@ -142,7 +227,7 @@ def load_fingerprint(profile_dir: Path, mobile: bool = False) -> FingerprintConf
         except Exception as exc:
             logger.warning("Failed to load %s, regenerating: %s", fp_path, exc)
 
-    fp = generate_fingerprint(mobile=mobile)
+    fp = generate_fingerprint(platform=platform, mobile=mobile)
     save_fingerprint(profile_dir, fp)
     return fp
 
