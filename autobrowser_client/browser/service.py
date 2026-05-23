@@ -231,12 +231,21 @@ class BrowserSession:
 
             if self.settings.browser.engine == "cloakbrowser":
                 try:
-                    from cloakbrowser import launch as cb_launch, launch_persistent_context as cb_launch_persistent_context
+                    from cloakbrowser.download import ensure_binary as _cb_ensure_binary
+                    from cloakbrowser.browser import build_args as _cb_build_args
+                    from cloakbrowser.config import IGNORE_DEFAULT_ARGS as _CB_IGNORE_DEFAULT_ARGS
                 except ImportError as exc:
                     raise BrowserStartError(
                         "cloakbrowser engine requested but 'cloakbrowser' package is not installed. "
                         "Install with: pip install cloakbrowser"
                     ) from exc
+
+                binary_path = _cb_ensure_binary()
+                chrome_args = _cb_build_args(
+                    stealth_args=True,
+                    extra_args=launch_args,
+                    headless=is_headless,
+                )
 
                 if profile:
                     profile_dir = Path(self.settings.profiles.dir) / profile
@@ -251,31 +260,35 @@ class BrowserSession:
 
                     logger.info("Using profile directory: %s", profile_dir)
 
-                    cb_ctx_kwargs: dict[str, Any] = {
+                    ctx_kwargs: dict[str, Any] = {
+                        "executable_path": binary_path,
                         "headless": is_headless,
-                        "args": launch_args or None,
+                        "args": chrome_args,
+                        "ignore_default_args": _CB_IGNORE_DEFAULT_ARGS,
                         "viewport": vp,
                     }
                     if ua:
-                        cb_ctx_kwargs["user_agent"] = ua
+                        ctx_kwargs["user_agent"] = ua
                     if proxy_server:
-                        cb_ctx_kwargs["proxy"] = proxy_server
+                        ctx_kwargs["proxy"] = proxy_server
                     if is_mobile_ua:
-                        cb_ctx_kwargs["is_mobile"] = True
-                        cb_ctx_kwargs["has_touch"] = True
+                        ctx_kwargs["is_mobile"] = True
+                        ctx_kwargs["has_touch"] = True
 
-                    self._context = cb_launch_persistent_context(
+                    self._context = self._playwright.chromium.launch_persistent_context(
                         user_data_dir=str(profile_dir),
-                        **cb_ctx_kwargs,
+                        **ctx_kwargs,
                     )
                 else:
-                    cb_launch_kwargs: dict[str, Any] = {
+                    launch_kwargs: dict[str, Any] = {
+                        "executable_path": binary_path,
                         "headless": is_headless,
-                        "args": launch_args or None,
+                        "args": chrome_args,
+                        "ignore_default_args": _CB_IGNORE_DEFAULT_ARGS,
                     }
                     if proxy_server:
-                        cb_launch_kwargs["proxy"] = proxy_server
-                    self._browser = cb_launch(**cb_launch_kwargs)
+                        launch_kwargs["proxy"] = proxy_server
+                    self._browser = self._playwright.chromium.launch(**launch_kwargs)
 
                     ctx_opts: dict[str, Any] = {"viewport": vp}
                     if ua:
