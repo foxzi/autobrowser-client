@@ -211,6 +211,8 @@ The Docker image ships with **both** engines pre-installed and their binaries pr
 | `patchright` | `/opt/playwright-browsers/` | yes |
 | `cloakbrowser` | `/home/browser/.cloakbrowser/` | available, opt-in |
 
+The `socks2http` relay is also pre-installed at `/usr/local/bin/socks2http`. SOCKS5 proxy works out of the box — no additional setup needed.
+
 Switch engines at runtime — no rebuild needed:
 
 ```bash
@@ -437,6 +439,8 @@ Docker-образ поставляется с **обоими** движками:
 |---|---|---|
 | `patchright` | `/opt/playwright-browsers/` | да |
 | `cloakbrowser` | `/home/browser/.cloakbrowser/` | доступен, включается явно |
+
+Relay `socks2http` также предустановлен по пути `/usr/local/bin/socks2http`. SOCKS5-прокси работает из коробки без дополнительной настройки.
 
 Переключить движок можно в рантайме без пересборки образа:
 

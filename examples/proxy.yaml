@@ -7,6 +7,8 @@
 #   socks5://user:pass@host:port
 #   http://user:pass@host:port
 #   https://host:port
+#
+# Docker: socks2http is pre-installed, SOCKS5 proxy works out of the box.
 
 session:
   headless: true

@@ -5,7 +5,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PATH="/opt/venv/bin:${PATH}" \
     # Place patchright browsers in a shared, non-root location
-    PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers
+    PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers \
+    AUTOBROWSER_SOCKS2HTTP_BIN=/usr/local/bin/socks2http
 
 # System deps + browser runtime libraries
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -41,6 +42,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Create non-root user
 RUN groupadd -r browser && useradd -r -g browser -m -d /home/browser browser
+
+# Install socks2http relay binary for SOCKS5 proxy support
+ARG SOCKS2HTTP_VERSION=v1.0.0
+RUN curl -fsSL "https://github.com/foxzi/socks2http/releases/download/${SOCKS2HTTP_VERSION}/socks2http-linux-amd64" \
+    -o /usr/local/bin/socks2http && \
+    chmod +x /usr/local/bin/socks2http
 
 # Python venv
 RUN python3 -m venv /opt/venv

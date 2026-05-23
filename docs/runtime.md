@@ -167,6 +167,8 @@ Environment variables:
 - `AUTOBROWSER_SOCKS2HTTP_BIN`
 - `AUTOBROWSER_PROXY_LOCAL_PORT`
 
+> **Docker:** the `socks2http` binary is pre-installed at `/usr/local/bin/socks2http`. SOCKS5 proxy works out of the box — no additional setup needed.
+
 #### CLI usage
 
 ```bash
@@ -480,6 +482,8 @@ proxy:
 - `AUTOBROWSER_PROXY_PASSWORD`
 - `AUTOBROWSER_SOCKS2HTTP_BIN`
 - `AUTOBROWSER_PROXY_LOCAL_PORT`
+
+> **Docker:** бинарник `socks2http` предустановлен по пути `/usr/local/bin/socks2http`. SOCKS5-прокси работает из коробки — дополнительная настройка не нужна.
 
 #### Использование CLI
 
