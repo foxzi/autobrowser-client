@@ -3,13 +3,12 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import Literal
+from typing import Literal, get_args
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from autobrowser_client.errors import ScriptValidationError
-
 
 ActionName = Literal[
     "open",
@@ -34,12 +33,16 @@ WaitUntil = Literal["domcontentloaded", "load", "networkidle", "visible", "hidde
 _LOCATOR_TYPES = {"css", "xpath", "id", "name", "class", "text", "attribute"}
 _ID_RE = re.compile(r"^#[a-zA-Z_][\w-]*$")
 _CLASS_RE = re.compile(r"^\.[a-zA-Z_][\w-]*$")
+_WAIT_STATES = {"load", "domcontentloaded", "networkidle"}
+_KNOWN_ACTIONS = set(get_args(ActionName))
+# Actions whose shorthand value maps to a specific field
+_SHORTHAND_NULL_ACTIONS = {"get-content", "get-cookies", "get-headers", "browse-tabs"}
 
 
 def _parse_locator_string(s: str) -> dict:
     eq = s.find("=")
     if eq != -1 and s[:eq] in _LOCATOR_TYPES:
-        return {"type": s[:eq], "value": s[eq + 1:]}
+        return {"type": s[:eq], "value": s[eq + 1 :]}
     if s.startswith("//") or s.startswith("/"):
         return {"type": "xpath", "value": s}
     if _ID_RE.match(s):
@@ -105,6 +108,83 @@ class ScriptOutput(BaseModel):
     file: str | None = None
 
 
+def _expand_shorthand_step(d: dict) -> dict:
+    """Expand verb-key shorthand to canonical dict form.
+
+    If ``d`` already contains ``"action"``, it is returned as-is.
+    Otherwise the first key matching a known ActionName is treated as
+    the action verb and its value is mapped to the appropriate field.
+    """
+    if "action" in d:
+        return d
+
+    # Find the shorthand verb key
+    verb: str | None = None
+    for key in d:
+        if key in _KNOWN_ACTIONS:
+            verb = key
+            break
+
+    if verb is None:
+        return d  # let pydantic raise a normal validation error
+
+    value = d[verb]
+    # Build result starting with all OTHER keys (extra step options)
+    result = {k: v for k, v in d.items() if k != verb}
+    result["action"] = verb
+
+    # Check for explicit conflict with the target field
+    def _check_conflict(field: str) -> None:
+        if field in result:
+            raise ValueError(
+                f"shorthand conflict: cannot specify both shorthand value and explicit '{field}'"
+            )
+
+    if verb == "open":
+        _check_conflict("url")
+        result["url"] = value
+
+    elif verb == "wait":
+        if isinstance(value, int):
+            _check_conflict("timeout")
+            result["timeout"] = value
+        elif isinstance(value, str) and value in _WAIT_STATES:
+            _check_conflict("waitUntil")
+            result["waitUntil"] = value
+        else:
+            raise ValueError(
+                f"wait shorthand expects int (ms) or load-state string, got: {value!r}"
+            )
+
+    elif verb in {"click", "find"}:
+        _check_conflict("locator")
+        result["locator"] = value
+
+    elif verb in {"fill", "type"}:
+        if not isinstance(value, list) or len(value) != 2:
+            raise ValueError(
+                f"'{verb}' shorthand expects a 2-element list [locator, value], got: {value!r}"
+            )
+        _check_conflict("locator")
+        _check_conflict("value")
+        result["locator"] = value[0]
+        result["value"] = value[1]
+
+    elif verb == "press":
+        _check_conflict("key")
+        result["key"] = value
+
+    elif verb in {"screenshot", "save"}:
+        _check_conflict("file")
+        result["file"] = value
+
+    elif verb in _SHORTHAND_NULL_ACTIONS:
+        if value is not None:
+            raise ValueError(f"'{verb}' shorthand expects null value, got: {value!r}")
+
+    return result
+
+
 class ScriptStep(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -124,6 +204,13 @@ class ScriptStep(BaseModel):
     full_page: bool = Field(default=False, alias="fullPage")
     file: str | None = None
     stop_on_error: bool | None = Field(default=None, alias="stopOnError")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _expand_shorthand(cls, data: object) -> object:
+        if isinstance(data, dict):
+            return _expand_shorthand_step(data)
+        return data
 
     @model_validator(mode="after")
     def validate_action_payload(self) -> "ScriptStep":

@@ -244,6 +244,86 @@ Instead of the dict form you can pass the locator as a plain string. Parsing rul
 
 Объектная форма по-прежнему работает без изменений.
 
+### Shorthand step syntax / Сокращённая запись шагов
+
+**English**
+
+Instead of the full `{action: …, field: value}` dict form you can write the action name as the YAML key and pass its primary argument as the value. Both forms may coexist in the same file.
+
+| Shorthand | Expands to |
+|---|---|
+| `- open: <url>` | `{action: open, url: <url>}` |
+| `- wait: <ms>` (integer) | `{action: wait, timeout: <ms>}` |
+| `- wait: load\|domcontentloaded\|networkidle` | `{action: wait, waitUntil: <state>}` |
+| `- click: <locator-str>` | `{action: click, locator: <locator-str>}` |
+| `- find: <locator-str>` | `{action: find, locator: <locator-str>}` |
+| `- fill: [<locator>, <value>]` | `{action: fill, locator: <loc>, value: <val>}` |
+| `- type: [<locator>, <value>]` | `{action: type, locator: <loc>, value: <val>}` |
+| `- press: <key>` | `{action: press, key: <key>}` |
+| `- screenshot: <file>` | `{action: screenshot, file: <file>}` |
+| `- save: <file>` | `{action: save, file: <file>}` |
+| `- get-content: ~` | `{action: get-content}` |
+| `- get-cookies: ~` | `{action: get-cookies}` |
+| `- get-headers: ~` | `{action: get-headers}` |
+
+Extra step-level options (`timeout`, `stopOnError`, `fullPage`, etc.) can be added alongside the shorthand key:
+
+```yaml
+steps:
+  # simple open
+  - open: https://example.com
+
+  # wait for network idle
+  - wait: networkidle
+
+  # wait 2 seconds
+  - wait: 2000
+
+  # click by CSS shorthand
+  - click: "#submit-btn"
+
+  # fill using string locator shorthand; both steps are equivalent
+  - fill: ["name=username", "demo-user"]
+  - action: fill
+    locator: name=username
+    value: demo-user
+
+  # screenshot with extra option
+  - screenshot: out.png
+    fullPage: true
+
+  # null-value actions
+  - get-content: ~
+  - get-cookies: ~
+  - get-headers: ~
+```
+
+The `<locator-str>` value uses the same string parsing rules described in "Shorthand locator strings" above.
+
+---
+
+**Русский**
+
+Вместо полной объектной формы `{action: …, field: value}` можно записать имя действия как ключ YAML, а его основной аргумент — как значение. Обе формы могут использоваться в одном файле.
+
+| Сокращение | Разворачивается в |
+|---|---|
+| `- open: <url>` | `{action: open, url: <url>}` |
+| `- wait: <мс>` (целое число) | `{action: wait, timeout: <мс>}` |
+| `- wait: load\|domcontentloaded\|networkidle` | `{action: wait, waitUntil: <state>}` |
+| `- click: <локатор>` | `{action: click, locator: <локатор>}` |
+| `- find: <локатор>` | `{action: find, locator: <локатор>}` |
+| `- fill: [<локатор>, <значение>]` | `{action: fill, locator: …, value: …}` |
+| `- type: [<локатор>, <значение>]` | `{action: type, locator: …, value: …}` |
+| `- press: <клавиша>` | `{action: press, key: <клавиша>}` |
+| `- screenshot: <файл>` | `{action: screenshot, file: <файл>}` |
+| `- save: <файл>` | `{action: save, file: <файл>}` |
+| `- get-content: ~` | `{action: get-content}` |
+| `- get-cookies: ~` | `{action: get-cookies}` |
+| `- get-headers: ~` | `{action: get-headers}` |
+
+Дополнительные поля шага (`timeout`, `stopOnError`, `fullPage` и т.д.) можно добавлять рядом с ключом сокращения. Объектная форма по-прежнему работает без изменений.
+
 ### Validation
 
 Scripts should be validated against JSON Schema before execution.
