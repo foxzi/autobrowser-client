@@ -84,3 +84,25 @@ python3 -m venv .venv
 # or via Docker
 docker compose up api
 ```
+
+## Script example (shorthand syntax)
+
+Scenarios support a compact shorthand: use the action name as the YAML key.
+
+```yaml
+steps:
+  - open: https://example.com/login
+  - wait: networkidle
+  - fill: ["name=username", "demo-user"]
+  - fill: ["name=password", "demo-password"]
+  - click: "button[type='submit']"
+  - wait: networkidle
+  - screenshot: login.png
+    fullPage: true
+  - get-content: ~
+
+output:
+  file: result.html
+```
+
+See [`docs/scripts.md`](docs/scripts.md) for full syntax reference including locator shorthands and all available actions.

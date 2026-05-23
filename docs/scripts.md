@@ -265,6 +265,7 @@ Instead of the full `{action: …, field: value}` dict form you can write the ac
 | `- get-content: ~` | `{action: get-content}` |
 | `- get-cookies: ~` | `{action: get-cookies}` |
 | `- get-headers: ~` | `{action: get-headers}` |
+| `- browse-tabs: ~` | `{action: browse-tabs}` |
 
 Extra step-level options (`timeout`, `stopOnError`, `fullPage`, etc.) can be added alongside the shorthand key:
 
@@ -321,6 +322,7 @@ The `<locator-str>` value uses the same string parsing rules described in "Short
 | `- get-content: ~` | `{action: get-content}` |
 | `- get-cookies: ~` | `{action: get-cookies}` |
 | `- get-headers: ~` | `{action: get-headers}` |
+| `- browse-tabs: ~` | `{action: browse-tabs}` |
 
 Дополнительные поля шага (`timeout`, `stopOnError`, `fullPage` и т.д.) можно добавлять рядом с ключом сокращения. Объектная форма по-прежнему работает без изменений.
 
