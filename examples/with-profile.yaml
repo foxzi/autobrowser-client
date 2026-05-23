@@ -1,0 +1,23 @@
+# Profile example: persist cookies and session data across runs.
+#
+# Run: autobrowser run-script --file examples/with-profile.yaml --profile demo
+#
+# On the second run the browser reuses the saved profile (cookies, localStorage, etc.)
+# Useful for sites that require login once and then stay authenticated.
+
+session:
+  headless: true
+
+steps:
+  - action: open
+    url: https://example.com
+
+  - action: wait
+    waitUntil: load
+
+  - action: get-cookies
+
+  - action: screenshot
+    file: output/with_profile.png
+
+stopOnError: true

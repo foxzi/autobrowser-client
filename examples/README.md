@@ -1,191 +1,225 @@
 # Examples / Примеры сценариев
 
-## RU
-
-Примеры YAML-сценариев для `autobrowser run-script`. Каждый файл — готовый к запуску сценарий.
-
-### simple.yaml — Проверка антидетекта
-
-Открывает [Scrapfly Automation Detector](https://scrapfly.io/web-scraping-tools/automation-detector) и собирает headers, cookies и текстовое содержимое страницы. Работает в headless-режиме.
-
-```bash
-autobrowser run-script --file examples/simple.yaml
-```
-
-С сохранением результата в файл:
-
-```bash
-autobrowser run-script --file examples/simple.yaml --output /tmp/simple.json
-```
-
-### login.yaml — Авторизация на сайте
-
-Шаблон сценария авторизации: открывает страницу логина, заполняет поля username/password, нажимает submit, ждёт загрузки и сохраняет HTML. Использует профиль для сохранения сессии.
-
-> Замените URL, селекторы и учётные данные на реальные перед запуском.
-
-```bash
-autobrowser run-script --file examples/login.yaml --profile mysite
-```
-
-### screenshot.yaml — Скриншот страницы
-
-Открывает [Scrapfly Automation Detector](https://scrapfly.io/web-scraping-tools/automation-detector), ждёт полной загрузки и сохраняет полноразмерный скриншот страницы в `output/scrapfly_detector.png`.
-
-```bash
-autobrowser run-script --file examples/screenshot.yaml
-```
-
-### yandex_warmup.yaml — Прогрев профиля Яндекса
-
-Имитирует поведение реального пользователя в headful-режиме (с видимым окном браузера):
-1. Заходит на ya.ru, вводит поисковый запрос посимвольно
-2. Ждёт 15 секунд — если появится капча, можно решить вручную
-3. Кликает по второму результату поиска
-4. Скроллит страницу результата
-5. Переходит на dzen.ru
-6. Кликает по 3-й новости в ленте, скроллит
-
-Записывает cookies и данные в профиль. Запускается перед основным поиском.
-
-```bash
-autobrowser run-script --file examples/yandex_warmup.yaml --profile yandex
-```
-
-### yandex_search.yaml — Поиск в Яндексе
-
-Заходит на ya.ru, вводит поисковый запрос посимвольно (`action: type`, `delay: 80ms`) и получает текстовое содержимое страницы результатов. Работает в headful-режиме с профилем.
-
-Посимвольный ввод (`type` вместо `fill`) нужен для обхода детектора ботов Яндекса — мгновенное заполнение поля вызывает капчу.
-
-**Перед первым запуском прогрейте профиль:**
-
-```bash
-autobrowser run-script --file examples/yandex_warmup.yaml --profile yandex
-```
-
-**Запуск поиска:**
-
-```bash
-autobrowser run-script --file examples/yandex_search.yaml --profile yandex --output /tmp/yandex.json
-```
-
-### fingerprint_com.yaml — Тест fingerprint.com
-
-Посещает [fingerprint.com/demo/](https://fingerprint.com/demo/), ждёт асинхронный анализ отпечатка браузера (visitor ID, smart signals) и сохраняет результат:
-- `output/fingerprint_com.png` — полноразмерный скриншот
-- `output/fingerprint_com.txt` — текст страницы с visitor ID, браузером, IP, bot detection, VPN detection, incognito detection, tampering score
-
-Полезно для проверки, что patchright не определяется как бот. Ожидаемый результат: `bot: notDetected`, `tampering: false`, `antiDetectBrowser: false`.
-
-```bash
-autobrowser run-script --file examples/fingerprint_com.yaml
-```
-
-### amiunique.yaml — Уникальность отпечатка браузера
-
-Посещает [amiunique.org/fingerprint](https://amiunique.org/fingerprint), принимает cookies (баннер), ждёт загрузки JS-атрибутов и сохраняет результат:
-- `output/amiunique.png` — полноразмерный скриншот с таблицами отпечатков
-- `output/amiunique.txt` — текст с HTTP-заголовками, JS-атрибутами и показателями уникальности
-
-Показывает, насколько уникален отпечаток браузера среди всех посетителей. Включает данные по User-Agent, языкам, разрешению экрана, шрифтам, Canvas, WebGL и другим параметрам.
-
-```bash
-autobrowser run-script --file examples/amiunique.yaml
-```
-
 ---
 
 ## EN
 
 YAML scenario examples for `autobrowser run-script`. Each file is a ready-to-run scenario.
 
-### simple.yaml — Anti-detection check
+### File list
 
-Opens [Scrapfly Automation Detector](https://scrapfly.io/web-scraping-tools/automation-detector) and collects headers, cookies and text content. Runs in headless mode.
+| File | Description |
+|---|---|
+| `simple.yaml` | Open a page, collect headers, cookies, content |
+| `screenshot.yaml` | Full-page screenshot (bot detection test page) |
+| `login.yaml` | Fill and submit a form (httpbin.org demo form) |
+| `browse.yaml` | Restore saved tabs and scroll each one |
+| `fingerprint_com.yaml` | Test fingerprint.com bot detection |
+| `amiunique.yaml` | Check browser fingerprint uniqueness |
+| `yandex_search.yaml` | Search on Yandex with character-by-character input |
+| `yandex_warmup.yaml` | Warm up a Yandex profile (headful, manual captcha OK) |
+| `proxy.yaml` | Route traffic through a proxy server |
+| `cloakbrowser.yaml` | Run with the cloakbrowser engine via env var |
+| `with-profile.yaml` | Persist cookies and session data across runs |
+
+### Running scenarios
+
+Three equivalent ways to run any scenario:
+
+**1. Local venv**
 
 ```bash
 autobrowser run-script --file examples/simple.yaml
 ```
 
-Save result to file:
+**2. Docker (direct)**
 
 ```bash
-autobrowser run-script --file examples/simple.yaml --output /tmp/simple.json
+docker run --rm \
+  -v $(pwd)/examples:/scenarios \
+  -v $(pwd)/output:/app/output \
+  autobrowser-client:dev run-script --file /scenarios/simple.yaml
 ```
 
-### login.yaml — Website authentication
-
-Template for login automation: opens login page, fills username/password fields, clicks submit, waits for load and saves HTML. Uses profile to persist session.
-
-> Replace URL, selectors and credentials with real values before running.
+**3. Docker Compose**
 
 ```bash
-autobrowser run-script --file examples/login.yaml --profile mysite
+docker compose run --rm \
+  -v $(pwd)/examples:/scenarios \
+  -v $(pwd)/output:/app/output \
+  cli run-script --file /scenarios/simple.yaml
 ```
 
-### screenshot.yaml — Page screenshot
-
-Opens [Scrapfly Automation Detector](https://scrapfly.io/web-scraping-tools/automation-detector), waits for full load and saves a full-page screenshot to `output/scrapfly_detector.png`.
+Build the image first if needed:
 
 ```bash
-autobrowser run-script --file examples/screenshot.yaml
+docker compose build
 ```
 
-### yandex_warmup.yaml — Yandex profile warmup
+### Environment variables
 
-Simulates real user behavior in headful mode (visible browser window):
-1. Opens ya.ru, types a search query character by character
-2. Waits 15 seconds — if a captcha appears, it can be solved manually
-3. Clicks the second search result
-4. Scrolls the result page
-5. Navigates to dzen.ru
-6. Clicks the 3rd news article in the feed, scrolls it
+| Variable | Description | Example |
+|---|---|---|
+| `AUTOBROWSER_BROWSER_ENGINE` | Browser engine: `patchright` (default) or `cloakbrowser` | `patchright` |
+| `AUTOBROWSER_PROFILE_DIR` | Root directory for named profiles | `.profiles` |
+| `AUTOBROWSER_LOG_LEVEL` | Log verbosity: `DEBUG`, `INFO`, `WARNING`, `ERROR` | `INFO` |
 
-Saves cookies and data to the profile. Run before the main search.
+Pass an env var to a single run:
 
 ```bash
-autobrowser run-script --file examples/yandex_warmup.yaml --profile yandex
+AUTOBROWSER_BROWSER_ENGINE=cloakbrowser autobrowser run-script --file examples/cloakbrowser.yaml
 ```
 
-### yandex_search.yaml — Yandex search
-
-Navigates to ya.ru, types a search query character by character (`action: type`, `delay: 80ms`) and retrieves the text content of the search results page. Runs in headful mode with a profile.
-
-Character-by-character input (`type` instead of `fill`) is required to bypass Yandex bot detection — instant field filling triggers a captcha.
-
-**Warm up the profile before first run:**
+Or via Docker:
 
 ```bash
-autobrowser run-script --file examples/yandex_warmup.yaml --profile yandex
+docker run --rm \
+  -e AUTOBROWSER_BROWSER_ENGINE=cloakbrowser \
+  -v $(pwd)/examples:/scenarios \
+  autobrowser-client:dev run-script --file /scenarios/cloakbrowser.yaml
 ```
 
-**Run the search:**
+### CLI overrides
+
+These flags take priority over values in the scenario file:
 
 ```bash
-autobrowser run-script --file examples/yandex_search.yaml --profile yandex --output /tmp/yandex.json
+autobrowser run-script --file examples/proxy.yaml \
+  --proxy socks5://user:pass@host:1080 \
+  --viewport 1280x720 \
+  --profile myprofile \
+  --output /tmp/result.json
 ```
 
-### fingerprint_com.yaml — Fingerprint.com test
+### How to add a new scenario
 
-Visits [fingerprint.com/demo/](https://fingerprint.com/demo/), waits for async browser fingerprint analysis (visitor ID, smart signals) and saves the result:
-- `output/fingerprint_com.png` — full-page screenshot
-- `output/fingerprint_com.txt` — page text with visitor ID, browser, IP, bot detection, VPN detection, incognito detection, tampering score
+1. Create a `.yaml` file in `examples/` following `scenario.schema.json`.
+2. Validate: `autobrowser validate-script --file examples/your.yaml`
+3. Run: `autobrowser run-script --file examples/your.yaml`
+4. Add a row to the file list above.
 
-Useful for verifying that patchright is not detected as a bot. Expected result: `bot: notDetected`, `tampering: false`, `antiDetectBrowser: false`.
+Minimal template:
 
-```bash
-autobrowser run-script --file examples/fingerprint_com.yaml
+```yaml
+session:
+  headless: true
+
+steps:
+  - action: open
+    url: https://example.com
+
+  - action: screenshot
+    file: output/result.png
 ```
 
-### amiunique.yaml — Browser fingerprint uniqueness
+---
 
-Visits [amiunique.org/fingerprint](https://amiunique.org/fingerprint), accepts the cookie banner, waits for JS attributes to load and saves the result:
-- `output/amiunique.png` — full-page screenshot with fingerprint tables
-- `output/amiunique.txt` — text with HTTP headers, JS attributes and uniqueness metrics
+## RU
 
-Shows how unique the browser fingerprint is among all visitors. Includes data on User-Agent, languages, screen resolution, fonts, Canvas, WebGL and other parameters.
+Примеры YAML-сценариев для `autobrowser run-script`. Каждый файл — готовый к запуску сценарий.
+
+### Список файлов
+
+| Файл | Описание |
+|---|---|
+| `simple.yaml` | Открыть страницу, собрать headers, cookies, контент |
+| `screenshot.yaml` | Полноразмерный скриншот (тестовая страница bot detection) |
+| `login.yaml` | Заполнение и отправка формы (демо-форма httpbin.org) |
+| `browse.yaml` | Восстановить сохранённые вкладки и прокрутить каждую |
+| `fingerprint_com.yaml` | Тест bot detection fingerprint.com |
+| `amiunique.yaml` | Проверить уникальность отпечатка браузера |
+| `yandex_search.yaml` | Поиск в Яндексе с посимвольным вводом |
+| `yandex_warmup.yaml` | Прогрев профиля Яндекса (headful, капчу решить вручную) |
+| `proxy.yaml` | Маршрутизация трафика через прокси |
+| `cloakbrowser.yaml` | Запуск с движком cloakbrowser через env-переменную |
+| `with-profile.yaml` | Сохранение cookies и данных сессии между запусками |
+
+### Способы запуска
+
+Три равнозначных способа запустить любой сценарий:
+
+**1. Локально через venv**
 
 ```bash
-autobrowser run-script --file examples/amiunique.yaml
+autobrowser run-script --file examples/simple.yaml
+```
+
+**2. Docker напрямую**
+
+```bash
+docker run --rm \
+  -v $(pwd)/examples:/scenarios \
+  -v $(pwd)/output:/app/output \
+  autobrowser-client:dev run-script --file /scenarios/simple.yaml
+```
+
+**3. Docker Compose**
+
+```bash
+docker compose run --rm \
+  -v $(pwd)/examples:/scenarios \
+  -v $(pwd)/output:/app/output \
+  cli run-script --file /scenarios/simple.yaml
+```
+
+Сборка образа перед первым запуском:
+
+```bash
+docker compose build
+```
+
+### Переменные окружения
+
+| Переменная | Описание | Пример значения |
+|---|---|---|
+| `AUTOBROWSER_BROWSER_ENGINE` | Движок браузера: `patchright` (по умолчанию) или `cloakbrowser` | `patchright` |
+| `AUTOBROWSER_PROFILE_DIR` | Корневая директория именованных профилей | `.profiles` |
+| `AUTOBROWSER_LOG_LEVEL` | Уровень логирования: `DEBUG`, `INFO`, `WARNING`, `ERROR` | `INFO` |
+
+Передать переменную для одного запуска:
+
+```bash
+AUTOBROWSER_BROWSER_ENGINE=cloakbrowser autobrowser run-script --file examples/cloakbrowser.yaml
+```
+
+Или через Docker:
+
+```bash
+docker run --rm \
+  -e AUTOBROWSER_BROWSER_ENGINE=cloakbrowser \
+  -v $(pwd)/examples:/scenarios \
+  autobrowser-client:dev run-script --file /scenarios/cloakbrowser.yaml
+```
+
+### Переопределение через CLI
+
+Флаги CLI имеют приоритет над значениями в файле сценария:
+
+```bash
+autobrowser run-script --file examples/proxy.yaml \
+  --proxy socks5://user:pass@host:1080 \
+  --viewport 1280x720 \
+  --profile myprofile \
+  --output /tmp/result.json
+```
+
+### Как добавить новый сценарий
+
+1. Создайте `.yaml` файл в `examples/` по формату `scenario.schema.json`.
+2. Валидация: `autobrowser validate-script --file examples/your.yaml`
+3. Запуск: `autobrowser run-script --file examples/your.yaml`
+4. Добавьте строку в таблицу файлов выше.
+
+Минимальный шаблон:
+
+```yaml
+session:
+  headless: true
+
+steps:
+  - action: open
+    url: https://example.com
+
+  - action: screenshot
+    file: output/result.png
 ```

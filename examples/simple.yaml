@@ -1,12 +1,13 @@
+# Simple example: open a page, collect content.
+# Run: autobrowser run-script --file examples/simple.yaml
+
 session:
   headless: true
-  userAgent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
 
 steps:
-  # Shorthand form: verb is the key, argument is the value
-  - open: https://scrapfly.io/web-scraping-tools/automation-detector
+  - open: https://example.com
 
-  - wait: networkidle
+  - wait: load
 
   - get-headers: ~
 

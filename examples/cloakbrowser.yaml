@@ -1,0 +1,38 @@
+# CloakBrowser engine example.
+# The browser engine is set via environment variable, not in the scenario file.
+#
+# Run with cloakbrowser engine:
+#   AUTOBROWSER_BROWSER_ENGINE=cloakbrowser autobrowser run-script --file examples/cloakbrowser.yaml
+#
+# The cloakbrowser package must be installed:
+#   pip install cloakbrowser
+#
+# Without the env var this scenario runs with the default patchright engine.
+#
+# Output:
+#   output/cloakbrowser_botd.png - screenshot
+#   output/cloakbrowser_botd.txt - page text with bot detection result
+
+session:
+  headless: true
+  viewport:
+    width: 1920
+    height: 1080
+
+steps:
+  - action: open
+    url: https://fingerprintjs.github.io/BotD/main/
+
+  - action: wait
+    waitUntil: networkidle
+    timeout: 20000
+
+  - action: screenshot
+    file: output/cloakbrowser_botd.png
+    fullPage: true
+
+  - action: save
+    file: output/cloakbrowser_botd.txt
+    format: text
+
+stopOnError: true

@@ -1,0 +1,25 @@
+# Proxy example: route traffic through a proxy server.
+# Set your proxy in session.proxy, or pass it via CLI flag:
+#
+#   autobrowser run-script --file examples/proxy.yaml --proxy socks5://user:pass@host:port
+#
+# Supported proxy formats:
+#   socks5://user:pass@host:port
+#   http://user:pass@host:port
+#   https://host:port
+
+session:
+  headless: true
+  proxy: "socks5://user:pass@proxy.example.com:1080"
+
+steps:
+  - action: open
+    url: https://httpbin.org/ip
+
+  - action: wait
+    waitUntil: load
+
+  - action: get-content
+    format: text
+
+stopOnError: true

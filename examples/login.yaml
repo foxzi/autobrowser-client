@@ -1,31 +1,48 @@
+# Form fill example using httpbin.org/forms/post (pizza order demo form).
+# Replace URL and selectors for a real login page.
+#
+# Run: autobrowser run-script --file examples/login.yaml
+
 session:
   headless: true
-  profile: test1
-  userAgent: Mozilla/5.0
   timeout: 10000
 
 steps:
   - action: open
-    url: https://example.com/login
+    url: https://httpbin.org/forms/post
 
-  # String shorthand form
-  - action: fill
-    locator: "name=username"
-    value: demo-user
+  - action: wait
+    waitUntil: load
 
   - action: fill
-    locator: "name=password"
-    value: demo-password
+    locator:
+      type: name
+      value: custname
+    value: Demo User
+
+  - action: fill
+    locator:
+      type: name
+      value: custemail
+    value: demo@example.com
+
+  - action: fill
+    locator:
+      type: name
+      value: comments
+    value: No special requests.
 
   - action: click
-    locator: "css=button[type='submit']"
+    locator:
+      type: css
+      value: "button[type='submit']"
 
-  # Dict form (backward-compatible)
   - action: wait
-    waitUntil: networkidle
+    waitUntil: load
+    timeout: 10000
 
   - action: get-content
-    format: html
+    format: text
 
 output:
-  file: result.html
+  file: output/login_result.txt
