@@ -181,7 +181,7 @@ def run_script(
 
     manager = SessionManager(settings)
     session = manager.create_session(
-        urls=script.pages or None,
+        urls=None,
         profile=effective_profile,
         user_agent=user_agent,
         headless=headless,

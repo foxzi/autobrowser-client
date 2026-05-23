@@ -47,7 +47,6 @@ This keeps the format predictable, easy to validate, and suitable for simple aut
 A script may contain the following sections:
 
 - `session` - browser session parameters;
-- `pages` - optional predefined pages;
 - `steps` - ordered actions to execute;
 - `output` - final result handling;
 - `stopOnError` - stop on first failed step or continue.
@@ -321,7 +320,6 @@ autobrowser validate-script --file scenario.yaml
 Сценарий может содержать следующие секции:
 
 - `session` - параметры браузерной сессии;
-- `pages` - необязательное описание заранее открываемых страниц;
 - `steps` - упорядоченные действия для выполнения;
 - `output` - правила обработки итогового результата;
 - `stopOnError` - остановка на первой ошибке или продолжение выполнения.

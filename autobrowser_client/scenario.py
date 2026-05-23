@@ -146,7 +146,6 @@ class ScriptDefinition(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     session: SessionConfig = Field(default_factory=SessionConfig)
-    pages: list[str] = Field(default_factory=list)
     steps: list[ScriptStep]
     output: ScriptOutput = Field(default_factory=ScriptOutput)
     stop_on_error: bool = Field(default=True, alias="stopOnError")

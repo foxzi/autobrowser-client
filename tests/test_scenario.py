@@ -35,7 +35,6 @@ def test_minimal_valid_script():
 def test_full_script():
     data = {
         "session": {"headless": False, "profile": "test"},
-        "pages": ["https://example.com"],
         "steps": [
             {"action": "open", "url": "https://example.com"},
             {"action": "wait", "timeout": 1000},
