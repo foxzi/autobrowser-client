@@ -8,23 +8,19 @@ steps:
   - action: open
     url: https://example.com/login
 
+  # String shorthand form
   - action: fill
-    locator:
-      type: name
-      value: username
+    locator: "name=username"
     value: demo-user
 
   - action: fill
-    locator:
-      type: name
-      value: password
+    locator: "name=password"
     value: demo-password
 
   - action: click
-    locator:
-      type: css
-      value: button[type='submit']
+    locator: "css=button[type='submit']"
 
+  # Dict form (backward-compatible)
   - action: wait
     waitUntil: networkidle
 

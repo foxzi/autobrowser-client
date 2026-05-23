@@ -199,6 +199,52 @@ Supported locator types:
 - `text`
 - `attribute`
 
+### Shorthand locator strings / Сокращённая запись локатора
+
+**English**
+
+Instead of the dict form you can pass the locator as a plain string. Parsing rules:
+
+1. `type=value` — if the prefix before the first `=` is a known type, it is used directly.  
+   Example: `"css=button[type=submit]"`, `"name=username"`, `"xpath=//div"`.
+2. String starting with `//` or `/` → `xpath`.
+3. String matching `^#[a-zA-Z_][\w-]*$` → `id` (leading `#` stripped).
+4. String matching `^\.[a-zA-Z_][\w-]*$` → `class` (leading `.` stripped).
+5. Anything else → `css`.
+
+```yaml
+# equivalent forms:
+- action: click
+  locator: "css=button[type=submit]"
+
+- action: click
+  locator: "#submit-btn"
+
+- action: click
+  locator: "//div[@id='x']"
+
+# dict form still works:
+- action: click
+  locator:
+    type: css
+    value: button[type=submit]
+```
+
+---
+
+**Русский**
+
+Вместо объектной формы локатор можно указать строкой. Правила разбора:
+
+1. `тип=значение` — если префикс до первого `=` является известным типом, он используется напрямую.  
+   Пример: `"css=button[type=submit]"`, `"name=username"`, `"xpath=//div"`.
+2. Строка начинается с `//` или `/` → `xpath`.
+3. Строка соответствует `^#[a-zA-Z_][\w-]*$` → `id` (символ `#` удаляется).
+4. Строка соответствует `^\.[a-zA-Z_][\w-]*$` → `class` (символ `.` удаляется).
+5. Всё остальное → `css`.
+
+Объектная форма по-прежнему работает без изменений.
+
 ### Validation
 
 Scripts should be validated against JSON Schema before execution.

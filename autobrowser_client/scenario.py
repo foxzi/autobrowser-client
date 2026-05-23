@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Literal
 
@@ -30,11 +31,36 @@ LocatorType = Literal["css", "xpath", "id", "name", "class", "text", "attribute"
 WaitUntil = Literal["domcontentloaded", "load", "networkidle", "visible", "hidden"]
 
 
+_LOCATOR_TYPES = {"css", "xpath", "id", "name", "class", "text", "attribute"}
+_ID_RE = re.compile(r"^#[a-zA-Z_][\w-]*$")
+_CLASS_RE = re.compile(r"^\.[a-zA-Z_][\w-]*$")
+
+
+def _parse_locator_string(s: str) -> dict:
+    eq = s.find("=")
+    if eq != -1 and s[:eq] in _LOCATOR_TYPES:
+        return {"type": s[:eq], "value": s[eq + 1:]}
+    if s.startswith("//") or s.startswith("/"):
+        return {"type": "xpath", "value": s}
+    if _ID_RE.match(s):
+        return {"type": "id", "value": s[1:]}
+    if _CLASS_RE.match(s):
+        return {"type": "class", "value": s[1:]}
+    return {"type": "css", "value": s}
+
+
 class Locator(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     type: LocatorType
     value: str
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_string(cls, v: object) -> object:
+        if isinstance(v, str):
+            return _parse_locator_string(v)
+        return v
 
 
 class ViewportConfig(BaseModel):
