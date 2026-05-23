@@ -43,6 +43,7 @@ Example `config.yaml`:
 ```yaml
 browser:
   headless: true
+  engine: patchright   # patchright (default) or cloakbrowser
   launchArgs: []
   userAgent: Mozilla/5.0
   viewport:
@@ -90,6 +91,7 @@ All supported environment variables:
 
 ```env
 AUTOBROWSER_HEADLESS=true
+AUTOBROWSER_BROWSER_ENGINE=patchright
 AUTOBROWSER_USER_AGENT=Mozilla/5.0
 AUTOBROWSER_VIEWPORT_WIDTH=1280
 AUTOBROWSER_VIEWPORT_HEIGHT=720
@@ -127,6 +129,26 @@ autobrowser run --url https://example.com --headless --timeout 10000
 ```bash
 autobrowser run-script --file scenario.yaml --profile test1
 ```
+
+### Browser engines
+
+`browser.engine` selects the stealth engine. Allowed values: `patchright` (default) | `cloakbrowser`.
+
+| Engine | Stealth method | Chromium | Hard dep |
+|---|---|---|---|
+| `patchright` | JS injection via init scripts, uses system Chrome (`channel="chrome"`) | system | yes |
+| `cloakbrowser` | C++ level patches, bundled binary auto-downloaded on first use | bundled | no (optional) |
+
+Both engines support profiles, proxy, fingerprint injection, viewport, userAgent, all CLI commands, and all API endpoints.
+
+To use cloakbrowser, install the optional dependency first:
+
+```bash
+pip install "autobrowser-client[cloak]"
+# or: pip install cloakbrowser
+```
+
+Engine is a process-wide setting (config file or env var `AUTOBROWSER_BROWSER_ENGINE`). It cannot be changed per session or per API request.
 
 ### Platform spoofing
 
@@ -223,6 +245,7 @@ When running in Docker:
 ```yaml
 browser:
   headless: true
+  engine: patchright   # patchright (default) или cloakbrowser
   launchArgs: []
   userAgent: Mozilla/5.0
   viewport:
@@ -270,6 +293,7 @@ output:
 
 ```env
 AUTOBROWSER_HEADLESS=true
+AUTOBROWSER_BROWSER_ENGINE=patchright
 AUTOBROWSER_USER_AGENT=Mozilla/5.0
 AUTOBROWSER_VIEWPORT_WIDTH=1280
 AUTOBROWSER_VIEWPORT_HEIGHT=720
@@ -307,6 +331,26 @@ autobrowser run --url https://example.com --headless --timeout 10000
 ```bash
 autobrowser run-script --file scenario.yaml --profile test1
 ```
+
+### Движки браузера
+
+`browser.engine` выбирает движок. Допустимые значения: `patchright` (по умолчанию) | `cloakbrowser`.
+
+| Движок | Метод стелс | Chromium | Обяз. зависимость |
+|---|---|---|---|
+| `patchright` | JS-инъекции через init-скрипты, системный Chrome (`channel="chrome"`) | системный | да |
+| `cloakbrowser` | Патчи на уровне C++, бандлированный бинарник (автозагрузка при первом запуске) | встроенный | нет (опционально) |
+
+Оба движка поддерживают профили, прокси, инъекцию fingerprint, viewport, userAgent, все CLI-команды и все API-endpoints.
+
+Для использования cloakbrowser сначала установите опциональную зависимость:
+
+```bash
+pip install "autobrowser-client[cloak]"
+# или: pip install cloakbrowser
+```
+
+Движок — это настройка уровня процесса (конфиг-файл или переменная окружения `AUTOBROWSER_BROWSER_ENGINE`). Его нельзя изменить на уровне сессии или API-запроса.
 
 ### Подмена платформы (platform spoofing)
 

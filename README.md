@@ -1,6 +1,6 @@
 # autobrowser-client
 
-Python client for launching and controlling a browser through CLI scripts and HTTP API using patchright.
+Python client for launching and controlling a browser through CLI scripts and HTTP API using Playwright-compatible stealth engines (patchright by default, optional CloakBrowser).
 
 Проект предназначен для запуска браузера с профилями, прокси, пользовательским `User-Agent`, получением cookies, headers и content, а также для интерактивного браузинга через CLI и HTTP API.
 
@@ -26,6 +26,35 @@ Python client for launching and controlling a browser through CLI scripts and HT
 | `autobrowser generate-fingerprint --profile DIR` | Generate fingerprint.json for a profile |
 
 Common flags: `--config`, `--profile`, `--proxy`, `--viewport`, `--output`, `--headless/--headful`, `--timeout`, `--preserve-session`.
+
+## Browser engine
+
+Two stealth engines are supported. Default is `patchright`.
+
+| Engine | Stealth method | Chromium | Install |
+|---|---|---|---|
+| `patchright` (default) | JS injection patches, uses system Chrome (`channel="chrome"`) | system | built-in |
+| `cloakbrowser` | C++ level patches, own binary (auto-downloaded on first use) | bundled | optional |
+
+Switch to cloakbrowser:
+
+```bash
+# Install optional dependency
+pip install "autobrowser-client[cloak]"
+# or: pip install cloakbrowser
+
+# Via env var
+AUTOBROWSER_BROWSER_ENGINE=cloakbrowser autobrowser run --url https://example.com
+```
+
+Or in `config.yaml`:
+
+```yaml
+browser:
+  engine: cloakbrowser
+```
+
+Both engines support profiles, proxy, fingerprint injection, viewport, user_agent, all CLI commands, and all API endpoints.
 
 ## Quick start
 

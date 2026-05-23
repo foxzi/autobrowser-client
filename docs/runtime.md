@@ -123,7 +123,7 @@ The project supports SOCKS5 and HTTP proxies via the `socks2http` relay.
 #### Architecture
 
 ```
-Browser --> patchright (proxy=http://127.0.0.1:PORT) --> socks2http --> upstream SOCKS5/HTTP --> target
+Browser --> browser engine (proxy=http://127.0.0.1:PORT) --> socks2http --> upstream SOCKS5/HTTP --> target
 ```
 
 `socks2http` is started as a subprocess that:
@@ -437,7 +437,7 @@ autobrowser run-script --file warmup.yaml --preserve-session
 #### Архитектура
 
 ```
-Browser --> patchright (proxy=http://127.0.0.1:PORT) --> socks2http --> upstream SOCKS5/HTTP --> target
+Browser --> browser engine (proxy=http://127.0.0.1:PORT) --> socks2http --> upstream SOCKS5/HTTP --> target
 ```
 
 `socks2http` запускается как подпроцесс, который:

@@ -234,6 +234,8 @@ Supported `waitUntil` values:
 
 #### Start browser session
 
+Note: the browser engine (`patchright` or `cloakbrowser`) is a process-wide setting configured via config file or `AUTOBROWSER_BROWSER_ENGINE` env var. It is not a per-session or per-request parameter.
+
 ```json
 {
   "headless": true,
@@ -549,6 +551,8 @@ Authorization: Bearer <token>
 ### Примеры запросов
 
 #### Запуск браузерной сессии
+
+Примечание: движок браузера (`patchright` или `cloakbrowser`) — это настройка уровня процесса, задаётся через конфиг-файл или переменную окружения `AUTOBROWSER_BROWSER_ENGINE`. Изменить его на уровне сессии или API-запроса нельзя.
 
 ```json
 {
