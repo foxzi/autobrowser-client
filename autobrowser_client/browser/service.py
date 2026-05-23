@@ -229,55 +229,111 @@ class BrowserSession:
             platform_info = _detect_platform_from_ua(ua) if ua else None
             is_mobile_ua = platform_info["mobile"] if platform_info else False
 
-            if profile:
-                profile_dir = Path(self.settings.profiles.dir) / profile
-                profile_dir.mkdir(parents=True, exist_ok=True)
-                self._profile_dir = profile_dir
+            if self.settings.browser.engine == "cloakbrowser":
+                try:
+                    from cloakbrowser import launch as cb_launch, launch_persistent_context as cb_launch_persistent_context
+                except ImportError as exc:
+                    raise BrowserStartError(
+                        "cloakbrowser engine requested but 'cloakbrowser' package is not installed. "
+                        "Install with: pip install cloakbrowser"
+                    ) from exc
 
-                self._profile_lock = ProfileLock(profile_dir)
-                self._profile_lock.acquire()
+                if profile:
+                    profile_dir = Path(self.settings.profiles.dir) / profile
+                    profile_dir.mkdir(parents=True, exist_ok=True)
+                    self._profile_dir = profile_dir
 
-                # Help Chromium restore tabs from previous session
-                if "--restore-last-session" not in launch_args:
-                    launch_args.append("--restore-last-session")
+                    self._profile_lock = ProfileLock(profile_dir)
+                    self._profile_lock.acquire()
 
-                logger.info("Using profile directory: %s", profile_dir)
+                    if "--restore-last-session" not in launch_args:
+                        launch_args.append("--restore-last-session")
 
-                ctx_kwargs: dict[str, Any] = {
-                    "channel": "chrome",
-                    "headless": is_headless,
-                    "args": launch_args or None,
-                    "viewport": vp,
-                }
-                if ua:
-                    ctx_kwargs["user_agent"] = ua
-                if proxy_server:
-                    ctx_kwargs["proxy"] = proxy_server
-                if is_mobile_ua:
-                    ctx_kwargs["is_mobile"] = True
-                    ctx_kwargs["has_touch"] = True
+                    logger.info("Using profile directory: %s", profile_dir)
 
-                self._context = self._playwright.chromium.launch_persistent_context(
-                    user_data_dir=str(profile_dir),
-                    **ctx_kwargs,
-                )
+                    cb_ctx_kwargs: dict[str, Any] = {
+                        "headless": is_headless,
+                        "args": launch_args or None,
+                        "viewport": vp,
+                    }
+                    if ua:
+                        cb_ctx_kwargs["user_agent"] = ua
+                    if proxy_server:
+                        cb_ctx_kwargs["proxy"] = proxy_server
+                    if is_mobile_ua:
+                        cb_ctx_kwargs["is_mobile"] = True
+                        cb_ctx_kwargs["has_touch"] = True
+
+                    self._context = cb_launch_persistent_context(
+                        user_data_dir=str(profile_dir),
+                        **cb_ctx_kwargs,
+                    )
+                else:
+                    cb_launch_kwargs: dict[str, Any] = {
+                        "headless": is_headless,
+                        "args": launch_args or None,
+                    }
+                    if proxy_server:
+                        cb_launch_kwargs["proxy"] = proxy_server
+                    self._browser = cb_launch(**cb_launch_kwargs)
+
+                    ctx_opts: dict[str, Any] = {"viewport": vp}
+                    if ua:
+                        ctx_opts["user_agent"] = ua
+                    if is_mobile_ua:
+                        ctx_opts["is_mobile"] = True
+                        ctx_opts["has_touch"] = True
+                    self._context = self._browser.new_context(**ctx_opts)
             else:
-                browser_kwargs: dict[str, Any] = {
-                    "channel": "chrome",
-                    "headless": is_headless,
-                    "args": launch_args or None,
-                }
-                if proxy_server:
-                    browser_kwargs["proxy"] = proxy_server
-                self._browser = self._playwright.chromium.launch(**browser_kwargs)
+                if profile:
+                    profile_dir = Path(self.settings.profiles.dir) / profile
+                    profile_dir.mkdir(parents=True, exist_ok=True)
+                    self._profile_dir = profile_dir
 
-                ctx_opts: dict[str, Any] = {"viewport": vp}
-                if ua:
-                    ctx_opts["user_agent"] = ua
-                if is_mobile_ua:
-                    ctx_opts["is_mobile"] = True
-                    ctx_opts["has_touch"] = True
-                self._context = self._browser.new_context(**ctx_opts)
+                    self._profile_lock = ProfileLock(profile_dir)
+                    self._profile_lock.acquire()
+
+                    # Help Chromium restore tabs from previous session
+                    if "--restore-last-session" not in launch_args:
+                        launch_args.append("--restore-last-session")
+
+                    logger.info("Using profile directory: %s", profile_dir)
+
+                    ctx_kwargs: dict[str, Any] = {
+                        "channel": "chrome",
+                        "headless": is_headless,
+                        "args": launch_args or None,
+                        "viewport": vp,
+                    }
+                    if ua:
+                        ctx_kwargs["user_agent"] = ua
+                    if proxy_server:
+                        ctx_kwargs["proxy"] = proxy_server
+                    if is_mobile_ua:
+                        ctx_kwargs["is_mobile"] = True
+                        ctx_kwargs["has_touch"] = True
+
+                    self._context = self._playwright.chromium.launch_persistent_context(
+                        user_data_dir=str(profile_dir),
+                        **ctx_kwargs,
+                    )
+                else:
+                    browser_kwargs: dict[str, Any] = {
+                        "channel": "chrome",
+                        "headless": is_headless,
+                        "args": launch_args or None,
+                    }
+                    if proxy_server:
+                        browser_kwargs["proxy"] = proxy_server
+                    self._browser = self._playwright.chromium.launch(**browser_kwargs)
+
+                    ctx_opts: dict[str, Any] = {"viewport": vp}
+                    if ua:
+                        ctx_opts["user_agent"] = ua
+                    if is_mobile_ua:
+                        ctx_opts["is_mobile"] = True
+                        ctx_opts["has_touch"] = True
+                    self._context = self._browser.new_context(**ctx_opts)
 
             # Determine platform for fingerprint GPU pool selection
             fp_platform: Platform = "windows"

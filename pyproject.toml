@@ -24,6 +24,7 @@ dev = [
   "pytest-anyio>=0.0.0",
   "httpx>=0.27,<1.0",
 ]
+cloak = ["cloakbrowser>=0.3"]
 
 [project.scripts]
 autobrowser = "autobrowser_client.main:main"
