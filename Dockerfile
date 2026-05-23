@@ -3,7 +3,9 @@ FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PATH="/opt/venv/bin:${PATH}"
+    PATH="/opt/venv/bin:${PATH}" \
+    # Place patchright browsers in a shared, non-root location
+    PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers
 
 # System deps + browser runtime libraries
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -31,6 +33,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxfixes3 \
     libxkbcommon0 \
     libxrandr2 \
+    libxshmfence1 \
+    libxss1 \
     xdg-utils \
     fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
@@ -43,14 +47,22 @@ RUN python3 -m venv /opt/venv
 
 WORKDIR /app
 
-# Install Python dependencies
+# Install both engines: patchright (default) + cloakbrowser (optional)
+ARG INSTALL_CLOAKBROWSER=1
 COPY pyproject.toml README.md ./
 COPY autobrowser_client ./autobrowser_client
 
-RUN pip install --upgrade pip && pip install .
+RUN pip install --upgrade pip && \
+    if [ "$INSTALL_CLOAKBROWSER" = "1" ]; then pip install ".[cloak]"; else pip install .; fi
 
-# Install patchright browsers (chrome for stealth, chromium as fallback)
-RUN patchright install chrome
+# Pre-download patchright chrome into shared location (accessible by all users)
+RUN patchright install chrome && \
+    chmod -R a+rX /opt/playwright-browsers
+
+# Pre-download cloakbrowser binary as the browser user (lands in /home/browser/.cloakbrowser)
+RUN if [ "$INSTALL_CLOAKBROWSER" = "1" ]; then \
+        su browser -c "/opt/venv/bin/python -c 'from cloakbrowser.download import ensure_binary; ensure_binary()'"; \
+    fi
 
 # Create directories for profiles and data
 RUN mkdir -p /data/profiles /data/tmp && chown -R browser:browser /data /app

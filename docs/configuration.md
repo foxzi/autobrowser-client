@@ -202,6 +202,31 @@ When running in Docker:
 - API host and port should be configurable;
 - the default container base is `Ubuntu 24.04`.
 
+#### Browser engines in Docker
+
+The Docker image ships with **both** engines pre-installed and their binaries pre-downloaded:
+
+| Engine | Binary location | Enabled by default |
+|---|---|---|
+| `patchright` | `/opt/playwright-browsers/` | yes |
+| `cloakbrowser` | `/home/browser/.cloakbrowser/` | available, opt-in |
+
+Switch engines at runtime — no rebuild needed:
+
+```bash
+# use cloakbrowser
+docker run --rm -e AUTOBROWSER_BROWSER_ENGINE=cloakbrowser autobrowser ...
+
+# use patchright (default)
+docker run --rm autobrowser ...
+```
+
+To build a slim image without cloakbrowser:
+
+```bash
+docker build --build-arg INSTALL_CLOAKBROWSER=0 -t autobrowser-slim .
+```
+
 ## Русский
 
 ### Назначение
@@ -403,3 +428,28 @@ session:
 - хранилище профилей должно подключаться как volume;
 - host и port API должны настраиваться;
 - базовый образ контейнера по умолчанию - `Ubuntu 24.04`.
+
+#### Движки браузера в Docker
+
+Docker-образ поставляется с **обоими** движками: бинарники скачиваются при сборке образа.
+
+| Движок | Расположение бинарника | По умолчанию |
+|---|---|---|
+| `patchright` | `/opt/playwright-browsers/` | да |
+| `cloakbrowser` | `/home/browser/.cloakbrowser/` | доступен, включается явно |
+
+Переключить движок можно в рантайме без пересборки образа:
+
+```bash
+# использовать cloakbrowser
+docker run --rm -e AUTOBROWSER_BROWSER_ENGINE=cloakbrowser autobrowser ...
+
+# использовать patchright (по умолчанию)
+docker run --rm autobrowser ...
+```
+
+Для сборки компактного образа без cloakbrowser:
+
+```bash
+docker build --build-arg INSTALL_CLOAKBROWSER=0 -t autobrowser-slim .
+```
