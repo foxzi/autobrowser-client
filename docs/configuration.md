@@ -44,6 +44,7 @@ Example `config.yaml`:
 browser:
   headless: true
   engine: patchright   # patchright (default) or cloakbrowser
+  fingerprintPlatform: linux   # cloakbrowser only: windows | linux | macos
   launchArgs: []
   userAgent: Mozilla/5.0
   viewport:
@@ -92,6 +93,7 @@ All supported environment variables:
 ```env
 AUTOBROWSER_HEADLESS=true
 AUTOBROWSER_BROWSER_ENGINE=patchright
+AUTOBROWSER_FINGERPRINT_PLATFORM=linux
 AUTOBROWSER_USER_AGENT=Mozilla/5.0
 AUTOBROWSER_VIEWPORT_WIDTH=1280
 AUTOBROWSER_VIEWPORT_HEIGHT=720
@@ -149,6 +151,8 @@ pip install "autobrowser-client[cloak]"
 ```
 
 Engine is a process-wide setting (config file or env var `AUTOBROWSER_BROWSER_ENGINE`). It cannot be changed per session or per API request.
+
+`browser.fingerprintPlatform` (env `AUTOBROWSER_FINGERPRINT_PLATFORM`) sets the OS that cloakbrowser presents (`--fingerprint-platform`): `windows`, `linux` or `macos`. Unset keeps the cloakbrowser default (Windows). If a Cloudflare challenge loops (checkbox passes, then the challenge reappears), set `linux`: on a desktop Linux host the Windows fingerprint looped on criptonoticias.com while `linux` passed (in the Docker image both passed). Ignored by patchright.
 
 ### Platform spoofing
 
@@ -273,6 +277,7 @@ docker build --build-arg INSTALL_CLOAKBROWSER=0 -t autobrowser-slim .
 browser:
   headless: true
   engine: patchright   # patchright (default) или cloakbrowser
+  fingerprintPlatform: linux   # только cloakbrowser: windows | linux | macos
   launchArgs: []
   userAgent: Mozilla/5.0
   viewport:
@@ -321,6 +326,7 @@ output:
 ```env
 AUTOBROWSER_HEADLESS=true
 AUTOBROWSER_BROWSER_ENGINE=patchright
+AUTOBROWSER_FINGERPRINT_PLATFORM=linux
 AUTOBROWSER_USER_AGENT=Mozilla/5.0
 AUTOBROWSER_VIEWPORT_WIDTH=1280
 AUTOBROWSER_VIEWPORT_HEIGHT=720
@@ -378,6 +384,8 @@ pip install "autobrowser-client[cloak]"
 ```
 
 Движок — это настройка уровня процесса (конфиг-файл или переменная окружения `AUTOBROWSER_BROWSER_ENGINE`). Его нельзя изменить на уровне сессии или API-запроса.
+
+`browser.fingerprintPlatform` (env `AUTOBROWSER_FINGERPRINT_PLATFORM`) задаёт ОС, которую показывает cloakbrowser (`--fingerprint-platform`): `windows`, `linux` или `macos`. Если не задано, используется значение cloakbrowser по умолчанию (Windows). Если Cloudflare challenge зацикливается (чекбокс пройден, но challenge появляется снова), ставьте `linux`: на десктопном Linux-хосте Windows-отпечаток зацикливался на criptonoticias.com, а `linux` проходил (в Docker-образе проходили оба). Для patchright игнорируется.
 
 ### Подмена платформы (platform spoofing)
 

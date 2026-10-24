@@ -132,3 +132,14 @@ def test_safe_dump_masks_secrets():
     )
     dump = s.safe_dump()
     assert "topsecret" not in json.dumps(dump)
+
+
+def test_fingerprint_platform_env():
+    settings = load_settings(env={"AUTOBROWSER_FINGERPRINT_PLATFORM": "linux"})
+    assert settings.browser.fingerprint_platform == "linux"
+    assert load_settings(env={}).browser.fingerprint_platform is None
+
+
+def test_fingerprint_platform_invalid():
+    with pytest.raises(ConfigError):
+        load_settings(env={"AUTOBROWSER_FINGERPRINT_PLATFORM": "android"})

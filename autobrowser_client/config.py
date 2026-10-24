@@ -24,6 +24,10 @@ class BrowserSettings(BaseModel):
 
     headless: bool = True
     engine: Literal["patchright", "cloakbrowser"] = "patchright"
+    # cloakbrowser only: OS fingerprint (--fingerprint-platform); None keeps cloakbrowser default
+    fingerprint_platform: Literal["windows", "linux", "macos"] | None = Field(
+        default=None, alias="fingerprintPlatform"
+    )
     launch_args: list[str] = Field(default_factory=list, alias="launchArgs")
     user_agent: str | None = Field(default=None, alias="userAgent")
     viewport: ViewportSettings = Field(default_factory=ViewportSettings)
@@ -156,6 +160,7 @@ def _env_overrides(env: dict[str, str]) -> dict[str, Any]:
     mappings: list[tuple[str, tuple[str, ...], str]] = [
         ("AUTOBROWSER_HEADLESS", ("browser", "headless"), "bool"),
         ("AUTOBROWSER_BROWSER_ENGINE", ("browser", "engine"), "str"),
+        ("AUTOBROWSER_FINGERPRINT_PLATFORM", ("browser", "fingerprintPlatform"), "str"),
         ("AUTOBROWSER_USER_AGENT", ("browser", "userAgent"), "str"),
         ("AUTOBROWSER_VIEWPORT_WIDTH", ("browser", "viewport", "width"), "int"),
         ("AUTOBROWSER_VIEWPORT_HEIGHT", ("browser", "viewport", "height"), "int"),

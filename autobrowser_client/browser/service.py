@@ -241,6 +241,9 @@ class BrowserSession:
                     ) from exc
 
                 binary_path = _cb_ensure_binary()
+                fp_platform = self.settings.browser.fingerprint_platform
+                if fp_platform:
+                    launch_args.append(f"--fingerprint-platform={fp_platform}")
                 chrome_args = _cb_build_args(
                     stealth_args=True,
                     extra_args=launch_args,
