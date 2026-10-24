@@ -21,17 +21,26 @@ steps:
     waitUntil: load
     timeout: 15000
 
-  # Accept cookies banner
+  # Accept cookies banner. It is rendered ~5-7s after load,
+  # so a short timeout makes the click flaky.
   - action: click
     locator:
       type: css
-      value: "[role='status'] button:last-child"
-    timeout: 5000
+      value: "[role='status'] button:has-text('ACCEPT')"
+    timeout: 20000
     stopOnError: false
 
-  # Wait for JavaScript attributes table to finish loading
+  # Wait for the JavaScript attributes table to render
   - action: wait
-    timeout: 8000
+    waitUntil: visible
+    locator:
+      type: text
+      value: JAVASCRIPT ATTRIBUTES
+    timeout: 30000
+
+  # Extra wait for attribute values to fill in
+  - action: wait
+    timeout: 3000
 
   - action: screenshot
     file: output/amiunique.png
