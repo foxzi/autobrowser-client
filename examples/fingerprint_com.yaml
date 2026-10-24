@@ -17,10 +17,15 @@ steps:
   - action: open
     url: https://fingerprint.com/demo/
 
-  # Wait for the visitor ID to load (replaces "Loading visitor ID")
+  # Wait for the visitor ID result block to render.
+  # Do not use networkidle: an analytics request (amplitude) never finishes,
+  # so the page never becomes network-idle.
   - action: wait
-    waitUntil: networkidle
-    timeout: 20000
+    waitUntil: visible
+    locator:
+      type: text
+      value: Confidence score
+    timeout: 30000
 
   # Extra wait for JS fingerprint analysis to complete
   - action: wait
