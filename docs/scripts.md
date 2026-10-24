@@ -173,6 +173,7 @@ Supported actions:
 | `get-headers` | Get HTTP headers | — | — |
 | `save` | Save content to file | `file` | `format` (`html` or `text`) |
 | `browse-tabs` | Bring each tab to front, wait, scroll | — | `deltaY` (scroll amount, default 400), `timeout` |
+| `solve-challenge` | Wait for a Cloudflare challenge to pass, clicking the Turnstile checkbox; fails on timeout or final HTTP >= 400 | — | `timeout` (default 60000) |
 
 All steps support optional `page` field to target a specific tab (e.g. `page: page_1`). Default is the first page.
 
@@ -266,6 +267,7 @@ Instead of the full `{action: …, field: value}` dict form you can write the ac
 | `- get-cookies: ~` | `{action: get-cookies}` |
 | `- get-headers: ~` | `{action: get-headers}` |
 | `- browse-tabs: ~` | `{action: browse-tabs}` |
+| `- solve-challenge: ~` | `{action: solve-challenge}` |
 
 Extra step-level options (`timeout`, `stopOnError`, `fullPage`, etc.) can be added alongside the shorthand key:
 
@@ -323,6 +325,7 @@ The `<locator-str>` value uses the same string parsing rules described in "Short
 | `- get-cookies: ~` | `{action: get-cookies}` |
 | `- get-headers: ~` | `{action: get-headers}` |
 | `- browse-tabs: ~` | `{action: browse-tabs}` |
+| `- solve-challenge: ~` | `{action: solve-challenge}` |
 
 Дополнительные поля шага (`timeout`, `stopOnError`, `fullPage` и т.д.) можно добавлять рядом с ключом сокращения. Объектная форма по-прежнему работает без изменений.
 
@@ -528,6 +531,7 @@ fingerprint:
 | `get-headers` | Получить HTTP-заголовки | — | — |
 | `save` | Сохранить содержимое в файл | `file` | `format` (`html` или `text`) |
 | `browse-tabs` | Переключить каждый таб, подождать, прокрутить | — | `deltaY` (величина прокрутки, по умолчанию 400), `timeout` |
+| `solve-challenge` | Дождаться прохождения Cloudflare challenge, кликая чекбокс Turnstile; ошибка по таймауту или при итоговом HTTP >= 400 | — | `timeout` (по умолчанию 60000) |
 
 Каждый шаг поддерживает необязательное поле `page` для указания конкретной вкладки (например `page: page_1`). По умолчанию используется первая страница.
 

@@ -66,6 +66,97 @@ def _resolve_locator(
     return loc
 
 
+_CF_CHALLENGE_HOST = "challenges.cloudflare.com"
+_CF_CHECK_JS = "() => typeof window._cf_chl_opt !== 'undefined'"
+_NAV_STATUS_JS = "() => performance.getEntriesByType('navigation')[0]?.responseStatus"
+
+
+def _is_cf_challenge(page: Any, state: dict[str, Any]) -> bool:
+    """True while the page shows a Cloudflare challenge (or is navigating)."""
+    if state["mitigated"]:
+        return True
+    try:
+        if page.evaluate(_CF_CHECK_JS):
+            return True
+    except Exception:
+        return True  # context destroyed by navigation: check again later
+    return any(_CF_CHALLENGE_HOST in f.url for f in page.frames)
+
+
+def _click_turnstile(page: Any) -> bool:
+    """Click the Turnstile checkbox if its iframe is visible."""
+    for frame in page.frames:
+        if _CF_CHALLENGE_HOST not in frame.url:
+            continue
+        try:
+            box = frame.frame_element().bounding_box()
+        except Exception:
+            continue
+        if box and box["width"] > 0:
+            page.mouse.click(box["x"] + 30, box["y"] + box["height"] / 2)
+            return True
+    return False
+
+
+def solve_cf_challenge(page: Any, timeout_ms: int) -> dict[str, Any]:
+    """Wait for a Cloudflare challenge to pass, clicking Turnstile when shown.
+
+    Returns once the page has been challenge-free for 3 consecutive seconds.
+    Fails if the page after the challenge answers with HTTP >= 400.
+    """
+    # Cloudflare marks challenge responses with "cf-mitigated: challenge"
+    state: dict[str, Any] = {"mitigated": False, "status": None}
+    try:
+        state["status"] = page.evaluate(_NAV_STATUS_JS) or None
+    except Exception:
+        pass
+
+    def on_response(resp: Any) -> None:
+        if resp.request.is_navigation_request() and resp.frame == page.main_frame:
+            state["mitigated"] = resp.headers.get("cf-mitigated") == "challenge"
+            state["status"] = resp.status
+
+    page.on("response", on_response)
+    try:
+        return _wait_cf_challenge(page, timeout_ms, state)
+    finally:
+        page.remove_listener("response", on_response)
+
+
+def _wait_cf_challenge(page: Any, timeout_ms: int, state: dict[str, Any]) -> dict[str, Any]:
+    t0 = time.monotonic()
+    deadline = t0 + timeout_ms / 1000
+    last_click = 0.0
+    clicks = 0
+    seen = False
+    ok_streak = 0
+    while time.monotonic() < deadline:
+        if _is_cf_challenge(page, state):
+            seen = True
+            ok_streak = 0
+            now = time.monotonic()
+            # Give the non-interactive check a few seconds before clicking
+            if now - t0 > 4 and now - last_click > 8 and _click_turnstile(page):
+                last_click = now
+                clicks += 1
+                logger.info("Clicked Cloudflare Turnstile checkbox (%d)", clicks)
+        else:
+            ok_streak += 1
+            if ok_streak >= 3:
+                status = state["status"]
+                if status is not None and status >= 400:
+                    raise AppError(
+                        ErrorCode.INTERNAL_ERROR,
+                        f"Page blocked: HTTP {status} at {page.url}",
+                    )
+                return {"challenge": seen, "clicks": clicks, "url": page.url}
+        page.wait_for_timeout(1000)
+    raise AppError(
+        ErrorCode.TIMEOUT,
+        f"Cloudflare challenge not passed in {timeout_ms} ms (clicks: {clicks})",
+    )
+
+
 def execute_step(session: BrowserSession, step: ScriptStep, page_id: str | None = None) -> StepResult:
     """Execute a single script step against a browser session."""
     result = StepResult(step.action, success=True)
@@ -176,6 +267,9 @@ def execute_step(session: BrowserSession, step: ScriptStep, page_id: str | None 
             out.parent.mkdir(parents=True, exist_ok=True)
             out.write_text(content, encoding="utf-8")
             result.data = {"file": step.file, "bytes": len(content.encode("utf-8"))}
+
+        elif step.action == "solve-challenge":
+            result.data = solve_cf_challenge(page, step.timeout or 60000)
 
         elif step.action == "browse-tabs":
             pages = session.list_pages()

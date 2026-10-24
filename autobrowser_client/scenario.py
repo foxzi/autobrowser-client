@@ -25,6 +25,7 @@ ActionName = Literal[
     "get-headers",
     "save",
     "browse-tabs",
+    "solve-challenge",
 ]
 LocatorType = Literal["css", "xpath", "id", "name", "class", "text", "attribute"]
 WaitUntil = Literal["domcontentloaded", "load", "networkidle", "visible", "hidden"]
@@ -36,7 +37,7 @@ _CLASS_RE = re.compile(r"^\.[a-zA-Z_][\w-]*$")
 _WAIT_STATES = {"load", "domcontentloaded", "networkidle"}
 _KNOWN_ACTIONS = set(get_args(ActionName))
 # Actions whose shorthand value maps to a specific field
-_SHORTHAND_NULL_ACTIONS = {"get-content", "get-cookies", "get-headers", "browse-tabs"}
+_SHORTHAND_NULL_ACTIONS = {"get-content", "get-cookies", "get-headers", "browse-tabs", "solve-challenge"}
 
 
 def _parse_locator_string(s: str) -> dict:

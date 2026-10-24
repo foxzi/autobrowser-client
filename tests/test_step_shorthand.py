@@ -60,6 +60,7 @@ def test_simple_shorthands(raw, exp_action, exp_field, exp_value):
         ({"get-cookies": None}, "get-cookies"),
         ({"get-headers": None}, "get-headers"),
         ({"browse-tabs": None}, "browse-tabs"),
+        ({"solve-challenge": None}, "solve-challenge"),
     ],
 )
 def test_null_shorthands(raw, exp_action):
