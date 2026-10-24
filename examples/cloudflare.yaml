@@ -1,0 +1,40 @@
+# Pass a Cloudflare JS / Turnstile challenge (criptonoticias.com).
+# The solve-challenge step waits until the challenge page is gone, clicking
+# the Turnstile checkbox when it appears. It fails on timeout or when the
+# final page answers with HTTP >= 400. Without a challenge it returns in ~3 s.
+#
+# Recommended: cloakbrowser with a fingerprint platform matching the host OS.
+# On a desktop Linux host the default Windows fingerprint made Cloudflare loop
+# the challenge forever (in the Docker image both passed):
+#   AUTOBROWSER_BROWSER_ENGINE=cloakbrowser AUTOBROWSER_FINGERPRINT_PLATFORM=linux \
+#     autobrowser run-script --file examples/cloudflare.yaml
+#
+# patchright (default engine) may be rejected with a plain HTTP 403:
+#   autobrowser run-script --file examples/cloudflare.yaml
+#
+# Do not force userAgent here: a UA that does not match the fingerprint
+# is an easy bot signal.
+#
+# Output:
+#   output/cloudflare.png - screenshot after the challenge
+#   output/cloudflare.html - page HTML
+
+session:
+  headless: true
+  viewport:
+    width: 1920
+    height: 1080
+
+steps:
+  - action: open
+    url: https://www.criptonoticias.com/
+
+  - action: solve-challenge
+    timeout: 90000
+
+  - action: screenshot
+    file: output/cloudflare.png
+
+  - action: save
+    file: output/cloudflare.html
+    format: html

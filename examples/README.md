@@ -20,6 +20,7 @@ YAML scenario examples for `autobrowser run-script`. Each file is a ready-to-run
 | `yandex_warmup.yaml` | Warm up a Yandex profile (headful, manual captcha OK) |
 | `proxy.yaml` | Route traffic through a proxy server |
 | `cloakbrowser.yaml` | Run with the cloakbrowser engine via env var |
+| `cloudflare.yaml` | Pass a Cloudflare challenge with `solve-challenge` (cloakbrowser + `AUTOBROWSER_FINGERPRINT_PLATFORM=linux`) |
 | `with-profile.yaml` | Persist cookies and session data across runs |
 
 ### Running scenarios
@@ -61,6 +62,7 @@ docker compose build
 | Variable | Description | Example |
 |---|---|---|
 | `AUTOBROWSER_BROWSER_ENGINE` | Browser engine: `patchright` (default) or `cloakbrowser` | `patchright` |
+| `AUTOBROWSER_FINGERPRINT_PLATFORM` | cloakbrowser OS fingerprint: `windows` (default), `linux`, `macos` | `linux` |
 | `AUTOBROWSER_PROFILE_DIR` | Root directory for named profiles | `.profiles` |
 | `AUTOBROWSER_LOG_LEVEL` | Log verbosity: `DEBUG`, `INFO`, `WARNING`, `ERROR` | `INFO` |
 
@@ -132,6 +134,7 @@ steps:
 | `yandex_warmup.yaml` | Прогрев профиля Яндекса (headful, капчу решить вручную) |
 | `proxy.yaml` | Маршрутизация трафика через прокси |
 | `cloakbrowser.yaml` | Запуск с движком cloakbrowser через env-переменную |
+| `cloudflare.yaml` | Прохождение Cloudflare challenge шагом `solve-challenge` (cloakbrowser + `AUTOBROWSER_FINGERPRINT_PLATFORM=linux`) |
 | `with-profile.yaml` | Сохранение cookies и данных сессии между запусками |
 
 ### Способы запуска
@@ -173,6 +176,7 @@ docker compose build
 | Переменная | Описание | Пример значения |
 |---|---|---|
 | `AUTOBROWSER_BROWSER_ENGINE` | Движок браузера: `patchright` (по умолчанию) или `cloakbrowser` | `patchright` |
+| `AUTOBROWSER_FINGERPRINT_PLATFORM` | ОС-отпечаток cloakbrowser: `windows` (по умолчанию), `linux`, `macos` | `linux` |
 | `AUTOBROWSER_PROFILE_DIR` | Корневая директория именованных профилей | `.profiles` |
 | `AUTOBROWSER_LOG_LEVEL` | Уровень логирования: `DEBUG`, `INFO`, `WARNING`, `ERROR` | `INFO` |
 
