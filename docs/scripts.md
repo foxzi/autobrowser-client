@@ -173,7 +173,7 @@ Supported actions:
 | `get-headers` | Get HTTP headers | — | — |
 | `save` | Save content to file | `file` | `format` (`html` or `text`) |
 | `browse-tabs` | Bring each tab to front, wait, scroll | — | `deltaY` (scroll amount, default 400), `timeout` |
-| `solve-challenge` | Wait for a Cloudflare challenge to pass, clicking the Turnstile checkbox; fails on timeout or final HTTP >= 400 | — | `timeout` (default 60000) |
+| `solve-challenge` | Wait for a Cloudflare challenge to pass, clicking the Turnstile checkbox; fails on timeout or final HTTP >= 400 (error says `blocked without challenge` or `blocked after challenge`) | — | `timeout` (default 60000) |
 
 All steps support optional `page` field to target a specific tab (e.g. `page: page_1`). Default is the first page.
 
@@ -531,7 +531,7 @@ fingerprint:
 | `get-headers` | Получить HTTP-заголовки | — | — |
 | `save` | Сохранить содержимое в файл | `file` | `format` (`html` или `text`) |
 | `browse-tabs` | Переключить каждый таб, подождать, прокрутить | — | `deltaY` (величина прокрутки, по умолчанию 400), `timeout` |
-| `solve-challenge` | Дождаться прохождения Cloudflare challenge, кликая чекбокс Turnstile; ошибка по таймауту или при итоговом HTTP >= 400 | — | `timeout` (по умолчанию 60000) |
+| `solve-challenge` | Дождаться прохождения Cloudflare challenge, кликая чекбокс Turnstile; ошибка по таймауту или при итоговом HTTP >= 400 (в тексте ошибки `blocked without challenge` или `blocked after challenge`) | — | `timeout` (по умолчанию 60000) |
 
 Каждый шаг поддерживает необязательное поле `page` для указания конкретной вкладки (например `page: page_1`). По умолчанию используется первая страница.
 

@@ -49,7 +49,7 @@ class FakePage:
             frames.append(FakeFrame("https://challenges.cloudflare.com/cdn-cgi/x"))
         return frames
 
-    def evaluate(self, js):
+    def evaluate(self, js, isolated_context=True):
         if js == executor._NAV_STATUS_JS:
             return self.status
         return self.challenge
@@ -102,5 +102,11 @@ def test_challenge_loop_times_out():
 
 def test_blocked_page_fails():
     page = FakePage(challenge=False, status=403)
-    with pytest.raises(AppError, match="HTTP 403"):
+    with pytest.raises(AppError, match="blocked without challenge: HTTP 403"):
+        executor.solve_cf_challenge(page, 60000)
+
+
+def test_blocked_after_challenge_fails():
+    page = FakePage(status=403)
+    with pytest.raises(AppError, match="blocked after challenge: HTTP 403"):
         executor.solve_cf_challenge(page, 60000)
