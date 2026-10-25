@@ -76,7 +76,8 @@ def _is_cf_challenge(page: Any, state: dict[str, Any]) -> bool:
     if state["mitigated"]:
         return True
     try:
-        if page.evaluate(_CF_CHECK_JS):
+        # Page globals are only visible outside patchright's isolated world
+        if page.evaluate(_CF_CHECK_JS, isolated_context=False):
             return True
     except Exception:
         return True  # context destroyed by navigation: check again later
@@ -145,9 +146,10 @@ def _wait_cf_challenge(page: Any, timeout_ms: int, state: dict[str, Any]) -> dic
             if ok_streak >= 3:
                 status = state["status"]
                 if status is not None and status >= 400:
+                    reason = "after challenge" if seen else "without challenge"
                     raise AppError(
                         ErrorCode.INTERNAL_ERROR,
-                        f"Page blocked: HTTP {status} at {page.url}",
+                        f"Page blocked {reason}: HTTP {status} at {page.url}",
                     )
                 return {"challenge": seen, "clicks": clicks, "url": page.url}
         page.wait_for_timeout(1000)
