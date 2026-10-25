@@ -154,6 +154,10 @@ Engine is a process-wide setting (config file or env var `AUTOBROWSER_BROWSER_EN
 
 `browser.fingerprintPlatform` (env `AUTOBROWSER_FINGERPRINT_PLATFORM`) sets the OS that cloakbrowser presents (`--fingerprint-platform`): `windows`, `linux` or `macos`. Unset keeps the cloakbrowser default (Windows). If a Cloudflare challenge loops (checkbox passes, then the challenge reappears), set `linux`: on a desktop Linux host the Windows fingerprint looped on criptonoticias.com while `linux` passed (in the Docker image both passed). Ignored by patchright.
 
+### Headless user agent (patchright)
+
+Headless Chrome sends `HeadlessChrome/<version>` in the User-Agent, and Cloudflare often answers it with a plain 403 before any challenge. When patchright runs headless and `userAgent` is not set, the session detects the real browser UA (a short extra headless launch on start) and uses it with `HeadlessChrome` replaced by `Chrome`. An explicit `userAgent` disables this.
+
 ### Platform spoofing
 
 When `userAgent` contains a non-Linux OS identifier (e.g. Windows or macOS), the browser automatically adjusts `navigator.platform`, `navigator.userAgentData.platform`, and Client Hints (Sec-CH-UA-Platform) to match. This prevents antibot systems from detecting a mismatch between the UA string and JavaScript platform properties.
@@ -386,6 +390,10 @@ pip install "autobrowser-client[cloak]"
 Движок — это настройка уровня процесса (конфиг-файл или переменная окружения `AUTOBROWSER_BROWSER_ENGINE`). Его нельзя изменить на уровне сессии или API-запроса.
 
 `browser.fingerprintPlatform` (env `AUTOBROWSER_FINGERPRINT_PLATFORM`) задаёт ОС, которую показывает cloakbrowser (`--fingerprint-platform`): `windows`, `linux` или `macos`. Если не задано, используется значение cloakbrowser по умолчанию (Windows). Если Cloudflare challenge зацикливается (чекбокс пройден, но challenge появляется снова), ставьте `linux`: на десктопном Linux-хосте Windows-отпечаток зацикливался на criptonoticias.com, а `linux` проходил (в Docker-образе проходили оба). Для patchright игнорируется.
+
+### User-Agent в режиме без окна (patchright)
+
+Chrome без окна отправляет в User-Agent `HeadlessChrome/<версия>`, и Cloudflare часто сразу отвечает на это обычным 403, без challenge. Если patchright запущен без окна и `userAgent` не задан, сессия определяет реальный UA браузера (короткий дополнительный запуск при старте) и использует его, заменив `HeadlessChrome` на `Chrome`. Явный `userAgent` отключает эту замену.
 
 ### Подмена платформы (platform spoofing)
 

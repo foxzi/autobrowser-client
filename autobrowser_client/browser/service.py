@@ -189,6 +189,19 @@ class BrowserSession:
         self._profile_lock: ProfileLock | None = None
         self._profile_dir: Path | None = None
 
+    def _headful_user_agent(self) -> str | None:
+        """Real Chrome UA without the "HeadlessChrome" token Cloudflare blocks."""
+        try:
+            browser = self._playwright.chromium.launch(channel="chrome", headless=True)
+            try:
+                ua = browser.new_page().evaluate("() => navigator.userAgent")
+            finally:
+                browser.close()
+        except Exception as exc:
+            logger.warning("Failed to detect browser user agent: %s", exc)
+            return None
+        return ua.replace("HeadlessChrome/", "Chrome/")
+
     @property
     def context(self) -> BrowserContext:
         if self._context is None:
@@ -224,6 +237,9 @@ class BrowserSession:
             }
 
             launch_args = list(self.settings.browser.launch_args)
+
+            if not ua and is_headless and self.settings.browser.engine == "patchright":
+                ua = self._headful_user_agent()
 
             # Detect mobile UA to set is_mobile/has_touch on context
             platform_info = _detect_platform_from_ua(ua) if ua else None

@@ -9,7 +9,8 @@
 #   AUTOBROWSER_BROWSER_ENGINE=cloakbrowser AUTOBROWSER_FINGERPRINT_PLATFORM=linux \
 #     autobrowser run-script --file examples/cloudflare.yaml
 #
-# patchright (default engine) may be rejected with a plain HTTP 403:
+# patchright (default engine) also passes: in headless mode it replaces the
+# "HeadlessChrome" UA token, which Cloudflare answers with a plain HTTP 403:
 #   autobrowser run-script --file examples/cloudflare.yaml
 #
 # Do not force userAgent here: a UA that does not match the fingerprint
