@@ -11,6 +11,7 @@ Python client for launching and controlling a browser through CLI scripts and HT
 - Configuration / Конфигурация: [`docs/configuration.md`](docs/configuration.md)
 - CLI scripts / CLI-сценарии: [`docs/scripts.md`](docs/scripts.md)
 - Runtime (profiles, proxy, storage) / Рантайм: [`docs/runtime.md`](docs/runtime.md)
+- Troubleshooting (Cloudflare, proxy, engines) / Решение проблем: [`docs/troubleshooting.md`](docs/troubleshooting.md)
 - Examples / Примеры: [`examples/README.md`](examples/README.md)
 
 ## CLI commands

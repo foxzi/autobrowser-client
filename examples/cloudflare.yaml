@@ -1,4 +1,5 @@
 # Pass a Cloudflare JS / Turnstile challenge (criptonoticias.com).
+# Hard cases and diagnostics: docs/troubleshooting.md
 # The solve-challenge step waits until the challenge page is gone, clicking
 # the Turnstile checkbox when it appears. It fails on timeout or when the
 # final page answers with HTTP >= 400. Without a challenge it returns in ~3 s.
