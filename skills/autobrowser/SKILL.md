@@ -53,7 +53,7 @@ steps:
     locator: "div.quote span.text"
     as: quotes
   - while: {exists: "li.next a"}
-    max: 5
+    max: 20                     # exceeding max is an error
     do:
       - click: "li.next a"
       - wait-text: Quotes
