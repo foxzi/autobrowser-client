@@ -105,16 +105,13 @@ For any other client, find where it keeps MCP servers and add a stdio server wit
 
 ### Step 4. Install the skill
 
-**Claude Code:**
+The skill is built into the binary. `BIN install-skill` writes it to `~/.claude/skills/autobrowser/SKILL.md` and prints the path.
 
-```bash
-mkdir -p ~/.claude/skills/autobrowser
-curl -fsSL SKILL_URL -o ~/.claude/skills/autobrowser/SKILL.md
-```
+**Claude Code:** run `BIN install-skill`.
 
-On Windows use `%USERPROFILE%\.claude\skills\autobrowser\SKILL.md` and `Invoke-WebRequest SKILL_URL -OutFile <path>`.
+**Other clients with a skills directory:** run `BIN install-skill --dir <skills directory>`, for example `--dir ~/.config/nemo/skills` for NemoAgent. The file goes to `<skills directory>/autobrowser/SKILL.md`.
 
-**Other clients:** if the client supports skills or a rules / instructions file, save the content of `SKILL_URL` there. Otherwise skip this step and tell the user.
+**Clients without skills:** if the client has a rules / instructions file, add the content of the skill there (`BIN install-skill --dir <temp dir>` gives you the file, or download `SKILL_URL`). Otherwise skip this step and tell the user.
 
 ### Step 5. Verify and report
 
@@ -230,16 +227,13 @@ env = { AUTOBROWSER_BROWSER_ENGINE = "cloakbrowser" }
 
 ### Шаг 4. Установить skill
 
-**Claude Code:**
+Skill встроен в бинарь. `BIN install-skill` записывает его в `~/.claude/skills/autobrowser/SKILL.md` и печатает путь.
 
-```bash
-mkdir -p ~/.claude/skills/autobrowser
-curl -fsSL SKILL_URL -o ~/.claude/skills/autobrowser/SKILL.md
-```
+**Claude Code:** выполнить `BIN install-skill`.
 
-На Windows — путь `%USERPROFILE%\.claude\skills\autobrowser\SKILL.md` и `Invoke-WebRequest SKILL_URL -OutFile <путь>`.
+**Другие клиенты с папкой skills:** выполнить `BIN install-skill --dir <папка skills>`, например `--dir ~/.config/nemo/skills` для NemoAgent. Файл попадёт в `<папка skills>/autobrowser/SKILL.md`.
 
-**Другие клиенты:** если клиент поддерживает skills или файл правил / инструкций — сохранить туда содержимое `SKILL_URL`. Иначе пропустить шаг и сказать об этом пользователю.
+**Клиенты без skills:** если у клиента есть файл правил / инструкций — добавить туда содержимое skill (файл даст `BIN install-skill --dir <временная папка>` или можно скачать `SKILL_URL`). Иначе пропустить шаг и сказать об этом пользователю.
 
 ### Шаг 5. Проверить и отчитаться
 

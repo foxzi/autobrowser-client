@@ -96,7 +96,7 @@ Failures come back as tool errors with the browser's message, for example a time
 
 ### Skill
 
-[`skills/autobrowser/SKILL.md`](../skills/autobrowser/SKILL.md) teaches the agent how to use the tools: the snapshot/ref loop, waits, Cloudflare handling, tabs, dialogs and safety rules. For Claude Code, install it for all projects:
+[`skills/autobrowser/SKILL.md`](../skills/autobrowser/SKILL.md) teaches the agent how to use the tools: the snapshot/ref loop, waits, Cloudflare handling, tabs, dialogs and safety rules. It is built into the binary and the package: `autobrowser install-skill` writes it to `~/.claude/skills/autobrowser/SKILL.md`, `--dir <path>` picks another skills directory. Without autobrowser installed, for Claude Code:
 
 ```bash
 mkdir -p ~/.claude/skills/autobrowser
@@ -206,7 +206,7 @@ autobrowser mcp [--headless/--headed] [--profile NAME] [--proxy socks5://user:pa
 
 ### Skill
 
-[`skills/autobrowser/SKILL.md`](../skills/autobrowser/SKILL.md) объясняет агенту, как пользоваться инструментами: цикл snapshot/ref, ожидания, Cloudflare, вкладки, диалоги и правила безопасности. Для Claude Code установите его для всех проектов:
+[`skills/autobrowser/SKILL.md`](../skills/autobrowser/SKILL.md) объясняет агенту, как пользоваться инструментами: цикл snapshot/ref, ожидания, Cloudflare, вкладки, диалоги и правила безопасности. Он встроен в бинарь и пакет: `autobrowser install-skill` записывает его в `~/.claude/skills/autobrowser/SKILL.md`, `--dir <путь>` задаёт другую папку skills. Без установленного autobrowser, для Claude Code:
 
 ```bash
 mkdir -p ~/.claude/skills/autobrowser
