@@ -581,7 +581,10 @@ def load_script(path: str | Path) -> ScriptDefinition:
 def parse_script(data: dict | str, base_dir: str | Path) -> ScriptDefinition:
     """Build a scenario from an object or YAML text; ``include`` paths are relative to base_dir."""
     if isinstance(data, str):
-        data = yaml.safe_load(data) or {}
+        try:
+            data = yaml.safe_load(data) or {}
+        except yaml.YAMLError as exc:
+            raise ScriptValidationError(f"Invalid YAML: {exc}") from exc
     if not isinstance(data, dict):
         raise ScriptValidationError("Script root must be an object")
     return _build_script(data, Path(base_dir), [])

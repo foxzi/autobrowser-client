@@ -15,9 +15,11 @@ from patchright.sync_api import Error as PlaywrightError, TimeoutError as Playwr
 
 from autobrowser_client import __version__
 from autobrowser_client.browser import actions
+from autobrowser_client.browser.engine import run_script
 from autobrowser_client.browser.service import SessionManager
 from autobrowser_client.config import Settings
 from autobrowser_client.errors import AppError, BrowserStartError, ErrorCode, SessionNotFoundError
+from autobrowser_client.scenario import parse_script
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +113,12 @@ class MouseRandomRequest(BaseModel):
 class ActionChainRequest(BaseModel):
     steps: list[dict[str, Any]]
     timeout: int = 10000
+
+
+class ScriptRequest(BaseModel):
+    script: dict[str, Any] | str
+    vars: dict[str, Any] | None = None
+    page_id: str | None = Field(default=None, alias="pageId")
 
 
 class NavigateRequest(BaseModel):
@@ -220,6 +228,7 @@ def create_app(settings: Settings) -> FastAPI:
             "TIMEOUT": 504,
             "CONFIG_ERROR": 400,
             "INVALID_ARGUMENT": 400,
+            "SCRIPT_VALIDATION_ERROR": 400,
             "NOT_IMPLEMENTED": 501,
         }
         status = status_map.get(exc.code, 500)
@@ -550,6 +559,22 @@ def create_app(settings: Settings) -> FastAPI:
             "action": "chain",
             "durationMs": ms,
             "results": results,
+        }
+
+    @app.post("/api/v1/session/{session_id}/script", tags=["actions"])
+    async def api_run_script(session_id: str, body: ScriptRequest) -> dict[str, Any]:
+        session = manager.get_session(session_id)
+        # the scenario "session" block is ignored: it runs on this session
+        script = parse_script(body.script, Path.cwd())
+        result, ms = await asyncio.to_thread(
+            session.call, _timed, run_script, session, script, body.page_id, body.vars,
+        )
+        return {
+            "success": result["success"],
+            "sessionId": session_id,
+            "steps": result["steps"],
+            "vars": result["vars"],
+            "durationMs": ms,
         }
 
     # =======================================================================

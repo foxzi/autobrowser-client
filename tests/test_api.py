@@ -171,3 +171,59 @@ async def test_token_auth():
             headers={"Authorization": "Bearer wrong"},
         )
         assert r.status_code == 401
+
+
+SCRIPT_PAGE = "data:text/html,<title>T</title><h1>Hello</h1>"
+
+
+@pytest.fixture()
+async def browser_session(client: AsyncClient):
+    r = await client.post("/api/v1/browser/start", json={"urls": [SCRIPT_PAGE], "headless": True})
+    if r.status_code != 200:
+        pytest.skip(f"browser unavailable: {r.text}")
+    sid = r.json()["sessionId"]
+    yield sid
+    await client.post(f"/api/v1/session/{sid}/stop")
+
+
+@pytest.mark.anyio
+async def test_run_script_object_and_yaml(client: AsyncClient, browser_session: str):
+    url = f"/api/v1/session/{browser_session}/script"
+    obj = {"steps": [{"extract": "h1", "as": "heading"}, {"set": {"n": "${k}"}}]}
+    r = await client.post(url, json={"script": obj, "vars": {"k": 5}})
+    assert r.status_code == 200
+    data = r.json()
+    assert data["success"] is True
+    assert data["sessionId"] == browser_session
+    assert data["vars"] == {"k": 5, "heading": "Hello", "n": 5}
+    assert [s["action"] for s in data["steps"]] == ["extract", "set"]
+    assert "durationMs" in data
+
+    r = await client.post(url, json={"script": "steps:\n  - assert: {text: Hello}\n"})
+    assert r.json()["success"] is True
+
+
+@pytest.mark.anyio
+async def test_run_script_failure_is_200_with_error(client: AsyncClient, browser_session: str):
+    r = await client.post(
+        f"/api/v1/session/{browser_session}/script", json={"script": {"steps": [{"fail": "boom"}]}}
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["success"] is False
+    assert data["steps"][0]["error"] == "boom"
+
+
+@pytest.mark.anyio
+async def test_run_script_invalid_script(client: AsyncClient, browser_session: str):
+    url = f"/api/v1/session/{browser_session}/script"
+    for script in ({"steps": [{"bogus": 1}]}, "steps: [", "- not a mapping"):
+        r = await client.post(url, json={"script": script})
+        assert r.status_code == 400, script
+        assert r.json()["error"]["code"] == "SCRIPT_VALIDATION_ERROR"
+
+
+@pytest.mark.anyio
+async def test_run_script_session_not_found(client: AsyncClient):
+    r = await client.post("/api/v1/session/nope/script", json={"script": {"steps": []}})
+    assert r.status_code == 404
