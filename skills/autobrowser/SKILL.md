@@ -68,7 +68,7 @@ steps:
 
 - Locators: `"css"`, `"xpath=//a"`, `"text=Next"`, or `{type, value}`.
 - Actions: `open`, `history`, `click`, `dblclick`, `hover`, `focus`, `fill`, `type`, `clear`, `press`, `check`/`uncheck`, `select`, `submit`, `upload`, `wait` (ms or element), `wait-text`, `find`, `scroll`, `evaluate`, `extract`, `find-all`, `read`, `get-content`, `get-cookies`, `get-headers`, `screenshot`, `save`, `solve-challenge`, `browse-tabs`, `mouse-move`, `mouse-scroll-to`, `mouse-random`, `set`, `assert`, `fail`.
-- Variables: root `vars`, `${name}`, `${item.url}`, `${env.NAME}`; `as: name` stores a result; `set` assigns.
+- Variables: root `vars`, `${name}`, `${item.url}`, `${env.NAME}`; `as: name` stores a result (plain name, no `${...}`; overwritten each loop iteration); `set` assigns.
 - Conditions (`if`, `while`, `assert`): `exists`, `visible`, `text`, `url`, `urlMatches`, `title`, `var` with `equals`/`contains`/`matches`, combined by `not`/`all`/`any`; `timeout: ms` waits until true.
 - Blocks: `if/then/else`, `try/catch/finally` (`error` in catch), `forEach/as/do` (`index` too), `repeat/do`, `while/max/do`, `include`.
 - Step options: `name`, `retry`, `retryDelay`, `optional`, `stopOnError`.
