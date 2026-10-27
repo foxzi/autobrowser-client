@@ -7,7 +7,7 @@ from typing import Annotated, Any
 import typer
 
 from autobrowser_client import __version__
-from autobrowser_client.browser.executor import execute_script
+from autobrowser_client.browser.executor import _validate_output_path, execute_script
 from autobrowser_client.browser.service import SessionManager
 from autobrowser_client.config import Settings, load_settings
 from autobrowser_client.errors import AppError, NotImplementedAppError
@@ -321,6 +321,8 @@ def run_script(
     [green]autobrowser run-script -f login.yaml -p work --proxy socks5://127.0.0.1:1080[/green]
     """
     script = load_script(file)
+    if script.output.file:
+        _validate_output_path(script.output.file)
     effective_proxy = proxy or script.session.proxy
 
     # Viewport: CLI flag > scenario > config default

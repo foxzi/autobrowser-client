@@ -24,7 +24,7 @@ def _validate_output_path(file_path: str) -> Path:
     try:
         resolved = p.resolve()
         cwd = Path.cwd().resolve()
-        if not str(resolved).startswith(str(cwd)):
+        if not resolved.is_relative_to(cwd):
             raise AppError(ErrorCode.INVALID_ARGUMENT, f"Path traversal is not allowed: {file_path}")
     except (OSError, ValueError) as exc:
         raise AppError(ErrorCode.INVALID_ARGUMENT, f"Invalid file path: {file_path}") from exc
@@ -183,14 +183,8 @@ def execute_step(session: BrowserSession, step: ScriptStep, page_id: str | None 
             elif step.wait_until == "domcontentloaded":
                 page.wait_for_load_state("domcontentloaded", timeout=timeout)
             elif step.wait_until in {"visible", "hidden"}:
-                if step.locator:
-                    loc = _resolve_locator(session, step.locator, effective_page_id, step.index)
-                    if step.wait_until == "visible":
-                        loc.wait_for(state="visible", timeout=timeout)
-                    else:
-                        loc.wait_for(state="hidden", timeout=timeout)
-                else:
-                    page.wait_for_timeout(timeout)
+                loc = _resolve_locator(session, step.locator, effective_page_id, step.index)
+                loc.wait_for(state=step.wait_until, timeout=timeout)
             elif step.timeout:
                 page.wait_for_timeout(step.timeout)
             else:
@@ -225,13 +219,19 @@ def execute_step(session: BrowserSession, step: ScriptStep, page_id: str | None 
                 raise AppError(ErrorCode.INVALID_ARGUMENT, "type action requires 'value'")
             loc = _resolve_locator(session, step.locator, effective_page_id, step.index)
             loc.click(timeout=timeout)
-            delay = step.delay or 50
-            page.keyboard.type(step.value, delay=delay)
+            delay = 50 if step.delay is None else step.delay
+            for ch in step.value:
+                page.keyboard.type(ch)
+                page.wait_for_timeout(random.uniform(delay * 0.5, delay * 1.5))
 
         elif step.action == "press":
             if not step.key:
                 raise AppError(ErrorCode.INVALID_ARGUMENT, "press action requires 'key'")
-            page.keyboard.press(step.key)
+            if step.locator:
+                loc = _resolve_locator(session, step.locator, effective_page_id, step.index)
+                loc.press(step.key, timeout=timeout)
+            else:
+                page.keyboard.press(step.key)
 
         elif step.action == "scroll":
             dx = step.delta_x or 0
