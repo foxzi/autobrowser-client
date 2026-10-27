@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import sys
@@ -62,3 +63,57 @@ async def test_mcp_browser_flow() -> None:
 
         res = await call("browser_close")
         assert not res.is_error
+
+
+@pytest.mark.anyio
+async def test_mcp_run_script(tmp_path) -> None:
+    params = StdioServerParameters(
+        command=sys.executable,
+        args=["-m", "autobrowser_client.main", "mcp", "--headless"],
+        env={**os.environ, "AUTOBROWSER_LOG_LEVEL": "WARNING"},
+        cwd=tmp_path,
+    )
+    (tmp_path / "s.yaml").write_text(
+        "steps:\n  - open: \"${url}\"\n  - extract: h1\n    as: heading\n"
+    )
+    async with (
+        stdio_client(params) as (read, write),
+        ClientSession(read, write) as client,
+    ):
+        await client.initialize()
+        page = "data:text/html,<h1>Hello</h1>"
+
+        res = await client.call_tool(
+            "browser_run_script",
+            {"script": 'steps:\n  - open: "${url}"\n  - extract: h1\n    as: heading\n',
+             "vars": {"url": page}},
+        )
+        assert not res.is_error, res.content
+        data = json.loads(res.content[0].text)
+        assert data["success"] is True
+        assert data["vars"]["heading"] == "Hello"
+        assert [s["action"] for s in data["steps"]] == ["open", "extract"]
+
+        res = await client.call_tool(
+            "browser_run_script", {"file": "s.yaml", "vars": {"url": page}}
+        )
+        assert not res.is_error, res.content
+        assert json.loads(res.content[0].text)["vars"]["heading"] == "Hello"
+
+        # a failing step is reported in the result, not as a tool error
+        res = await client.call_tool(
+            "browser_run_script", {"script": "steps:\n  - fail: boom\n"}
+        )
+        assert not res.is_error
+        data = json.loads(res.content[0].text)
+        assert data["success"] is False
+        assert data["steps"][0]["error"] == "boom"
+
+        # bad arguments and invalid scripts are tool errors
+        res = await client.call_tool("browser_run_script", {})
+        assert res.is_error
+        res = await client.call_tool("browser_run_script", {"script": "steps:\n  - bogus: 1\n"})
+        assert res.is_error
+        assert "SCRIPT_VALIDATION_ERROR" in res.content[0].text
+
+        await client.call_tool("browser_close", {})

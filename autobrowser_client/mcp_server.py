@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import json
 import logging
+from pathlib import Path
 from typing import Annotated, Any, Literal
 
 from mcp.server import MCPServer
@@ -13,11 +14,12 @@ from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import Field
 
 from autobrowser_client.browser import actions
+from autobrowser_client.browser.engine import run_script
 from autobrowser_client.browser.executor import solve_cf_challenge
 from autobrowser_client.browser.service import BrowserSession, SessionState
 from autobrowser_client.config import Settings
 from autobrowser_client.errors import AppError
-from autobrowser_client.scenario import LocatorType
+from autobrowser_client.scenario import LocatorType, load_script, parse_script
 
 logger = logging.getLogger(__name__)
 
@@ -291,6 +293,40 @@ def create_server(settings: Settings, profile: str | None = None) -> MCPServer:
         """Wait for a Cloudflare challenge to pass, clicking Turnstile when shown."""
         return json.dumps(
             run(lambda s: solve_cf_challenge(s.get_page(page_id), timeout_ms)),
+            default=str,
+        )
+
+    @server.tool()
+    def browser_run_script(
+        script: Annotated[
+            str | None, Field(description="Scenario as YAML text (JSON also works)")
+        ] = None,
+        file: Annotated[str | None, Field(description="Path of a scenario file")] = None,
+        vars: Annotated[
+            dict[str, str] | None, Field(description="Variables, override the scenario vars")
+        ] = None,
+        page_id: PageId = None,
+    ) -> str:
+        """Run a multi-step scenario (YAML) in one call: variables, if/try/forEach/while, retries.
+
+        Pass exactly one of script or file. Runs on the current browser session: the
+        scenario `session` block is ignored. `include` paths are relative to the file's
+        directory, or to the working directory for inline script text.
+        Returns JSON {success, steps, vars}.
+        """
+        if (script is None) == (file is None):
+            raise ToolError("Pass exactly one of script or file")
+        try:
+            definition = (
+                load_script(file) if file is not None else parse_script(script, Path.cwd())
+            )
+        except AppError as exc:
+            raise ToolError(f"{exc.code}: {exc.message}") from exc
+        except Exception as exc:  # unreadable file, invalid YAML/JSON
+            raise ToolError(f"Invalid script: {exc}"[:2000]) from exc
+        return json.dumps(
+            run(lambda s: run_script(s, definition, page_id, vars)),
+            ensure_ascii=False,
             default=str,
         )
 
