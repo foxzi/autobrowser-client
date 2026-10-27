@@ -7,6 +7,7 @@ python -m PyInstaller --noconfirm --clean --onefile --name autobrowser \
   --collect-all patchright \
   --collect-all cloakbrowser \
   --collect-all autobrowser_client \
+  --add-data "skills/autobrowser/SKILL.md:autobrowser_client/skill" \
   --collect-submodules uvicorn \
   --collect-submodules mcp \
   autobrowser_client/main.py

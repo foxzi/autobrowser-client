@@ -368,6 +368,25 @@ def mcp(
     run_server(settings, profile)
 
 
+@app.command("install-skill")
+def install_skill(
+    skills_dir: Annotated[
+        Path,
+        typer.Option("--dir", help="Skills directory of the agent client."),
+    ] = Path("~/.claude/skills"),
+) -> None:
+    """Install the agent skill into SKILLS_DIR/autobrowser/SKILL.md."""
+    package = Path(__file__).resolve().parents[1]
+    # Bundled into the wheel and the binary; fall back to the repo copy in a checkout
+    source = package / "skill" / "SKILL.md"
+    if not source.exists():
+        source = package.parent / "skills" / "autobrowser" / "SKILL.md"
+    target = skills_dir.expanduser() / "autobrowser" / "SKILL.md"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+    typer.echo(target)
+
+
 @app.command("install")
 def install(
     config: Annotated[

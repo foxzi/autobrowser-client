@@ -35,3 +35,6 @@ testpaths = ["tests"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["autobrowser_client"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"skills/autobrowser/SKILL.md" = "autobrowser_client/skill/SKILL.md"
