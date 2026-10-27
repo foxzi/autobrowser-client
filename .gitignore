@@ -7,6 +7,6 @@ build/
 .pytest_cache/
 .mypy_cache/
 .profiles/
-profiles/
+/profiles/
 output/
 work*/
