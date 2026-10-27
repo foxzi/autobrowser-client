@@ -452,6 +452,28 @@ Failure semantics follow exceptions:
 
 `errorArtifacts: <dir>` in the scenario, or `autobrowser run-script --artifacts DIR`: when a non-optional step fails (last attempt), a viewport screenshot and the page HTML are saved as `<dir>/<NNN>-<action>.png` and `.html` (the counter grows during the run). The step result gets `artifacts: {screenshot, html}`. The paths follow the same rules as other output files (inside the working directory). A failure to save artifacts is logged and never raised.
 
+### Editor support
+
+`scenario.schema.json` in the repository root is a JSON Schema (draft 2020-12) for scenario files: completion, hover docs and error highlighting for every action, shorthand step, condition and block. It is for editors only; `autobrowser validate-script` uses the pydantic models.
+
+Per file (VS Code with the Red Hat YAML extension, Neovim/Helix with yaml-language-server), first line of the scenario:
+
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/foxzi/autobrowser-client/main/scenario.schema.json
+```
+
+For a whole folder, in VS Code `settings.json`:
+
+```json
+{
+  "yaml.schemas": {
+    "https://raw.githubusercontent.com/foxzi/autobrowser-client/main/scenario.schema.json": ["examples/*.yaml", "scenarios/**/*.yaml"]
+  }
+}
+```
+
+JetBrains IDEs: Settings -> Languages & Frameworks -> Schemas and DTDs -> JSON Schema Mappings, add the file or URL and the file patterns. A local path (`./scenario.schema.json`) works instead of the URL inside this repository.
+
 ### Validation
 
 Scripts should be validated against JSON Schema before execution.
@@ -809,6 +831,28 @@ steps:
 ### Артефакты ошибок
 
 `errorArtifacts: <каталог>` в сценарии или `autobrowser run-script --artifacts DIR`: при падении неопционального шага (последняя попытка) сохраняются скриншот области просмотра и HTML страницы как `<каталог>/<NNN>-<действие>.png` и `.html` (счётчик растёт в течение запуска). В результате шага появляется `artifacts: {screenshot, html}`. Пути подчиняются тем же правилам, что и другие выходные файлы (внутри рабочего каталога). Ошибка сохранения артефактов логируется и не пробрасывается.
+
+### Поддержка в редакторах
+
+`scenario.schema.json` в корне репозитория - JSON Schema (draft 2020-12) для файлов сценариев: автодополнение, подсказки и подсветка ошибок для всех действий, сокращённых шагов, условий и блоков. Схема нужна только редакторам; `autobrowser validate-script` проверяет по pydantic-моделям.
+
+Для одного файла (VS Code с расширением Red Hat YAML, Neovim/Helix с yaml-language-server) первая строка сценария:
+
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/foxzi/autobrowser-client/main/scenario.schema.json
+```
+
+Для папки целиком, в `settings.json` VS Code:
+
+```json
+{
+  "yaml.schemas": {
+    "https://raw.githubusercontent.com/foxzi/autobrowser-client/main/scenario.schema.json": ["examples/*.yaml", "scenarios/**/*.yaml"]
+  }
+}
+```
+
+JetBrains IDE: Settings -> Languages & Frameworks -> Schemas and DTDs -> JSON Schema Mappings, добавьте файл или URL и шаблоны файлов. Внутри этого репозитория вместо URL подходит локальный путь (`./scenario.schema.json`).
 
 ### Валидация
 
