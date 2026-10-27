@@ -27,11 +27,11 @@ ActionName = Literal[
     "browse-tabs",
     "solve-challenge",
 ]
-LocatorType = Literal["css", "xpath", "id", "name", "class", "text", "attribute"]
+LocatorType = Literal["css", "xpath", "id", "name", "class", "text", "attribute", "ref"]
 WaitUntil = Literal["domcontentloaded", "load", "networkidle", "visible", "hidden"]
 
 
-_LOCATOR_TYPES = {"css", "xpath", "id", "name", "class", "text", "attribute"}
+_LOCATOR_TYPES = {"css", "xpath", "id", "name", "class", "text", "attribute", "ref"}
 _ID_RE = re.compile(r"^#[a-zA-Z_][\w-]*$")
 _CLASS_RE = re.compile(r"^\.[a-zA-Z_][\w-]*$")
 _WAIT_STATES = {"load", "domcontentloaded", "networkidle"}

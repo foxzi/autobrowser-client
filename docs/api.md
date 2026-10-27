@@ -118,6 +118,20 @@ Authorization: Bearer <token>
 
 - `POST /api/v1/session/{id}/pages/{pageId}/actions/run` - run a sequence of actions
 
+#### Pages and agent operations
+
+- `GET /api/v1/session/{id}/pages` - list open tabs (tabs opened by the page, e.g. popups, are registered automatically)
+- `POST /api/v1/session/{id}/pages` - open a new tab (body: `{"url": "..."}`, optional)
+- `DELETE /api/v1/session/{id}/pages/{pageId}` - close a tab
+- `GET .../snapshot` - accessibility tree with `[ref=eN]` marks; pass a ref as locator `{"type": "ref", "value": "e2"}`
+- `POST .../screenshot` - PNG in base64 (body: `fullPage`, optional `locator` for one element)
+- `POST .../navigate` - go to URL (body: `url`, `waitUntil`, `timeout`)
+- `POST .../history` - `direction`: `back`, `forward` or `reload`
+- `POST .../evaluate` - run JS expression or function source (body: `expression`, `isolated`, default main world)
+- `POST .../wait-text` - wait for text to appear, or to disappear with `gone: true`
+
+> Refs are valid until the page changes; take a new snapshot after navigation or DOM updates.
+
 ### Request models
 
 #### ElementRequest
@@ -214,6 +228,7 @@ Supported `type` values:
 - `class`
 - `text`
 - `attribute`
+- `ref` - ref from `snapshot` (e.g. `e2`)
 
 #### Wait options
 
@@ -309,6 +324,7 @@ Note: the browser engine (`patchright` or `cloakbrowser`) is a process-wide sett
 | `PAGE_NOT_FOUND` | 404 | Page ID not found |
 | `PROFILE_NOT_FOUND` | 404 | Profile does not exist |
 | `PROFILE_LOCKED` | 409 | Profile is locked by another session |
+| `ACTION_FAILED` | 422 | Browser action failed (JS error, detached element, etc.) |
 | `NOT_IMPLEMENTED` | 501 | Feature not implemented |
 | `BROWSER_START_FAILED` | 502 | Browser failed to start |
 | `TIMEOUT` | 504 | Operation timed out |
@@ -436,6 +452,20 @@ Authorization: Bearer <token>
 
 - `POST /api/v1/session/{id}/pages/{pageId}/actions/run` - запуск последовательности действий
 
+#### Вкладки и операции для агентов
+
+- `GET /api/v1/session/{id}/pages` - список открытых вкладок (вкладки, открытые страницей, например popup, регистрируются автоматически)
+- `POST /api/v1/session/{id}/pages` - открыть новую вкладку (тело: `{"url": "..."}`, необязательно)
+- `DELETE /api/v1/session/{id}/pages/{pageId}` - закрыть вкладку
+- `GET .../snapshot` - дерево доступности с метками `[ref=eN]`; ref передается как локатор `{"type": "ref", "value": "e2"}`
+- `POST .../screenshot` - PNG в base64 (тело: `fullPage`, необязательный `locator` для одного элемента)
+- `POST .../navigate` - переход по URL (тело: `url`, `waitUntil`, `timeout`)
+- `POST .../history` - `direction`: `back`, `forward` или `reload`
+- `POST .../evaluate` - выполнить JS-выражение или функцию (тело: `expression`, `isolated`, по умолчанию main world)
+- `POST .../wait-text` - ждать появления текста, или исчезновения при `gone: true`
+
+> Ref действительны, пока страница не изменилась; после навигации или обновления DOM сделайте новый snapshot.
+
 ### Модели запросов
 
 #### ElementRequest
@@ -532,6 +562,7 @@ Authorization: Bearer <token>
 - `class`
 - `text`
 - `attribute`
+- `ref` - ref из `snapshot` (например `e2`)
 
 #### Параметры ожидания
 
@@ -626,6 +657,7 @@ Authorization: Bearer <token>
 | `PAGE_NOT_FOUND` | 404 | Страница не найдена |
 | `PROFILE_NOT_FOUND` | 404 | Профиль не существует |
 | `PROFILE_LOCKED` | 409 | Профиль заблокирован другой сессией |
+| `ACTION_FAILED` | 422 | Ошибка действия в браузере (ошибка JS, элемент отсоединен и т.п.) |
 | `NOT_IMPLEMENTED` | 501 | Функция не реализована |
 | `BROWSER_START_FAILED` | 502 | Браузер не удалось запустить |
 | `TIMEOUT` | 504 | Таймаут операции |

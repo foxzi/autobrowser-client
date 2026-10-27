@@ -10,6 +10,8 @@ class ErrorCode(StrEnum):
     SESSION_NOT_FOUND = "SESSION_NOT_FOUND"
     BROWSER_START_FAILED = "BROWSER_START_FAILED"
     PROFILE_NOT_FOUND = "PROFILE_NOT_FOUND"
+    PAGE_NOT_FOUND = "PAGE_NOT_FOUND"
+    ACTION_FAILED = "ACTION_FAILED"
     TIMEOUT = "TIMEOUT"
     NOT_IMPLEMENTED = "NOT_IMPLEMENTED"
     INTERNAL_ERROR = "INTERNAL_ERROR"
@@ -45,3 +47,8 @@ class BrowserStartError(AppError):
 class NotImplementedAppError(AppError):
     def __init__(self, message: str) -> None:
         super().__init__(ErrorCode.NOT_IMPLEMENTED, message)
+
+
+class PageNotFoundError(AppError):
+    def __init__(self, page_id: str) -> None:
+        super().__init__(ErrorCode.PAGE_NOT_FOUND, f"Page not found: {page_id}")

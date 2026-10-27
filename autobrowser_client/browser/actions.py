@@ -3,8 +3,9 @@ from __future__ import annotations
 
 import logging
 import random
+import base64
 import time
-from typing import Any
+from typing import Any, Literal
 
 from patchright.sync_api import Page, Locator as PwLocator
 
@@ -30,7 +31,97 @@ def resolve_locator(page: Page, loc_type: LocatorType, value: str) -> PwLocator:
         return page.get_by_text(value)
     elif loc_type == "attribute":
         return page.locator(f"[{value}]")
+    elif loc_type == "ref":
+        # Ref from the latest snapshot(), e.g. "e12"
+        return page.get_by_ref(value)
     return page.locator(value)
+
+
+# ---------------------------------------------------------------------------
+# Page-level operations for agents
+# ---------------------------------------------------------------------------
+
+def _truncate(session: BrowserSession, text: str) -> tuple[str, bool]:
+    max_bytes = session.settings.output.max_content_bytes
+    data = text.encode("utf-8")
+    if max_bytes and len(data) > max_bytes:
+        return data[:max_bytes].decode("utf-8", errors="ignore"), True
+    return text, False
+
+
+def page_snapshot(session: BrowserSession, page_id: str, timeout: int = 10000) -> dict[str, Any]:
+    """Accessibility tree with [ref=eN] marks; use refs as locator type "ref"."""
+    page = session.get_page(page_id)
+    text, truncated = _truncate(session, page.aria_snapshot(mode="ai", timeout=timeout))
+    return {"url": page.url, "title": page.title(), "snapshot": text, "truncated": truncated}
+
+
+def take_screenshot(
+    session: BrowserSession,
+    page_id: str,
+    full_page: bool = False,
+    loc_type: LocatorType | None = None,
+    value: str | None = None,
+    timeout: int = 10000,
+) -> dict[str, Any]:
+    """PNG screenshot of the page or one element, base64-encoded."""
+    page = session.get_page(page_id)
+    if loc_type and value:
+        png = resolve_locator(page, loc_type, value).first.screenshot(timeout=timeout)
+    else:
+        png = page.screenshot(full_page=full_page, timeout=timeout)
+    return {"mimeType": "image/png", "data": base64.b64encode(png).decode("ascii")}
+
+
+def navigate(
+    session: BrowserSession,
+    page_id: str,
+    url: str,
+    wait_until: str = "load",
+    timeout: int = 30000,
+) -> dict[str, Any]:
+    page = session.get_page(page_id)
+    resp = page.goto(url, wait_until=wait_until, timeout=timeout)  # type: ignore[arg-type]
+    return {"url": page.url, "title": page.title(), "status": resp.status if resp else None}
+
+
+def history(
+    session: BrowserSession,
+    page_id: str,
+    direction: Literal["back", "forward", "reload"],
+    timeout: int = 30000,
+) -> dict[str, Any]:
+    page = session.get_page(page_id)
+    if direction == "back":
+        resp = page.go_back(timeout=timeout)
+    elif direction == "forward":
+        resp = page.go_forward(timeout=timeout)
+    else:
+        resp = page.reload(timeout=timeout)
+    return {"url": page.url, "title": page.title(), "status": resp.status if resp else None}
+
+
+def evaluate(
+    session: BrowserSession,
+    page_id: str,
+    expression: str,
+    isolated: bool = False,
+) -> dict[str, Any]:
+    """Run JS (expression or function source). Main world by default so page globals are visible."""
+    page = session.get_page(page_id)
+    return {"result": page.evaluate(expression, isolated_context=isolated)}
+
+
+def wait_for_text(
+    session: BrowserSession,
+    page_id: str,
+    text: str,
+    gone: bool = False,
+    timeout: int = 10000,
+) -> dict[str, Any]:
+    page = session.get_page(page_id)
+    page.get_by_text(text).first.wait_for(state="hidden" if gone else "visible", timeout=timeout)
+    return {"text": text, "gone": gone}
 
 
 # ---------------------------------------------------------------------------

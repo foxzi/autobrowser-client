@@ -16,7 +16,7 @@ TABS_FILE = "tabs.json"
 from patchright.sync_api import sync_playwright, Playwright, Browser, BrowserContext, Page, Request, Response
 
 from autobrowser_client.config import Settings
-from autobrowser_client.errors import BrowserStartError, SessionNotFoundError
+from autobrowser_client.errors import BrowserStartError, PageNotFoundError, SessionNotFoundError
 from autobrowser_client.fingerprint.config import (
     FingerprintConfig, Platform, load_fingerprint, merge_fingerprint,
 )
@@ -189,6 +189,7 @@ class BrowserSession:
         self._proxy_relay: ProxyRelay | None = None
         self._profile_lock: ProfileLock | None = None
         self._profile_dir: Path | None = None
+        self._next_page = 0
         # Playwright sync objects are bound to the thread that created them,
         # so every browser call of this session runs on one worker thread.
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix=session_id)
@@ -444,6 +445,12 @@ class BrowserSession:
 
                 self._context.on("page", _on_new_page)
 
+            # Track tabs opened later (popups, target=_blank, new_tab)
+            self._next_page = len(self._pages)
+            self._context.on("page", self._register_page)
+            for page_id, page in self._pages.items():
+                page.on("close", lambda _p, pid=page_id: self._pages.pop(pid, None))
+
             self.state = SessionState.RUNNING
             logger.info("Session %s is running", self.session_id)
 
@@ -565,8 +572,30 @@ class BrowserSession:
         if page_id is None:
             return next(iter(self._pages.values()))
         if page_id not in self._pages:
-            raise BrowserStartError(f"Page not found: {page_id}")
+            raise PageNotFoundError(page_id)
         return self._pages[page_id]
+
+    def _register_page(self, page: Page) -> str:
+        for page_id, known in self._pages.items():
+            if known is page:
+                return page_id
+        page_id = f"page_{self._next_page}"
+        self._next_page += 1
+        self._pages[page_id] = page
+        self._attach_listeners(page_id, page)
+        page.on("close", lambda _p: self._pages.pop(page_id, None))
+        logger.info("Registered new tab %s", page_id)
+        return page_id
+
+    def new_tab(self, url: str | None = None) -> str:
+        page_id = self._register_page(self.context.new_page())
+        if url:
+            self._pages[page_id].goto(url, timeout=self.settings.timeouts.navigation_ms)
+        return page_id
+
+    def close_tab(self, page_id: str) -> None:
+        self.get_page(page_id).close()
+        self._pages.pop(page_id, None)
 
     def list_pages(self) -> dict[str, str]:
         return {pid: page.url for pid, page in self._pages.items()}

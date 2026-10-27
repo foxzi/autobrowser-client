@@ -67,6 +67,8 @@ def test_all_error_codes_defined():
         "SESSION_NOT_FOUND",
         "BROWSER_START_FAILED",
         "PROFILE_NOT_FOUND",
+        "PAGE_NOT_FOUND",
+        "ACTION_FAILED",
         "TIMEOUT",
         "NOT_IMPLEMENTED",
         "INTERNAL_ERROR",

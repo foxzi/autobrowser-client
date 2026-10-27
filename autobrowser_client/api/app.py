@@ -11,12 +11,13 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from patchright.sync_api import Error as PlaywrightError, TimeoutError as PlaywrightTimeoutError
 
 from autobrowser_client import __version__
 from autobrowser_client.browser import actions
 from autobrowser_client.browser.service import SessionManager
 from autobrowser_client.config import Settings
-from autobrowser_client.errors import AppError, BrowserStartError, SessionNotFoundError
+from autobrowser_client.errors import AppError, BrowserStartError, ErrorCode, SessionNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +113,38 @@ class ActionChainRequest(BaseModel):
     timeout: int = 10000
 
 
+class NavigateRequest(BaseModel):
+    url: str
+    wait_until: str = Field(default="load", alias="waitUntil")
+    timeout: int = 30000
+
+
+class HistoryRequest(BaseModel):
+    direction: str = Field(pattern="^(back|forward|reload)$")
+    timeout: int = 30000
+
+
+class EvaluateRequest(BaseModel):
+    expression: str
+    isolated: bool = False
+
+
+class ScreenshotRequest(BaseModel):
+    full_page: bool = Field(default=False, alias="fullPage")
+    locator: LocatorBody | None = None
+    timeout: int = 10000
+
+
+class WaitTextRequest(BaseModel):
+    text: str
+    gone: bool = False
+    timeout: int = 10000
+
+
+class NewTabRequest(BaseModel):
+    url: str | None = None
+
+
 class CreateProfileRequest(BaseModel):
     name: str
 
@@ -171,6 +204,7 @@ def create_app(settings: Settings) -> FastAPI:
     async def app_error_handler(_request: Request, exc: AppError) -> JSONResponse:
         status_map: dict[str, int] = {
             "SESSION_NOT_FOUND": 404,
+            "PAGE_NOT_FOUND": 404,
             "BROWSER_START_FAILED": 502,
             "TIMEOUT": 504,
             "CONFIG_ERROR": 400,
@@ -179,6 +213,13 @@ def create_app(settings: Settings) -> FastAPI:
         }
         status = status_map.get(exc.code, 500)
         return _error_response(exc, status)
+
+    @app.exception_handler(PlaywrightError)
+    async def browser_error_handler(_request: Request, exc: PlaywrightError) -> JSONResponse:
+        # Surface the browser message (element not found, timeout, JS error) to the caller
+        if isinstance(exc, PlaywrightTimeoutError):
+            return _error_response(AppError(ErrorCode.TIMEOUT, exc.message), 504)
+        return _error_response(AppError(ErrorCode.ACTION_FAILED, exc.message), 422)
 
     # --- Optional token auth middleware ---
     if settings.api.token:
@@ -499,5 +540,60 @@ def create_app(settings: Settings) -> FastAPI:
             "durationMs": ms,
             "results": results,
         }
+
+    # =======================================================================
+    # Agent-oriented page operations
+    # =======================================================================
+
+    async def _page_op(session_id: str, page_id: str, action: str, fn: Any, *args: Any) -> dict[str, Any]:
+        session = manager.get_session(session_id)
+        data, ms = await asyncio.to_thread(session.call, _timed, fn, session, page_id, *args)
+        return {"success": True, "sessionId": session_id, "pageId": page_id, "action": action, "durationMs": ms, "result": data}
+
+    @app.get("/api/v1/session/{session_id}/pages", tags=["pages"])
+    async def api_list_pages(session_id: str) -> dict[str, Any]:
+        session = manager.get_session(session_id)
+        pages = await asyncio.to_thread(session.call, session.list_pages)
+        return {"success": True, "sessionId": session_id, "pages": pages}
+
+    @app.post("/api/v1/session/{session_id}/pages", tags=["pages"])
+    async def api_new_tab(session_id: str, body: NewTabRequest) -> dict[str, Any]:
+        session = manager.get_session(session_id)
+        page_id = await asyncio.to_thread(session.call, session.new_tab, body.url)
+        return {"success": True, "sessionId": session_id, "pageId": page_id}
+
+    @app.delete("/api/v1/session/{session_id}/pages/{page_id}", tags=["pages"])
+    async def api_close_tab(session_id: str, page_id: str) -> dict[str, Any]:
+        session = manager.get_session(session_id)
+        await asyncio.to_thread(session.call, session.close_tab, page_id)
+        return {"success": True, "sessionId": session_id, "pageId": page_id}
+
+    @app.get("/api/v1/session/{session_id}/pages/{page_id}/snapshot", tags=["pages"])
+    async def api_snapshot(session_id: str, page_id: str, timeout: int = 10000) -> dict[str, Any]:
+        return await _page_op(session_id, page_id, "snapshot", actions.page_snapshot, timeout)
+
+    @app.post("/api/v1/session/{session_id}/pages/{page_id}/screenshot", tags=["pages"])
+    async def api_screenshot(session_id: str, page_id: str, body: ScreenshotRequest) -> dict[str, Any]:
+        loc = body.locator
+        return await _page_op(
+            session_id, page_id, "screenshot", actions.take_screenshot,
+            body.full_page, loc.type if loc else None, loc.value if loc else None, body.timeout,
+        )
+
+    @app.post("/api/v1/session/{session_id}/pages/{page_id}/navigate", tags=["pages"])
+    async def api_navigate(session_id: str, page_id: str, body: NavigateRequest) -> dict[str, Any]:
+        return await _page_op(session_id, page_id, "navigate", actions.navigate, body.url, body.wait_until, body.timeout)
+
+    @app.post("/api/v1/session/{session_id}/pages/{page_id}/history", tags=["pages"])
+    async def api_history(session_id: str, page_id: str, body: HistoryRequest) -> dict[str, Any]:
+        return await _page_op(session_id, page_id, body.direction, actions.history, body.direction, body.timeout)
+
+    @app.post("/api/v1/session/{session_id}/pages/{page_id}/evaluate", tags=["pages"])
+    async def api_evaluate(session_id: str, page_id: str, body: EvaluateRequest) -> dict[str, Any]:
+        return await _page_op(session_id, page_id, "evaluate", actions.evaluate, body.expression, body.isolated)
+
+    @app.post("/api/v1/session/{session_id}/pages/{page_id}/wait-text", tags=["pages"])
+    async def api_wait_text(session_id: str, page_id: str, body: WaitTextRequest) -> dict[str, Any]:
+        return await _page_op(session_id, page_id, "wait-text", actions.wait_for_text, body.text, body.gone, body.timeout)
 
     return app
