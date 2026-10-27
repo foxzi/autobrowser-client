@@ -45,6 +45,7 @@ ActionName = Literal[
     "mouse-scroll-to",
     "mouse-random",
     "set",
+    "assert",
 ]
 LocatorType = Literal["css", "xpath", "id", "name", "class", "text", "attribute", "ref"]
 WaitUntil = Literal["domcontentloaded", "load", "networkidle", "visible", "hidden"]
@@ -237,6 +238,10 @@ def _expand_shorthand_step(d: dict) -> dict:
         _check_conflict("text")
         result["text"] = value
 
+    elif verb == "assert":
+        _check_conflict("condition")
+        result["condition"] = value
+
     elif verb == "set":
         _check_conflict("vars")
         result["vars"] = value
@@ -250,6 +255,45 @@ def _expand_shorthand_step(d: dict) -> dict:
             raise ValueError(f"'{verb}' shorthand expects null value, got: {value!r}")
 
     return result
+
+
+class Condition(BaseModel):
+    """Check used by ``if``, ``while`` and ``assert``: exactly one condition key."""
+
+    model_config = ConfigDict(extra="forbid", coerce_numbers_to_str=True)
+
+    exists: Locator | None = None
+    visible: Locator | None = None
+    text: str | None = None
+    url: str | None = None
+    url_matches: str | None = Field(default=None, alias="urlMatches")
+    title: str | None = None
+    var: str | None = None
+    equals: Any = None
+    contains: str | None = None
+    matches: str | None = None
+    not_: Condition | None = Field(default=None, alias="not")
+    all_: list[Condition] | None = Field(default=None, alias="all")
+    any_: list[Condition] | None = Field(default=None, alias="any")
+    timeout: int = 0
+
+    @model_validator(mode="after")
+    def _validate_keys(self) -> "Condition":
+        keys = ("exists", "visible", "text", "url", "url_matches", "title", "var", "not_", "all_", "any_")
+        if sum(getattr(self, k) is not None for k in keys) != 1:
+            raise ValueError(
+                "condition needs exactly one of: exists, visible, text, url, urlMatches, "
+                "title, var, not, all, any"
+            )
+        has_var_opts = "equals" in self.model_fields_set or self.contains or self.matches
+        if has_var_opts and self.var is None:
+            raise ValueError("'equals', 'contains' and 'matches' require 'var'")
+        if self.timeout and (self.not_ is not None or self.all_ is not None or self.any_ is not None):
+            raise ValueError("'timeout' is only allowed on a leaf condition")
+        return self
+
+
+Condition.model_rebuild()
 
 
 class ScriptStep(BaseModel):
@@ -292,6 +336,8 @@ class ScriptStep(BaseModel):
     seed: int | None = None
     as_name: str | None = Field(default=None, alias="as")
     vars: dict[str, Any] | None = None
+    condition: Condition | None = None
+    message: str | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -332,6 +378,8 @@ class ScriptStep(BaseModel):
             raise ValueError(f"'{self.action}' step requires 'file'")
         if self.action == "set" and not self.vars:
             raise ValueError("'set' step requires 'vars'")
+        if self.action == "assert" and self.condition is None:
+            raise ValueError("'assert' step requires 'condition'")
         if self.as_name is not None:
             if self.action not in _VALUE_ACTIONS:
                 raise ValueError(f"'as' is not supported by '{self.action}'")

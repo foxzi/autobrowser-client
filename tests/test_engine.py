@@ -129,3 +129,83 @@ def test_as_validation():
         _script([{"extract": "a", "as": "1bad"}])
     with pytest.raises(ValueError):
         _script([{"set": {}}])
+
+
+def _cond(data: dict, session, variables=None):
+    from autobrowser_client.scenario import Condition
+
+    return engine.check_condition(session, Condition.model_validate(data), variables or {})
+
+
+def test_condition_page_checks(session):
+    page = session.get_page.return_value
+    page.locator.return_value.count.return_value = 2
+    page.locator.return_value.first.is_visible.return_value = False
+    page.inner_text.return_value = "Hello world"
+    page.url = "https://a.com/x?y=1"
+    page.title.return_value = "My Title"
+    assert _cond({"exists": "#a"}, session)
+    assert not _cond({"visible": "#a"}, session)
+    assert _cond({"text": "world"}, session) and not _cond({"text": "bye"}, session)
+    assert _cond({"url": "a.com/x"}, session)
+    assert _cond({"urlMatches": r"x\?y=\d"}, session) and not _cond({"urlMatches": r"^http:"}, session)
+    assert _cond({"title": "Title"}, session)
+    page.locator.return_value.count.return_value = 0
+    assert not _cond({"exists": "#a"}, session)
+
+
+def test_condition_never_raises_for_page_errors(session):
+    session.get_page.return_value.locator.return_value.count.side_effect = RuntimeError("boom")
+    assert _cond({"exists": "#a"}, session) is False
+    session.get_page.side_effect = RuntimeError("no page")
+    assert _cond({"text": "x"}, session) is False
+
+
+def test_condition_var(session):
+    v = {"a": 5, "s": "hello", "l": ["x"], "z": 0, "u": {"k": "v"}}
+    assert _cond({"var": "a"}, session, v) and not _cond({"var": "z"}, session, v)
+    assert not _cond({"var": "undefined"}, session, v)
+    assert _cond({"var": "a", "equals": 5}, session, v) and not _cond({"var": "a", "equals": 6}, session, v)
+    assert _cond({"var": "s", "contains": "ell"}, session, v)
+    assert _cond({"var": "l", "contains": "x"}, session, v)
+    assert _cond({"var": "s", "matches": "^h.l+o$"}, session, v)
+    assert _cond({"var": "u.k", "equals": "v"}, session, v)
+    assert not _cond({"var": "undefined", "equals": 1}, session, v)
+
+
+def test_condition_combinators(session):
+    v = {"a": 1}
+    t, f = {"var": "a"}, {"var": "nope"}
+    assert _cond({"not": f}, session, v) and not _cond({"not": t}, session, v)
+    assert _cond({"all": [t, t]}, session, v) and not _cond({"all": [t, f]}, session, v)
+    assert _cond({"any": [f, t]}, session, v) and not _cond({"any": [f, f]}, session, v)
+
+
+def test_condition_timeout_polls(session, monkeypatch):
+    page = session.get_page.return_value
+    counts = iter([0, 0, 1])
+    page.locator.return_value.count.side_effect = lambda: next(counts)
+    sleeps = []
+    monkeypatch.setattr(engine, "_sleep", sleeps.append)
+    assert _cond({"exists": "#a", "timeout": 5000}, session)
+    assert sleeps == [250, 250]
+    page.locator.return_value.count.side_effect = None
+    page.locator.return_value.count.return_value = 0
+    assert not _cond({"exists": "#a", "timeout": 30}, session)
+
+
+@pytest.mark.parametrize("data", [{}, {"exists": "a", "text": "b"}, {"equals": 1}, {"not": {"var": "a"}, "timeout": 5}])
+def test_condition_validation(data):
+    from autobrowser_client.scenario import Condition
+
+    with pytest.raises(ValueError):
+        Condition.model_validate(data)
+
+
+def test_assert_step(session, calls):
+    ok = run_script(session, _script([{"assert": {"var": "a", "equals": 1}}], vars={"a": 1}))
+    assert ok["success"] and ok["steps"][0]["data"] == {"condition": True}
+    bad = run_script(session, _script([{"assert": {"var": "a", "equals": "${b}"}, "message": "a is ${a}"}], vars={"a": 1, "b": 2}))
+    assert bad["success"] is False and bad["steps"][0]["error"] == "a is 1"
+    bad = run_script(session, _script([{"assert": {"var": "a", "equals": 2}}], vars={"a": 1}))
+    assert bad["steps"][0]["error"].startswith("assertion failed: ")
