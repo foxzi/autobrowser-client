@@ -38,6 +38,8 @@ Install autobrowser by following https://github.com/foxzi/autobrowser-client/blo
 | `autobrowser serve` | Start HTTP API server |
 | `autobrowser mcp` | Start MCP server (stdio) for AI agents |
 | `autobrowser install` | Download the browser for the configured engine |
+| `autobrowser install-skill [--dir DIR]` | Install the agent skill |
+| `autobrowser update [--check]` | Update the binary to the latest release |
 | `autobrowser generate-fingerprint --profile DIR` | Generate fingerprint.json for a profile |
 
 Common flags: `--config`, `--profile`, `--proxy`, `--viewport`, `--output`, `--headless/--headful`, `--timeout`, `--preserve-session`.

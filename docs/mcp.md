@@ -106,6 +106,10 @@ curl -fsSL https://raw.githubusercontent.com/foxzi/autobrowser-client/main/skill
 
 or copy the `skills/autobrowser` folder to `.claude/skills/` of a project. Other agents can take the file as a system prompt or rules file.
 
+### Updates
+
+The binary updates itself. `autobrowser mcp` and `autobrowser serve` check the latest GitHub release at most once a day in the background; a newer binary is downloaded, verified against its `.sha256` and put in place of the current one. It takes effect on the next start. Log lines go to stderr. `autobrowser update` updates right away, `autobrowser update --check` only reports. Set `AUTOBROWSER_NO_AUTO_UPDATE=1` to turn the background check off. A pip/uv install is not updated this way: upgrade the package instead.
+
 ### Security
 
 The agent controls a real browser. `browser_file_upload` can read any local file the server process can read, and `browser_evaluate` runs arbitrary JS in the page. Connect the server only to agents you trust.
@@ -215,6 +219,10 @@ curl -fsSL https://raw.githubusercontent.com/foxzi/autobrowser-client/main/skill
 ```
 
 или скопируйте папку `skills/autobrowser` в `.claude/skills/` проекта. Другим агентам файл можно подключить как системный промпт или файл правил.
+
+### Обновления
+
+Бинарь обновляется сам. `autobrowser mcp` и `autobrowser serve` не чаще раза в сутки в фоне проверяют последний релиз на GitHub; новый бинарь скачивается, сверяется с `.sha256` и заменяет текущий. Новая версия заработает при следующем запуске. Сообщения идут в stderr. `autobrowser update` обновляет сразу, `autobrowser update --check` только сообщает о новой версии. `AUTOBROWSER_NO_AUTO_UPDATE=1` отключает фоновую проверку. Установка через pip/uv так не обновляется: обновляйте пакет.
 
 ### Безопасность
 
