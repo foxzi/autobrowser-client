@@ -1,4 +1,5 @@
-"""Manage socks2http relay subprocess."""
+"""Manage the local proxy relay: socks2http subprocess or the built-in one."""
+
 from __future__ import annotations
 
 import logging
@@ -9,6 +10,7 @@ import time
 from pathlib import Path
 
 from autobrowser_client.config import ProxySettings
+from autobrowser_client.proxy.builtin import BuiltinRelay
 from autobrowser_client.errors import AppError, ErrorCode
 
 logger = logging.getLogger(__name__)
@@ -44,6 +46,7 @@ class ProxyRelay:
     def __init__(self, settings: ProxySettings) -> None:
         self.settings = settings
         self._process: subprocess.Popen | None = None  # type: ignore[type-arg]
+        self._builtin: BuiltinRelay | None = None
         self.local_host: str = "127.0.0.1"
         self.local_port: int = settings.local_port or 0
 
@@ -59,22 +62,27 @@ class ProxyRelay:
             raise ProxyRelayError("Proxy host is not configured")
 
         bin_path = self.settings.socks2http_bin
-        if not Path(bin_path).is_file():
-            resolved = shutil.which("socks2http")
-            if resolved:
-                bin_path = resolved
-            else:
-                raise ProxyRelayError(f"socks2http binary not found: {bin_path}")
+        if bin_path and not Path(bin_path).is_file():
+            raise ProxyRelayError(f"socks2http binary not found: {bin_path}")
+        if not bin_path:
+            bin_path = shutil.which("socks2http") or ""
+        if not bin_path:
+            self._start_builtin()
+            return
 
         if self.local_port == 0:
             self.local_port = _find_free_port()
 
         cmd = [
             bin_path,
-            "--listen-host", self.local_host,
-            "--listen-port", str(self.local_port),
-            "--proxy-url", proxy_url,
-            "--log-level", "WARNING",
+            "--listen-host",
+            self.local_host,
+            "--listen-port",
+            str(self.local_port),
+            "--proxy-url",
+            proxy_url,
+            "--log-level",
+            "WARNING",
         ]
 
         logger.info(
@@ -96,10 +104,31 @@ class ProxyRelay:
                 f"socks2http failed to start on {self.local_host}:{self.local_port}"
             )
 
-        logger.info("socks2http relay is ready on %s:%d", self.local_host, self.local_port)
+        logger.info(
+            "socks2http relay is ready on %s:%d", self.local_host, self.local_port
+        )
+
+    def _start_builtin(self) -> None:
+        try:
+            builtin = BuiltinRelay(self.settings, self.local_host, self.local_port)
+        except (OSError, ValueError) as e:
+            raise ProxyRelayError(f"built-in proxy relay failed to start: {e}") from e
+        self.local_port = builtin.port
+        builtin.start()
+        self._builtin = builtin
+        logger.info(
+            "Built-in proxy relay is ready on %s:%d -> %s:%s",
+            self.local_host,
+            self.local_port,
+            self.settings.host,
+            self.settings.port,
+        )
 
     def stop(self) -> None:
-        """Stop the socks2http subprocess."""
+        """Stop the relay."""
+        if self._builtin is not None:
+            self._builtin.stop()
+            self._builtin = None
         if self._process is None:
             return
         logger.info("Stopping socks2http relay (pid=%d)", self._process.pid)
@@ -115,4 +144,6 @@ class ProxyRelay:
 
     @property
     def is_running(self) -> bool:
+        if self._builtin is not None:
+            return self._builtin.is_running
         return self._process is not None and self._process.poll() is None
