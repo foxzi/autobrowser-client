@@ -101,7 +101,7 @@ env = { AUTOBROWSER_BROWSER_ENGINE = "cloakbrowser" }
 
 In JSON on Windows escape backslashes in the path (`C:\\Users\\...`).
 
-For any other client, find where it keeps MCP servers and add a stdio server with the same command, arguments and environment. If you cannot find it, give the user the JSON above.
+For any other client, find where it keeps MCP servers and add a stdio server with the same command, arguments and environment. If the client has no field for environment variables, use `env` as the command (Linux / macOS): `env AUTOBROWSER_BROWSER_ENGINE=cloakbrowser BIN mcp`. If you cannot find where it keeps MCP servers, give the user the JSON above.
 
 ### Step 4. Install the skill
 
@@ -226,7 +226,7 @@ env = { AUTOBROWSER_BROWSER_ENGINE = "cloakbrowser" }
 
 В JSON на Windows обратные слэши в пути экранируются (`C:\\Users\\...`).
 
-Для другого клиента — найти, где он хранит MCP-серверы, и добавить stdio-сервер с той же командой, аргументами и окружением. Если не удалось — отдать пользователю JSON выше.
+Для другого клиента — найти, где он хранит MCP-серверы, и добавить stdio-сервер с той же командой, аргументами и окружением. Если у клиента нет поля для переменных окружения — сделать командой `env` (Linux / macOS): `env AUTOBROWSER_BROWSER_ENGINE=cloakbrowser BIN mcp`. Если не удалось найти, где он хранит MCP-серверы, — отдать пользователю JSON выше.
 
 ### Шаг 4. Установить skill
 

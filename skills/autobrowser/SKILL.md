@@ -7,13 +7,9 @@ description: Drive a stealth browser through the autobrowser MCP server (browser
 
 The `autobrowser` MCP server gives one stealth Chromium (patchright or cloakbrowser) as `browser_*` tools. The browser starts on the first call and keeps cookies, tabs and state until `browser_close` or the server stops.
 
-If the `browser_*` tools are missing, the server is not connected. Tell the user to add it:
+Other MCP servers (for example Playwright MCP) also have `browser_*` tools with the same names. Use only the tools of the `autobrowser` server: clients usually prefix them with the server name, such as `mcp__autobrowser__browser_navigate`.
 
-```bash
-claude mcp add autobrowser \
-  -e AUTOBROWSER_BROWSER_ENGINE=cloakbrowser \
-  -- uvx --from "autobrowser-client[cloak] @ git+https://github.com/foxzi/autobrowser-client" autobrowser mcp
-```
+If the autobrowser tools are missing, the server is not connected. Tell the user to install it by following https://github.com/foxzi/autobrowser-client/blob/main/docs/install-agent.md
 
 ## Core loop
 
