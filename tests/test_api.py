@@ -227,3 +227,48 @@ async def test_run_script_invalid_script(client: AsyncClient, browser_session: s
 async def test_run_script_session_not_found(client: AsyncClient):
     r = await client.post("/api/v1/session/nope/script", json={"script": {"steps": []}})
     assert r.status_code == 404
+
+
+CHAIN_PAGE = (
+    "data:text/html,<input id=q value=old><select id=s><option value=a>A</option><option value=b>B</option></select>"
+    "<button class=b onclick=\"document.title='clicked'\">1</button><button class=b>2</button>"
+)
+
+
+@pytest.mark.anyio
+async def test_action_chain_through_engine(client: AsyncClient, browser_session: str):
+    r = await client.get(f"/api/v1/session/{browser_session}/pages")
+    page_id = next(iter(r.json()["pages"]))
+    await client.post(f"/api/v1/session/{browser_session}/pages/{page_id}/navigate", json={"url": CHAIN_PAGE})
+    url = f"/api/v1/session/{browser_session}/pages/{page_id}/actions/run"
+    css = lambda v: {"type": "css", "value": v}  # noqa: E731
+    steps = [
+        {"action": "find", "locator": css("#q")},
+        {"action": "fill", "locator": css("#q"), "value": "${not_a_var}", "clearBefore": True},
+        {"action": "select", "locator": css("#s"), "option": "b"},
+        {"action": "click", "locator": css(".b")},  # two matches: first one is clicked
+        {"action": "wait", "locator": css("#q"), "state": "attached"},
+        {"action": "wait", "locator": css("#q"), "state": "visible"},
+        {"action": "wait"},
+        {"action": "mouse-move-random", "endX": 10, "endY": 10, "steps": 3, "durationMs": 10},
+        {"action": "bogus", "stopOnError": False},
+        {"action": "click", "locator": css("#missing"), "timeout": 300},
+        {"action": "press", "key": "Tab"},
+    ]
+    r = await client.post(url, json={"steps": steps})
+    assert r.status_code == 200
+    data = r.json()
+    results = data["results"]
+    assert [x["action"] for x in results] == [s["action"] for s in steps[:10]]  # stopped at the failed click
+    assert [x["success"] for x in results] == [True] * 8 + [False, False]
+    assert results[0]["data"]["found"] == 1
+    assert results[2]["data"] == {"selected": ["b"]}
+    assert results[7]["data"] == {"points": 4}
+    assert results[8]["error"] == "Unknown action: bogus"
+    assert "durationMs" in results[0]
+    assert data["success"] is False
+
+    # state of the page confirms the steps ran
+    r = await client.post(f"/api/v1/session/{browser_session}/pages/{page_id}/evaluate",
+                          json={"expression": "() => [document.title, document.querySelector('#q').value, document.querySelector('#s').value]"})
+    assert r.json()["result"]["result"] == ["clicked", "${not_a_var}", "b"]

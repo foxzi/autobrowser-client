@@ -494,82 +494,114 @@ def mouse_move_random(
 # Action chains
 # ---------------------------------------------------------------------------
 
+_CHAIN_LOCATOR_ACTIONS = {
+    "find-all", "read", "click", "dblclick", "hover", "focus", "clear", "check", "uncheck", "submit",
+}
+# Locator actions that act on the first match (the engine resolves a locator strictly)
+_CHAIN_FIRST_MATCH = {"click", "dblclick", "hover", "focus", "clear", "check", "uncheck"}
+
+
+def _escape_vars(value: Any) -> Any:
+    """Chain strings are literal: neutralize ``${...}`` so the engine does not substitute them."""
+    if isinstance(value, str):
+        return value.replace("${", "$${")
+    if isinstance(value, list):
+        return [_escape_vars(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _escape_vars(v) for k, v in value.items()}
+    return value
+
+
+def _chain_steps(step: dict[str, Any], timeout: int) -> list[dict[str, Any]] | None:
+    """Engine steps equivalent to a legacy chain step; None if it keeps the legacy code path."""
+    action = step.get("action", "")
+    loc = step.get("locator") or {}
+    locator = {"type": loc.get("type", "css"), "value": loc.get("value", "")}
+    base: dict[str, Any] = {"timeout": timeout, "stopOnError": True}
+
+    if action == "wait":
+        if locator["value"]:
+            state = step.get("state", "visible")
+            if state not in {"visible", "hidden"}:  # attached/detached are not engine wait modes
+                return None
+            return [{**base, "action": "wait", "locator": locator, "waitUntil": state, "index": 0}]
+        until = step.get("waitUntil", "load")
+        if until not in {"load", "domcontentloaded", "networkidle"}:
+            return None
+        return [{**base, "action": "wait", "waitUntil": until}]
+    if action in _CHAIN_LOCATOR_ACTIONS:
+        extra = {"index": 0} if action in _CHAIN_FIRST_MATCH else {}
+        return [{**base, "action": action, "locator": locator, **extra}]
+    if action == "fill":
+        fill = {**base, "action": "fill", "locator": locator, "value": step.get("value", ""), "index": 0}
+        if step.get("clearBefore", False):
+            return [{**base, "action": "clear", "locator": locator, "index": 0}, fill]
+        return [fill]
+    if action == "select":
+        option = step.get("option", [])
+        pick = {"value": option} if isinstance(option, str) else {"options": option}
+        return [{**base, "action": "select", "locator": locator, **pick}]
+    if action == "press":
+        return [{**base, "action": "press", "key": step.get("key", "Enter")}]
+    if action == "scroll":
+        return [{**base, "action": "scroll", "deltaX": step.get("deltaX", 0), "deltaY": step.get("deltaY", 0)}]
+    if action == "mouse-move":
+        return [{**base, "action": "mouse-move", "x": step.get("x", 0), "y": step.get("y", 0),
+                 "steps": step.get("steps", 1)}]
+    if action == "mouse-move-random":
+        keys = ("startX", "startY", "endX", "endY", "steps", "durationMs", "jitter", "seed")
+        given = {k: step[k] for k in keys if k in step}
+        return [{**base, "action": "mouse-random", "endX": 0, "endY": 0, **given}]
+    return None
+
+
+def _legacy_step(
+    session: BrowserSession, page_id: str, step: dict[str, Any], timeout: int, result: dict[str, Any]
+) -> None:
+    """Chain steps the engine cannot express: find, wait for attached/detached, unknown actions."""
+    action = step.get("action", "")
+    loc = step.get("locator") or {}
+    loc_type = loc.get("type", "css")
+    loc_value = loc.get("value", "")
+    if action == "find":
+        result["data"] = find_element(session, page_id, loc_type, loc_value, timeout)
+    elif action == "wait" and loc_value:
+        wait_for_element(session, page_id, loc_type, loc_value, step.get("state", "visible"), timeout)
+    elif action == "wait":
+        wait_for_navigation(session, page_id, wait_until=step.get("waitUntil", "load"), timeout=timeout)
+    else:
+        result["success"] = False
+        result["error"] = f"Unknown action: {action}"
+
+
 def run_action_chain(
     session: BrowserSession,
     page_id: str,
     steps: list[dict[str, Any]],
     default_timeout: int = 10000,
 ) -> list[dict[str, Any]]:
-    """Execute a sequence of actions, returning per-step results."""
+    """Execute a sequence of actions through the scenario engine, returning flat per-step results."""
+    from autobrowser_client.browser.engine import run_script  # engine imports this module
+    from autobrowser_client.scenario import ScriptDefinition
+
     results: list[dict[str, Any]] = []
-    for i, step in enumerate(steps):
+    for step in steps:
         action = step.get("action", "")
+        timeout = step.get("timeout", default_timeout)
         t0 = time.monotonic()
         result: dict[str, Any] = {"action": action, "success": True}
         try:
-            timeout = step.get("timeout", default_timeout)
-            loc = step.get("locator", {})
-            loc_type = loc.get("type", "css")
-            loc_value = loc.get("value", "")
-
-            if action == "find":
-                result["data"] = find_element(session, page_id, loc_type, loc_value, timeout)
-            elif action == "find-all":
-                result["data"] = find_all_elements(session, page_id, loc_type, loc_value, timeout)
-            elif action == "read":
-                result["data"] = read_element(session, page_id, loc_type, loc_value, timeout)
-            elif action == "click":
-                click_element(session, page_id, loc_type, loc_value, timeout)
-            elif action == "dblclick":
-                click_element(session, page_id, loc_type, loc_value, timeout, double=True)
-            elif action == "hover":
-                hover_element(session, page_id, loc_type, loc_value, timeout)
-            elif action == "focus":
-                focus_element(session, page_id, loc_type, loc_value, timeout)
-            elif action == "fill":
-                fill_element(
-                    session, page_id, loc_type, loc_value,
-                    text=step.get("value", ""),
-                    clear_before=step.get("clearBefore", False),
-                    timeout=timeout,
-                )
-            elif action == "clear":
-                clear_element(session, page_id, loc_type, loc_value, timeout)
-            elif action == "select":
-                selected = select_option(session, page_id, loc_type, loc_value, step.get("option", []), timeout)
-                result["data"] = {"selected": selected}
-            elif action == "check":
-                check_element(session, page_id, loc_type, loc_value, checked=True, timeout=timeout)
-            elif action == "uncheck":
-                check_element(session, page_id, loc_type, loc_value, checked=False, timeout=timeout)
-            elif action == "submit":
-                submit_form(session, page_id, loc_type, loc_value, timeout)
-            elif action == "press":
-                press_key(session, page_id, step.get("key", "Enter"))
-            elif action == "wait":
-                state = step.get("state", "visible")
-                if loc_value:
-                    wait_for_element(session, page_id, loc_type, loc_value, state, timeout)
-                else:
-                    wait_for_navigation(session, page_id, wait_until=step.get("waitUntil", "load"), timeout=timeout)
-            elif action == "scroll":
-                mouse_scroll(session, page_id, step.get("deltaX", 0), step.get("deltaY", 0))
-            elif action == "mouse-move":
-                mouse_move(session, page_id, step.get("x", 0), step.get("y", 0), step.get("steps", 1))
-            elif action == "mouse-move-random":
-                pts = mouse_move_random(
-                    session, page_id,
-                    step.get("startX", 0), step.get("startY", 0),
-                    step.get("endX", 0), step.get("endY", 0),
-                    steps=step.get("steps", 25),
-                    duration_ms=step.get("durationMs", 300),
-                    jitter=step.get("jitter", 3.0),
-                    seed=step.get("seed"),
-                )
-                result["data"] = {"points": len(pts)}
+            engine_steps = _chain_steps(step, timeout)
+            if engine_steps is None:
+                _legacy_step(session, page_id, step, timeout, result)
             else:
-                result["success"] = False
-                result["error"] = f"Unknown action: {action}"
+                script = ScriptDefinition.model_validate({"steps": _escape_vars(engine_steps)})
+                nodes = run_script(session, script, page_id)["steps"]
+                node = next((n for n in nodes if not n["success"]), nodes[-1])
+                result["success"] = node["success"]
+                for key in ("data", "error"):
+                    if key in node:
+                        result[key] = node[key]
         except Exception as exc:
             result["success"] = False
             result["error"] = str(exc)
