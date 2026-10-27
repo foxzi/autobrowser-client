@@ -7,7 +7,8 @@ from typing import Annotated, Any
 import typer
 
 from autobrowser_client import __version__
-from autobrowser_client.browser.executor import _validate_output_path, execute_script
+from autobrowser_client.browser.engine import run_script as run_scenario
+from autobrowser_client.browser.executor import _validate_output_path
 from autobrowser_client.browser.service import SessionManager
 from autobrowser_client.config import Settings, load_settings
 from autobrowser_client.errors import AppError, NotImplementedAppError
@@ -118,6 +119,17 @@ def help_cmd(
     text = target.command.get_help(target)
     if text:
         typer.echo(text)
+
+
+def _parse_vars(items: list[str]) -> dict[str, str]:
+    """Parse repeated NAME=VALUE options into a dict."""
+    result: dict[str, str] = {}
+    for item in items:
+        name, sep, value = item.partition("=")
+        if not sep or not name:
+            raise typer.BadParameter(f"Invalid variable: '{item}', expected NAME=VALUE")
+        result[name] = value
+    return result
 
 
 def _parse_viewport(viewport_str: str) -> dict[str, int]:
@@ -311,6 +323,10 @@ def run_script(
         bool,
         typer.Option("--preserve-session", help="Save open tabs for the next session."),
     ] = False,
+    var: Annotated[
+        list[str] | None,
+        typer.Option("--var", help="Scenario variable NAME=VALUE; repeat for more."),
+    ] = None,
 ) -> None:
     """Run a YAML/JSON scenario and print the step results as JSON.
 
@@ -319,8 +335,10 @@ def run_script(
 
     [green]autobrowser run-script -f examples/simple.yaml[/green]
     [green]autobrowser run-script -f login.yaml -p work --proxy socks5://127.0.0.1:1080[/green]
+    [green]autobrowser run-script -f login.yaml --var user=me --var password=secret[/green]
     """
     script = load_script(file)
+    variables = _parse_vars(var or [])
     if script.output.file:
         _validate_output_path(script.output.file)
     effective_proxy = proxy or script.session.proxy
@@ -367,28 +385,24 @@ def run_script(
     )
 
     try:
-        results = session.call(
-            execute_script,
-            session,
-            script.steps,
-            stop_on_error=script.stop_on_error,
-        )
+        result = session.call(run_scenario, session, script, vars=variables)
 
-        all_ok = all(r["success"] for r in results)
+        all_ok = result["success"]
         output = {
             "success": all_ok,
             "sessionId": session.session_id,
             "profile": effective_profile,
-            "steps": results,
+            "steps": result["steps"],
+            "vars": result["vars"],
         }
 
         if script.output.file:
             Path(script.output.file).write_text(
-                json.dumps(output, indent=2, ensure_ascii=False),
+                json.dumps(output, indent=2, ensure_ascii=False, default=str),
                 encoding="utf-8",
             )
 
-        text = json.dumps(output, indent=2, ensure_ascii=False)
+        text = json.dumps(output, indent=2, ensure_ascii=False, default=str)
 
         if output_file:
             output_file.write_text(text, encoding="utf-8")

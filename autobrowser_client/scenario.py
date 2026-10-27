@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import Literal, get_args
+from typing import Any, Literal, get_args
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -44,6 +44,7 @@ ActionName = Literal[
     "mouse-move",
     "mouse-scroll-to",
     "mouse-random",
+    "set",
 ]
 LocatorType = Literal["css", "xpath", "id", "name", "class", "text", "attribute", "ref"]
 WaitUntil = Literal["domcontentloaded", "load", "networkidle", "visible", "hidden"]
@@ -54,6 +55,9 @@ _ID_RE = re.compile(r"^#[a-zA-Z_][\w-]*$")
 _CLASS_RE = re.compile(r"^\.[a-zA-Z_][\w-]*$")
 _WAIT_STATES = {"load", "domcontentloaded", "networkidle"}
 _KNOWN_ACTIONS = set(get_args(ActionName))
+_NAME_RE = re.compile(r"^[A-Za-z_]\w*$")
+# Actions whose result can be stored in a variable with ``as``
+_VALUE_ACTIONS = {"extract", "evaluate", "read", "find-all", "get-content", "get-cookies", "get-headers"}
 # Actions whose shorthand value maps to a specific field
 _SHORTHAND_NULL_ACTIONS = {
     "get-content", "get-cookies", "get-headers", "browse-tabs", "solve-challenge",
@@ -80,7 +84,7 @@ def _parse_locator_string(s: str) -> dict:
 
 
 class Locator(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", coerce_numbers_to_str=True)
 
     type: LocatorType
     value: str
@@ -233,6 +237,10 @@ def _expand_shorthand_step(d: dict) -> dict:
         _check_conflict("text")
         result["text"] = value
 
+    elif verb == "set":
+        _check_conflict("vars")
+        result["vars"] = value
+
     elif verb in {"screenshot", "save"}:
         _check_conflict("file")
         result["file"] = value
@@ -245,7 +253,8 @@ def _expand_shorthand_step(d: dict) -> dict:
 
 
 class ScriptStep(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    # numbers are coerced to str so that "${n}" may yield an int for a text field
+    model_config = ConfigDict(extra="forbid", coerce_numbers_to_str=True)
 
     action: ActionName
     page: str | None = None
@@ -281,6 +290,8 @@ class ScriptStep(BaseModel):
     duration_ms: int | None = Field(default=None, alias="durationMs")
     jitter: float | None = None
     seed: int | None = None
+    as_name: str | None = Field(default=None, alias="as")
+    vars: dict[str, Any] | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -319,6 +330,13 @@ class ScriptStep(BaseModel):
             raise ValueError("'scroll' step requires 'deltaX' or 'deltaY'")
         if self.action in {"save", "screenshot"} and not self.file:
             raise ValueError(f"'{self.action}' step requires 'file'")
+        if self.action == "set" and not self.vars:
+            raise ValueError("'set' step requires 'vars'")
+        if self.as_name is not None:
+            if self.action not in _VALUE_ACTIONS:
+                raise ValueError(f"'as' is not supported by '{self.action}'")
+            if not _NAME_RE.match(self.as_name):
+                raise ValueError(f"invalid variable name: {self.as_name!r}")
         return self
 
 
@@ -329,6 +347,7 @@ class ScriptDefinition(BaseModel):
     steps: list[ScriptStep]
     output: ScriptOutput = Field(default_factory=ScriptOutput)
     stop_on_error: bool = Field(default=True, alias="stopOnError")
+    vars: dict[str, Any] = Field(default_factory=dict)
 
 
 def load_script(path: str | Path) -> ScriptDefinition:

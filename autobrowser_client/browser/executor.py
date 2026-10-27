@@ -12,7 +12,7 @@ from autobrowser_client.browser import actions
 from autobrowser_client.browser.actions import resolve_locator
 from autobrowser_client.browser.service import BrowserSession
 from autobrowser_client.errors import AppError, ErrorCode
-from autobrowser_client.scenario import ScriptStep, Locator
+from autobrowser_client.scenario import Locator, ScriptDefinition, ScriptStep
 
 logger = logging.getLogger(__name__)
 
@@ -396,19 +396,8 @@ def execute_script(
     stop_on_error: bool = True,
     page_id: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Execute a full list of script steps, returning results."""
-    results: list[dict[str, Any]] = []
-    for i, step in enumerate(steps):
-        logger.info("Executing step %d/%d: %s", i + 1, len(steps), step.action)
-        step_result = execute_step(session, step, page_id)
-        results.append(step_result.to_dict())
+    """Execute a list of script steps, returning results (see engine.run_script)."""
+    from autobrowser_client.browser.engine import run_script
 
-        if not step_result.success:
-            should_stop = stop_on_error
-            if step.stop_on_error is not None:
-                should_stop = step.stop_on_error
-            if should_stop:
-                logger.error("Stopping script at step %d due to error: %s", i + 1, step_result.error)
-                break
-
-    return results
+    script = ScriptDefinition(steps=steps, stopOnError=stop_on_error)
+    return run_script(session, script, page_id)["steps"]
