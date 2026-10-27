@@ -15,7 +15,109 @@ from autobrowser_client.logging_utils import configure_logging
 from autobrowser_client.scenario import load_script
 from autobrowser_client.updater import start_auto_update
 
-app = typer.Typer(help="CLI for autobrowser-client")
+APP_HELP = """[bold]autobrowser[/bold]: a stealth browser for scripts and AI agents.
+
+Runs Chromium through [cyan]patchright[/cyan] or [cyan]cloakbrowser[/cyan] with persistent profiles,
+fingerprints and proxies. Use it from YAML scenarios, an HTTP API or as an MCP server.
+"""
+
+APP_EPILOG = """[bold]Examples[/bold]
+
+  [green]autobrowser install[/green]                                  download the browser
+  [green]autobrowser run --url https://example.com[/green]            open a page, print JSON
+  [green]autobrowser run-script --file examples/simple.yaml[/green]   run a scenario
+  [green]autobrowser mcp[/green]                                      MCP server for agents
+  [green]autobrowser help run-script[/green]                          help for a command
+
+[bold]Environment[/bold]
+
+  [cyan]AUTOBROWSER_BROWSER_ENGINE[/cyan]   patchright (default) or cloakbrowser
+  [cyan]AUTOBROWSER_HEADLESS[/cyan]         true / false
+  [cyan]AUTOBROWSER_PROFILE_DIR[/cyan]      directory of persistent profiles
+  [cyan]AUTOBROWSER_PROXY_*[/cyan]          ENABLED, SCHEME, HOST, PORT, USERNAME, PASSWORD
+  [cyan]AUTOBROWSER_LOG_LEVEL[/cyan]        DEBUG, INFO, WARNING, ERROR
+  [cyan]AUTOBROWSER_NO_AUTO_UPDATE[/cyan]   1 turns off the binary self-update
+
+Docs: [blue]https://github.com/foxzi/autobrowser-client[/blue]
+"""
+
+SCENARIOS = "Scenarios"
+AGENTS = "AI agents"
+SETUP = "Setup"
+INFO = "Info"
+
+app = typer.Typer(
+    name="autobrowser",
+    help=APP_HELP,
+    epilog=APP_EPILOG,
+    rich_markup_mode="rich",
+    no_args_is_help=True,
+    context_settings={"help_option_names": ["-h", "--help"]},
+)
+
+ConfigOpt = Annotated[
+    Path | None,
+    typer.Option(
+        "--config", "-c", dir_okay=False, help="YAML/JSON config file.", show_default=False
+    ),
+]
+ProxyOpt = Annotated[
+    str | None,
+    typer.Option("--proxy", help="Proxy URL: [cyan]socks5://user:pass@host:port[/cyan]."),
+]
+ViewportOpt = Annotated[
+    str | None,
+    typer.Option("--viewport", help="Viewport size WIDTHxHEIGHT, e.g. [cyan]1920x1080[/cyan]."),
+]
+OutputOpt = Annotated[
+    Path | None, typer.Option("--output", "-o", help="Save the JSON result to a file.")
+]
+
+
+def _version_callback(value: bool) -> None:
+    if value:
+        typer.echo(__version__)
+        raise typer.Exit()
+
+
+@app.callback()
+def _root(
+    _version: Annotated[
+        bool,
+        typer.Option(
+            "--version",
+            "-V",
+            callback=_version_callback,
+            is_eager=True,
+            help="Show the version and exit.",
+        ),
+    ] = False,
+) -> None:
+    pass
+
+
+@app.command("help", rich_help_panel=INFO)
+def help_cmd(
+    ctx: typer.Context,
+    command: Annotated[
+        list[str] | None, typer.Argument(help="Command to describe, e.g. run-script.")
+    ] = None,
+) -> None:
+    """Show help for autobrowser or one of its commands.
+
+    [green]autobrowser help[/green]
+    [green]autobrowser help mcp[/green]
+    """
+    target = ctx.find_root()
+    for name in command or []:
+        group = target.command
+        sub = group.get_command(target, name) if hasattr(group, "get_command") else None
+        if sub is None:
+            raise typer.BadParameter(f"No such command: {name}", param_hint="COMMAND")
+        target = sub.make_context(name, [], parent=target, resilient_parsing=True)
+    text = target.command.get_help(target)
+    if text:
+        typer.echo(text)
 
 
 def _parse_viewport(viewport_str: str) -> dict[str, int]:
@@ -79,18 +181,24 @@ def _apply_proxy_url(proxy_url: str, overrides: dict[str, Any]) -> None:
         proxy_cfg["password"] = parsed.password
 
 
-@app.command("version")
+@app.command("version", rich_help_panel=INFO)
 def version() -> None:
+    """Show the version."""
     typer.echo(__version__)
 
 
-@app.command("update")
+@app.command("update", rich_help_panel=SETUP)
 def update(
     check: Annotated[
         bool, typer.Option("--check", help="Only report whether an update exists")
     ] = False,
 ) -> None:
-    """Update the binary to the latest GitHub release."""
+    """Update the binary to the latest GitHub release.
+
+    The new binary is checked against its [cyan].sha256[/cyan] and replaces the current one.
+    [green]mcp[/green] and [green]serve[/green] also check for updates once a day in the background;
+    set [cyan]AUTOBROWSER_NO_AUTO_UPDATE=1[/cyan] to turn that off. Not for pip/uv installs.
+    """
     from autobrowser_client import updater
 
     latest = updater.latest_version()
@@ -108,20 +216,27 @@ def update(
     typer.echo(f"Updated {path}: {__version__} -> {latest}")
 
 
-@app.command("show-config")
-def show_config(
-    config: Annotated[
-        Path | None, typer.Option("--config", exists=False, dir_okay=False)
-    ] = None,
-) -> None:
+@app.command("show-config", rich_help_panel=INFO)
+def show_config(config: ConfigOpt = None) -> None:
+    """Print the effective configuration as JSON (secrets masked).
+
+    Defaults, then the [cyan]--config[/cyan] file, then [cyan]AUTOBROWSER_*[/cyan] variables.
+    """
     settings = _settings_from_options(config=config)
     typer.echo(json.dumps(settings.safe_dump(), indent=2, ensure_ascii=False))
 
 
-@app.command("validate-script")
+@app.command("validate-script", rich_help_panel=SCENARIOS)
 def validate_script(
-    file: Annotated[Path, typer.Option("--file", exists=True, dir_okay=False)],
+    file: Annotated[
+        Path,
+        typer.Option("--file", "-f", exists=True, dir_okay=False, help="Scenario file."),
+    ],
 ) -> None:
+    """Check a YAML/JSON scenario without starting a browser.
+
+    [green]autobrowser validate-script -f examples/login.yaml[/green]
+    """
     script = load_script(file)
     typer.echo(
         json.dumps(
@@ -136,7 +251,7 @@ def validate_script(
     )
 
 
-@app.command("generate-fingerprint")
+@app.command("generate-fingerprint", rich_help_panel=SETUP)
 def generate_fingerprint_cmd(
     profile: Annotated[str, typer.Option("--profile", help="Profile directory path")],
     platform: Annotated[
@@ -147,7 +262,10 @@ def generate_fingerprint_cmd(
         bool, typer.Option("--force", help="Overwrite existing fingerprint.json")
     ] = False,
 ) -> None:
-    """Generate fingerprint.json for a browser profile."""
+    """Generate fingerprint.json for a browser profile.
+
+    [green]autobrowser generate-fingerprint --profile profiles/work --platform linux[/green]
+    """
     from autobrowser_client.fingerprint.config import (
         FINGERPRINT_FILE,
         Platform,
@@ -176,28 +294,32 @@ def generate_fingerprint_cmd(
     typer.echo(json.dumps(fp.to_js_config(), indent=2, ensure_ascii=False))
 
 
-@app.command("run-script")
+@app.command("run-script", rich_help_panel=SCENARIOS)
 def run_script(
-    file: Annotated[Path, typer.Option("--file", exists=True, dir_okay=False)],
-    config: Annotated[
-        Path | None, typer.Option("--config", exists=False, dir_okay=False)
+    file: Annotated[
+        Path,
+        typer.Option("--file", "-f", exists=True, dir_okay=False, help="Scenario file."),
+    ],
+    config: ConfigOpt = None,
+    profile: Annotated[
+        str | None, typer.Option("--profile", "-p", help="Persistent profile name.")
     ] = None,
-    profile: Annotated[str | None, typer.Option("--profile")] = None,
-    proxy: Annotated[
-        str | None,
-        typer.Option("--proxy", help="Proxy URL: socks5://user:pass@host:port"),
-    ] = None,
-    viewport: Annotated[
-        str | None,
-        typer.Option("--viewport", help="Viewport size: WIDTHxHEIGHT (e.g. 1920x1080)"),
-    ] = None,
-    output_file: Annotated[
-        Path | None, typer.Option("--output", help="Save result to file")
-    ] = None,
+    proxy: ProxyOpt = None,
+    viewport: ViewportOpt = None,
+    output_file: OutputOpt = None,
     preserve_session: Annotated[
-        bool, typer.Option("--preserve-session", help="Save open tabs for next session")
+        bool,
+        typer.Option("--preserve-session", help="Save open tabs for the next session."),
     ] = False,
 ) -> None:
+    """Run a YAML/JSON scenario and print the step results as JSON.
+
+    Command-line options override the [cyan]session[/cyan] block of the scenario.
+    Exit code is 0 when all steps succeed, 1 otherwise.
+
+    [green]autobrowser run-script -f examples/simple.yaml[/green]
+    [green]autobrowser run-script -f login.yaml -p work --proxy socks5://127.0.0.1:1080[/green]
+    """
     script = load_script(file)
     effective_proxy = proxy or script.session.proxy
 
@@ -278,34 +400,41 @@ def run_script(
         session.stop(preserve_session=effective_preserve)
 
 
-@app.command("run")
+@app.command("run", rich_help_panel=SCENARIOS)
 def run(
-    url: Annotated[list[str], typer.Option("--url")],
-    config: Annotated[
-        Path | None, typer.Option("--config", exists=False, dir_okay=False)
+    url: Annotated[
+        list[str], typer.Option("--url", "-u", help="URL to open; repeat for more tabs.")
+    ],
+    config: ConfigOpt = None,
+    profile: Annotated[
+        str | None, typer.Option("--profile", "-p", help="Persistent profile name.")
     ] = None,
-    profile: Annotated[str | None, typer.Option("--profile")] = None,
     profile_dir: Annotated[
-        Path | None, typer.Option("--profile-dir", exists=False, file_okay=False)
+        Path | None,
+        typer.Option("--profile-dir", file_okay=False, help="Directory of profiles."),
     ] = None,
-    user_agent: Annotated[str | None, typer.Option("--user-agent")] = None,
-    headless: Annotated[bool | None, typer.Option("--headless/--headful")] = None,
-    timeout: Annotated[int | None, typer.Option("--timeout")] = None,
-    proxy: Annotated[
-        str | None,
-        typer.Option("--proxy", help="Proxy URL: socks5://user:pass@host:port"),
+    user_agent: Annotated[
+        str | None, typer.Option("--user-agent", help="Override the User-Agent.")
     ] = None,
-    viewport_str: Annotated[
-        str | None,
-        typer.Option("--viewport", help="Viewport size: WIDTHxHEIGHT (e.g. 1920x1080)"),
+    headless: Annotated[
+        bool | None,
+        typer.Option("--headless/--headful", help="Hide or show the browser window."),
     ] = None,
-    output_file: Annotated[
-        Path | None, typer.Option("--output", help="Save result to file")
+    timeout: Annotated[
+        int | None, typer.Option("--timeout", help="Navigation and action timeout, ms.")
     ] = None,
+    proxy: ProxyOpt = None,
+    viewport_str: ViewportOpt = None,
+    output_file: OutputOpt = None,
     content_format: Annotated[
-        str, typer.Option("--format", help="Content format: html or text")
+        str, typer.Option("--format", help="Page content format: html or text.")
     ] = "html",
 ) -> None:
+    """Open URLs and print cookies, headers and page content as JSON.
+
+    [green]autobrowser run -u https://example.com --format text[/green]
+    [green]autobrowser run -u https://a.com -u https://b.com -o result.json[/green]
+    """
     vp = _parse_viewport(viewport_str) if viewport_str else None
     settings = _settings_from_options(
         config=config,
@@ -356,14 +485,18 @@ def run(
         session.stop()
 
 
-@app.command("serve")
+@app.command("serve", rich_help_panel=AGENTS)
 def serve(
-    config: Annotated[
-        Path | None, typer.Option("--config", exists=False, dir_okay=False)
-    ] = None,
-    host: Annotated[str, typer.Option("--host")] = "127.0.0.1",
-    port: Annotated[int, typer.Option("--port")] = 8080,
+    config: ConfigOpt = None,
+    host: Annotated[str, typer.Option("--host", help="Address to listen on.")] = "127.0.0.1",
+    port: Annotated[int, typer.Option("--port", help="Port to listen on.")] = 8080,
 ) -> None:
+    """Start the HTTP API server (sessions, pages, scenarios).
+
+    Set [cyan]AUTOBROWSER_API_TOKEN[/cyan] to require a bearer token.
+
+    [green]autobrowser serve --host 0.0.0.0 --port 8080[/green]
+    """
     import uvicorn
 
     from autobrowser_client.api.app import create_app
@@ -374,20 +507,25 @@ def serve(
     uvicorn.run(api_app, host=host, port=port)
 
 
-@app.command("mcp")
+@app.command("mcp", rich_help_panel=AGENTS)
 def mcp(
-    config: Annotated[
-        Path | None, typer.Option("--config", exists=False, dir_okay=False)
-    ] = None,
+    config: ConfigOpt = None,
     profile: Annotated[
-        str | None, typer.Option("--profile", help="Persistent profile name")
+        str | None, typer.Option("--profile", "-p", help="Persistent profile name.")
     ] = None,
-    headless: Annotated[bool | None, typer.Option("--headless/--headed")] = None,
-    proxy: Annotated[
-        str | None, typer.Option("--proxy", help="e.g. socks5://user:pass@host:port")
+    headless: Annotated[
+        bool | None,
+        typer.Option("--headless/--headed", help="Hide or show the browser window."),
     ] = None,
+    proxy: ProxyOpt = None,
 ) -> None:
-    """Run the MCP server over stdio."""
+    """Run the MCP server over stdio for AI agents.
+
+    Gives the agent [cyan]browser_*[/cyan] tools: navigate, snapshot, click, type, tabs and more.
+    Register it in the client, e.g. Claude Code:
+
+    [green]claude mcp add autobrowser -- autobrowser mcp[/green]
+    """
     from autobrowser_client.mcp_server import run_server
 
     settings = _settings_from_options(config=config, headless=headless, proxy=proxy)
@@ -395,14 +533,18 @@ def mcp(
     run_server(settings, profile)
 
 
-@app.command("install-skill")
+@app.command("install-skill", rich_help_panel=AGENTS)
 def install_skill(
     skills_dir: Annotated[
         Path,
         typer.Option("--dir", help="Skills directory of the agent client."),
     ] = Path("~/.claude/skills"),
 ) -> None:
-    """Install the agent skill into SKILLS_DIR/autobrowser/SKILL.md."""
+    """Install the agent skill into DIR/autobrowser/SKILL.md.
+
+    [green]autobrowser install-skill[/green]
+    [green]autobrowser install-skill --dir ~/.config/nemo/skills[/green]
+    """
     package = Path(__file__).resolve().parents[1]
     # Bundled into the wheel and the binary; fall back to the repo copy in a checkout
     source = package / "skill" / "SKILL.md"
@@ -414,13 +556,15 @@ def install_skill(
     typer.echo(target)
 
 
-@app.command("install")
-def install(
-    config: Annotated[
-        Path | None, typer.Option("--config", exists=False, dir_okay=False)
-    ] = None,
-) -> None:
-    """Download the browser for the configured engine."""
+@app.command("install", rich_help_panel=SETUP)
+def install(config: ConfigOpt = None) -> None:
+    """Download the browser for the configured engine.
+
+    patchright installs Google Chrome (on Linux it may ask for sudo),
+    cloakbrowser downloads its own Chromium build.
+
+    [green]AUTOBROWSER_BROWSER_ENGINE=cloakbrowser autobrowser install[/green]
+    """
     import subprocess
 
     settings = _settings_from_options(config=config)
@@ -437,6 +581,11 @@ def install(
         raise typer.Exit(
             subprocess.call([driver, cli, "install", "chrome"], env=get_driver_env())
         )
+
+
+# Panels are shown in the order of their first command
+_PANELS = [SCENARIOS, AGENTS, SETUP, INFO]
+app.registered_commands.sort(key=lambda c: _PANELS.index(c.rich_help_panel))
 
 
 def main() -> None:

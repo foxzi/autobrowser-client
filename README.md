@@ -44,6 +44,8 @@ Install autobrowser by following https://github.com/foxzi/autobrowser-client/blo
 
 Common flags: `--config`, `--profile`, `--proxy`, `--viewport`, `--output`, `--headless/--headful`, `--timeout`, `--preserve-session`.
 
+Help: `autobrowser -h`, `autobrowser help <command>` or `autobrowser <command> -h` (examples and environment variables included). `autobrowser -V` prints the version.
+
 ## Browser engine
 
 Two stealth engines are supported. Default is `patchright`.
