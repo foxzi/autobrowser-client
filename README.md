@@ -8,6 +8,7 @@ Python client for launching and controlling a browser through CLI scripts and HT
 
 - Technical specification / Техническое задание: [`tz.md`](tz.md)
 - MCP server for AI agents / MCP-сервер для AI-агентов: [`docs/mcp.md`](docs/mcp.md)
+- Agent skill / Skill для агента: [`skills/autobrowser/SKILL.md`](skills/autobrowser/SKILL.md)
 - HTTP API / HTTP API: [`docs/api.md`](docs/api.md)
 - Configuration / Конфигурация: [`docs/configuration.md`](docs/configuration.md)
 - CLI scripts / CLI-сценарии: [`docs/scripts.md`](docs/scripts.md)

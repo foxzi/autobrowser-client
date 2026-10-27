@@ -79,6 +79,18 @@ Element tools take `target` and `by`. By default `target` is a ref from the late
 
 Failures come back as tool errors with the browser's message, for example a timeout while waiting for an element.
 
+### Skill
+
+[`skills/autobrowser/SKILL.md`](../skills/autobrowser/SKILL.md) teaches the agent how to use the tools: the snapshot/ref loop, waits, Cloudflare handling, tabs, dialogs and safety rules. For Claude Code, install it for all projects:
+
+```bash
+mkdir -p ~/.claude/skills/autobrowser
+curl -fsSL https://raw.githubusercontent.com/foxzi/autobrowser-client/main/skills/autobrowser/SKILL.md \
+  -o ~/.claude/skills/autobrowser/SKILL.md
+```
+
+or copy the `skills/autobrowser` folder to `.claude/skills/` of a project. Other agents can take the file as a system prompt or rules file.
+
 ### Security
 
 The agent controls a real browser. `browser_file_upload` can read any local file the server process can read, and `browser_evaluate` runs arbitrary JS in the page. Connect the server only to agents you trust.
@@ -161,6 +173,18 @@ autobrowser mcp [--headless/--headed] [--profile NAME] [--proxy socks5://user:pa
 Инструменты для элементов принимают `target` и `by`. По умолчанию `target` — это ref из последнего snapshot (`e12`). Если `by` равен `css`, `xpath`, `text`, `id`, `name`, `class` или `attribute`, то `target` — значение локатора.
 
 Ошибки возвращаются как ошибки инструмента с сообщением браузера, например таймаут ожидания элемента.
+
+### Skill
+
+[`skills/autobrowser/SKILL.md`](../skills/autobrowser/SKILL.md) объясняет агенту, как пользоваться инструментами: цикл snapshot/ref, ожидания, Cloudflare, вкладки, диалоги и правила безопасности. Для Claude Code установите его для всех проектов:
+
+```bash
+mkdir -p ~/.claude/skills/autobrowser
+curl -fsSL https://raw.githubusercontent.com/foxzi/autobrowser-client/main/skills/autobrowser/SKILL.md \
+  -o ~/.claude/skills/autobrowser/SKILL.md
+```
+
+или скопируйте папку `skills/autobrowser` в `.claude/skills/` проекта. Другим агентам файл можно подключить как системный промпт или файл правил.
 
 ### Безопасность
 
