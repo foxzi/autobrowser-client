@@ -4,7 +4,22 @@
 
 `autobrowser mcp` runs a Model Context Protocol server over stdio. An AI agent (Claude Code, Claude Desktop, Cursor and others) gets a stealth browser as a set of `browser_*` tools.
 
-### Install
+### Install: single binary
+
+Each release has a self-contained `autobrowser` executable for Linux (amd64, arm64), macOS (arm64) and Windows (amd64): Python and dependencies are inside. Download it from [Releases](https://github.com/foxzi/autobrowser-client/releases/latest), make it executable and use its full path as the MCP command:
+
+```bash
+curl -fL https://github.com/foxzi/autobrowser-client/releases/latest/download/autobrowser-linux-amd64 -o ~/.local/bin/autobrowser
+chmod +x ~/.local/bin/autobrowser
+AUTOBROWSER_BROWSER_ENGINE=cloakbrowser ~/.local/bin/autobrowser install
+claude mcp add autobrowser -e AUTOBROWSER_BROWSER_ENGINE=cloakbrowser -- ~/.local/bin/autobrowser mcp
+```
+
+Step-by-step guide for an agent: [install-agent.md](install-agent.md). The binary unpacks itself into a temporary directory on every start, so the first response takes a few seconds.
+
+To build it yourself: `./scripts/build-binary.sh` (needs Python 3.11+, result in `dist/autobrowser`).
+
+### Install: uv
 
 You only need [uv](https://docs.astral.sh/uv/getting-started/installation/). uv downloads Python and all dependencies by itself, isolated from the system.
 
@@ -99,7 +114,22 @@ The agent controls a real browser. `browser_file_upload` can read any local file
 
 `autobrowser mcp` запускает сервер Model Context Protocol через stdio. AI-агент (Claude Code, Claude Desktop, Cursor и другие) получает стелс-браузер в виде набора инструментов `browser_*`.
 
-### Установка
+### Установка: один бинарь
+
+В каждом релизе есть самодостаточный исполняемый файл `autobrowser` для Linux (amd64, arm64), macOS (arm64) и Windows (amd64): Python и зависимости внутри. Скачайте его со страницы [Releases](https://github.com/foxzi/autobrowser-client/releases/latest), сделайте исполняемым и укажите полный путь как команду MCP:
+
+```bash
+curl -fL https://github.com/foxzi/autobrowser-client/releases/latest/download/autobrowser-linux-amd64 -o ~/.local/bin/autobrowser
+chmod +x ~/.local/bin/autobrowser
+AUTOBROWSER_BROWSER_ENGINE=cloakbrowser ~/.local/bin/autobrowser install
+claude mcp add autobrowser -e AUTOBROWSER_BROWSER_ENGINE=cloakbrowser -- ~/.local/bin/autobrowser mcp
+```
+
+Пошаговая инструкция для агента: [install-agent.md](install-agent.md). Бинарь при каждом запуске распаковывается во временный каталог, поэтому первый ответ занимает несколько секунд.
+
+Собрать самому: `./scripts/build-binary.sh` (нужен Python 3.11+, результат в `dist/autobrowser`).
+
+### Установка: uv
 
 Нужен только [uv](https://docs.astral.sh/uv/getting-started/installation/). Он сам скачает Python и все зависимости и изолирует их от системы.
 

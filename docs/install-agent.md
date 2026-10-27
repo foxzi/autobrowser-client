@@ -6,50 +6,72 @@
 
 ## English
 
-You are installing autobrowser: an MCP server that gives you a stealth browser as `browser_*` tools, plus a skill that explains how to use them. Run the commands yourself. Ask the user only where a step says so.
+You are installing autobrowser: an MCP server that gives you a stealth browser as `browser_*` tools, plus a skill that explains how to use them. autobrowser is a single executable file, no Python or other tools are needed. Run the commands yourself. Ask the user only where a step says so.
 
 Placeholders used below:
 
-- `SOURCE` = `autobrowser-client[cloak] @ git+https://github.com/foxzi/autobrowser-client`
+- `RELEASE` = `https://github.com/foxzi/autobrowser-client/releases/latest/download`
 - `SKILL_URL` = `https://raw.githubusercontent.com/foxzi/autobrowser-client/main/skills/autobrowser/SKILL.md`
+- `BIN` = the full path of the installed binary from step 1
 
-### Step 1. Check uv and git
+### Step 1. Download the binary
 
-Run `uv --version` and `git --version`.
+Pick the file for the OS and CPU (`uname -sm` on Linux / macOS):
 
-- If git is missing, stop and ask the user to install git.
-- If uv is missing, tell the user you are going to install it from the official installer and run:
-  - Linux / macOS: `curl -LsSf https://astral.sh/uv/install.sh | sh`
-  - Windows (PowerShell): `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
+| Platform | File | `BIN` |
+|---|---|---|
+| Linux x86_64 | `autobrowser-linux-amd64` | `~/.local/bin/autobrowser` |
+| Linux aarch64 | `autobrowser-linux-arm64` | `~/.local/bin/autobrowser` |
+| macOS Apple Silicon (arm64) | `autobrowser-macos-arm64` | `~/.local/bin/autobrowser` |
+| Windows x64 | `autobrowser-windows-amd64.exe` | `%LOCALAPPDATA%\autobrowser\autobrowser.exe` |
 
-  Then check `uvx --version`. If the shell does not find it, use the full path printed by the installer (usually `~/.local/bin/uvx`).
+For other platforms (for example macOS on Intel) there is no binary: stop and point the user to the uv install in https://github.com/foxzi/autobrowser-client/blob/main/docs/mcp.md.
 
-### Step 2. Download the package and the browser
-
-Linux / macOS:
+Linux / macOS (replace `FILE`):
 
 ```bash
-AUTOBROWSER_BROWSER_ENGINE=cloakbrowser uvx --from "SOURCE" autobrowser install
+mkdir -p ~/.local/bin
+curl -fL RELEASE/FILE -o ~/.local/bin/autobrowser
+chmod +x ~/.local/bin/autobrowser
+~/.local/bin/autobrowser version
 ```
 
 Windows (PowerShell):
 
 ```powershell
-$env:AUTOBROWSER_BROWSER_ENGINE="cloakbrowser"; uvx --from "SOURCE" autobrowser install
+New-Item -ItemType Directory -Force "$env:LOCALAPPDATA\autobrowser" | Out-Null
+Invoke-WebRequest RELEASE/autobrowser-windows-amd64.exe -OutFile "$env:LOCALAPPDATA\autobrowser\autobrowser.exe"
+& "$env:LOCALAPPDATA\autobrowser\autobrowser.exe" version
+```
+
+The `version` command must print a version number. Optionally verify the checksum: `RELEASE/FILE.sha256`.
+
+### Step 2. Download the browser
+
+Linux / macOS:
+
+```bash
+AUTOBROWSER_BROWSER_ENGINE=cloakbrowser BIN install
+```
+
+Windows (PowerShell):
+
+```powershell
+$env:AUTOBROWSER_BROWSER_ENGINE="cloakbrowser"; & "BIN" install
 ```
 
 It takes about a minute and prints the path of the downloaded Chromium (stored in `~/.cloakbrowser`). No root is needed. If it fails, show the error to the user and stop.
 
 ### Step 3. Register the MCP server
 
-Detect which client you run in and use the matching block. If the user named a proxy (`socks5://...` or `http://...`), append `--proxy <url>` after `autobrowser mcp` in the arguments.
+Detect which client you run in and use the matching block. Always use the full path `BIN` (with `~` expanded) as the command: MCP clients may not have `~/.local/bin` on `PATH`. If the user named a proxy (`socks5://...` or `http://...`), append `--proxy <url>` after `mcp` in the arguments.
 
 **Claude Code** (the `claude` command exists):
 
 ```bash
 claude mcp add autobrowser --scope user \
   -e AUTOBROWSER_BROWSER_ENGINE=cloakbrowser \
-  -- uvx --from "SOURCE" autobrowser mcp
+  -- BIN mcp
 ```
 
 If it reports that `autobrowser` already exists, run `claude mcp remove autobrowser --scope user` and repeat.
@@ -58,8 +80,8 @@ If it reports that `autobrowser` already exists, run `claude mcp remove autobrow
 
 ```toml
 [mcp_servers.autobrowser]
-command = "uvx"
-args = ["--from", "SOURCE", "autobrowser", "mcp"]
+command = "BIN"
+args = ["mcp"]
 env = { AUTOBROWSER_BROWSER_ENGINE = "cloakbrowser" }
 ```
 
@@ -69,17 +91,17 @@ env = { AUTOBROWSER_BROWSER_ENGINE = "cloakbrowser" }
 {
   "mcpServers": {
     "autobrowser": {
-      "command": "uvx",
-      "args": ["--from", "SOURCE", "autobrowser", "mcp"],
+      "command": "BIN",
+      "args": ["mcp"],
       "env": {"AUTOBROWSER_BROWSER_ENGINE": "cloakbrowser"}
     }
   }
 }
 ```
 
-For any other client, find where it keeps MCP servers and add a stdio server with the same command, arguments and environment. If you cannot find it, give the user the JSON above.
+In JSON on Windows escape backslashes in the path (`C:\\Users\\...`).
 
-Always replace `SOURCE` with the real value. If `uvx` is not on the client's `PATH`, use the full path to `uvx` as the command.
+For any other client, find where it keeps MCP servers and add a stdio server with the same command, arguments and environment. If you cannot find it, give the user the JSON above.
 
 ### Step 4. Install the skill
 
@@ -100,58 +122,81 @@ On Windows use `%USERPROFILE%\.claude\skills\autobrowser\SKILL.md` and `Invoke-W
 2. The new tools appear only after the client restarts or reloads MCP servers. If `browser_*` tools are not available to you yet, ask the user to restart the client and then run the check below.
 3. Check: `browser_navigate(url="https://example.com")` must return `status` 200 and title "Example Domain". Then `browser_close()`.
 
-Report to the user: what was installed, where the config was written, and whether the check passed. Mention:
+Report to the user: what was installed, where the binary and the config are, and whether the check passed. Mention:
 
-- `--headed` after `autobrowser mcp` shows the browser window; `--profile NAME` keeps cookies between runs.
+- To update, download the binary again (step 1).
+- `--headed` after `mcp` shows the browser window; `--profile NAME` keeps cookies between runs.
 - Full docs: https://github.com/foxzi/autobrowser-client/blob/main/docs/mcp.md
 - Problems with Cloudflare, proxies or engines: https://github.com/foxzi/autobrowser-client/blob/main/docs/troubleshooting.md
 
 ## Русский
 
-Инструкция для агента: установить autobrowser — MCP-сервер, который даёт агенту скрытный браузер в виде инструментов `browser_*`, и skill с правилами работы с ними. Агент сам выполняет команды и задаёт вопросы пользователю только там, где это указано.
+Инструкция для агента: установить autobrowser — MCP-сервер, который даёт агенту скрытный браузер в виде инструментов `browser_*`, и skill с правилами работы с ними. autobrowser — один исполняемый файл, Python и другие инструменты не нужны. Агент сам выполняет команды и задаёт вопросы пользователю только там, где это указано.
 
 Обозначения:
 
-- `SOURCE` = `autobrowser-client[cloak] @ git+https://github.com/foxzi/autobrowser-client`
+- `RELEASE` = `https://github.com/foxzi/autobrowser-client/releases/latest/download`
 - `SKILL_URL` = `https://raw.githubusercontent.com/foxzi/autobrowser-client/main/skills/autobrowser/SKILL.md`
+- `BIN` = полный путь к установленному файлу из шага 1
 
-### Шаг 1. Проверить uv и git
+### Шаг 1. Скачать бинарь
 
-Выполнить `uv --version` и `git --version`.
+Выбрать файл по ОС и процессору (`uname -sm` на Linux / macOS):
 
-- Если нет git — остановиться и попросить пользователя установить git.
-- Если нет uv — предупредить пользователя и поставить официальным установщиком:
-  - Linux / macOS: `curl -LsSf https://astral.sh/uv/install.sh | sh`
-  - Windows (PowerShell): `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
+| Платформа | Файл | `BIN` |
+|---|---|---|
+| Linux x86_64 | `autobrowser-linux-amd64` | `~/.local/bin/autobrowser` |
+| Linux aarch64 | `autobrowser-linux-arm64` | `~/.local/bin/autobrowser` |
+| macOS Apple Silicon (arm64) | `autobrowser-macos-arm64` | `~/.local/bin/autobrowser` |
+| Windows x64 | `autobrowser-windows-amd64.exe` | `%LOCALAPPDATA%\autobrowser\autobrowser.exe` |
 
-  Затем проверить `uvx --version`. Если оболочка его не находит — использовать полный путь из вывода установщика (обычно `~/.local/bin/uvx`).
+Для других платформ (например, macOS на Intel) бинаря нет: остановиться и отправить пользователя к установке через uv в https://github.com/foxzi/autobrowser-client/blob/main/docs/mcp.md.
 
-### Шаг 2. Скачать пакет и браузер
-
-Linux / macOS:
+Linux / macOS (подставить `FILE`):
 
 ```bash
-AUTOBROWSER_BROWSER_ENGINE=cloakbrowser uvx --from "SOURCE" autobrowser install
+mkdir -p ~/.local/bin
+curl -fL RELEASE/FILE -o ~/.local/bin/autobrowser
+chmod +x ~/.local/bin/autobrowser
+~/.local/bin/autobrowser version
 ```
 
 Windows (PowerShell):
 
 ```powershell
-$env:AUTOBROWSER_BROWSER_ENGINE="cloakbrowser"; uvx --from "SOURCE" autobrowser install
+New-Item -ItemType Directory -Force "$env:LOCALAPPDATA\autobrowser" | Out-Null
+Invoke-WebRequest RELEASE/autobrowser-windows-amd64.exe -OutFile "$env:LOCALAPPDATA\autobrowser\autobrowser.exe"
+& "$env:LOCALAPPDATA\autobrowser\autobrowser.exe" version
 ```
 
-Занимает около минуты и печатает путь к скачанному Chromium (лежит в `~/.cloakbrowser`). Права root не нужны. При ошибке — показать её пользователю и остановиться.
+Команда `version` должна напечатать номер версии. Контрольная сумма при желании: `RELEASE/FILE.sha256`.
+
+### Шаг 2. Скачать браузер
+
+Linux / macOS:
+
+```bash
+AUTOBROWSER_BROWSER_ENGINE=cloakbrowser BIN install
+```
+
+Windows (PowerShell):
+
+```powershell
+$env:AUTOBROWSER_BROWSER_ENGINE="cloakbrowser"; & "BIN" install
+```
+
+Занимает около минуты и печатает путь к скачанному Chromium (хранится в `~/.cloakbrowser`). Root не нужен. При ошибке — показать её пользователю и остановиться.
 
 ### Шаг 3. Подключить MCP-сервер
 
-Определить, в каком клиенте работает агент, и взять нужный блок. Если пользователь указал прокси (`socks5://...` или `http://...`), добавить `--proxy <url>` после `autobrowser mcp` в аргументах.
+Определить, в каком клиенте работает агент, и взять нужный блок. Командой всегда указывать полный путь `BIN` (с раскрытым `~`): у MCP-клиента `~/.local/bin` может не быть в `PATH`. Если пользователь назвал прокси (`socks5://...` или `http://...`), добавить `--proxy <url>` после `mcp` в аргументах.
 
 **Claude Code** (есть команда `claude`):
 
 ```bash
 claude mcp add autobrowser --scope user \
   -e AUTOBROWSER_BROWSER_ENGINE=cloakbrowser \
-  -- uvx --from "SOURCE" autobrowser mcp
+  -- BIN mcp
 ```
 
 Если сервер `autobrowser` уже есть — выполнить `claude mcp remove autobrowser --scope user` и повторить.
@@ -160,28 +205,28 @@ claude mcp add autobrowser --scope user \
 
 ```toml
 [mcp_servers.autobrowser]
-command = "uvx"
-args = ["--from", "SOURCE", "autobrowser", "mcp"]
+command = "BIN"
+args = ["mcp"]
 env = { AUTOBROWSER_BROWSER_ENGINE = "cloakbrowser" }
 ```
 
-**Клиенты с JSON-конфигом `mcpServers`** — Cursor (`~/.cursor/mcp.json`), Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_config.json` на macOS, `%APPDATA%\Claude\claude_desktop_config.json` на Windows) и другие. Добавить запись в `mcpServers`, не трогая существующие:
+**Клиенты с JSON-конфигом `mcpServers`** — Cursor (`~/.cursor/mcp.json`), Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_config.json` на macOS, `%APPDATA%\Claude\claude_desktop_config.json` на Windows) и другие. Добавить запись в `mcpServers`, сохранив существующие:
 
 ```json
 {
   "mcpServers": {
     "autobrowser": {
-      "command": "uvx",
-      "args": ["--from", "SOURCE", "autobrowser", "mcp"],
+      "command": "BIN",
+      "args": ["mcp"],
       "env": {"AUTOBROWSER_BROWSER_ENGINE": "cloakbrowser"}
     }
   }
 }
 ```
 
-Для другого клиента — найти, где он хранит MCP-серверы, и добавить stdio-сервер с той же командой, аргументами и окружением. Если не удалось — отдать пользователю JSON выше.
+В JSON на Windows обратные слэши в пути экранируются (`C:\\Users\\...`).
 
-`SOURCE` всегда заменять на реальное значение. Если `uvx` нет в `PATH` клиента — указать полный путь к `uvx` в `command`.
+Для другого клиента — найти, где он хранит MCP-серверы, и добавить stdio-сервер с той же командой, аргументами и окружением. Если не удалось — отдать пользователю JSON выше.
 
 ### Шаг 4. Установить skill
 
@@ -198,12 +243,13 @@ curl -fsSL SKILL_URL -o ~/.claude/skills/autobrowser/SKILL.md
 
 ### Шаг 5. Проверить и отчитаться
 
-1. Claude Code: `claude mcp list` должен показать `autobrowser` как подключённый. В других клиентах — посмотреть статус MCP, если он есть.
-2. Новые инструменты появляются только после перезапуска клиента или перезагрузки MCP-серверов. Если инструментов `browser_*` ещё нет — попросить пользователя перезапустить клиент и затем выполнить проверку.
+1. Claude Code: `claude mcp list` должен показать `autobrowser` как подключённый. Другие клиенты — посмотреть статус MCP, если клиент его показывает.
+2. Новые инструменты появляются только после перезапуска клиента или перезагрузки MCP-серверов. Если `browser_*` ещё недоступны — попросить пользователя перезапустить клиент и затем выполнить проверку.
 3. Проверка: `browser_navigate(url="https://example.com")` должен вернуть `status` 200 и заголовок "Example Domain". Затем `browser_close()`.
 
-Сообщить пользователю: что установлено, куда записан конфиг, прошла ли проверка. Упомянуть:
+Отчитаться пользователю: что установлено, где лежат бинарь и конфиг, прошла ли проверка. Упомянуть:
 
-- `--headed` после `autobrowser mcp` показывает окно браузера; `--profile NAME` сохраняет cookies между запусками.
+- Для обновления — скачать бинарь заново (шаг 1).
+- `--headed` после `mcp` показывает окно браузера; `--profile NAME` сохраняет cookies между запусками.
 - Полная документация: https://github.com/foxzi/autobrowser-client/blob/main/docs/mcp.md
-- Проблемы с Cloudflare, прокси и движками: https://github.com/foxzi/autobrowser-client/blob/main/docs/troubleshooting.md
+- Проблемы с Cloudflare, прокси или движками: https://github.com/foxzi/autobrowser-client/blob/main/docs/troubleshooting.md
