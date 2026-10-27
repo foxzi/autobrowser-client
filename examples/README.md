@@ -22,6 +22,9 @@ YAML scenario examples for `autobrowser run-script`. Each file is a ready-to-run
 | `cloakbrowser.yaml` | Run with the cloakbrowser engine via env var |
 | `cloudflare.yaml` | Pass a Cloudflare challenge with `solve-challenge` (cloakbrowser + `AUTOBROWSER_FINGERPRINT_PLATFORM=linux`) |
 | `with-profile.yaml` | Persist cookies and session data across runs |
+| `conditions.yaml` | `if` and `assert`: act on a banner only when it exists |
+| `try-catch.yaml` | `try` / `catch` / `finally` and `optional` steps |
+| `extract-loop.yaml` | `forEach` + `extract` + variables (quotes.toscrape.com) |
 
 ### Running scenarios
 
@@ -136,6 +139,9 @@ steps:
 | `cloakbrowser.yaml` | Запуск с движком cloakbrowser через env-переменную |
 | `cloudflare.yaml` | Прохождение Cloudflare challenge шагом `solve-challenge` (cloakbrowser + `AUTOBROWSER_FINGERPRINT_PLATFORM=linux`) |
 | `with-profile.yaml` | Сохранение cookies и данных сессии между запусками |
+| `conditions.yaml` | `if` и `assert`: действие с баннером только если он есть |
+| `try-catch.yaml` | `try` / `catch` / `finally` и `optional` шаги |
+| `extract-loop.yaml` | `forEach` + `extract` + переменные (quotes.toscrape.com) |
 
 ### Способы запуска
 

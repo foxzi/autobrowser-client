@@ -1,0 +1,34 @@
+# forEach + extract + vars: collect quotes from several pages.
+# Run: autobrowser run-script --file examples/extract-loop.yaml
+# Override the pages: --var base=https://quotes.toscrape.com
+
+session:
+  headless: true
+
+vars:
+  base: https://quotes.toscrape.com
+  pages: ["1", "2"]
+
+steps:
+  - forEach: "${pages}"
+    as: page
+    do:
+      - open: "${base}/page/${page}/"
+      - action: extract
+        locator: ".quote .text"
+        all: true
+        as: texts
+      - action: extract
+        locator: ".quote .author"
+        all: true
+        as: authors
+      - action: extract
+        locator: ".quote a.tag"
+        attribute: href
+        as: first_tag_link
+
+  # the last iteration leaves its values in the variables
+  - assert: {var: authors}
+  - action: evaluate
+    script: "() => document.title"
+    as: title

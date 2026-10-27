@@ -1,0 +1,33 @@
+# Conditions: close a cookie banner only when it is shown, then assert the result.
+# Run: autobrowser run-script --file examples/conditions.yaml
+# Try a banner site by overriding the selector: --var banner="#onetrust-accept-btn-handler"
+
+session:
+  headless: true
+
+vars:
+  banner: "#cookie-accept"
+
+steps:
+  - open: https://example.com
+
+  # example.com has no banner, so the condition is false and the branch is skipped
+  - if: {exists: "${banner}"}
+    then:
+      - click: "${banner}"
+    else:
+      - action: set
+        vars: {banner_closed: false}
+
+  # optional: a failed step is recorded but never stops the scenario
+  - click: "${banner}"
+    timeout: 500
+    optional: true
+
+  - assert: {text: "documentation examples"}
+  - assert:
+      all:
+        - url: example.com
+        - title: Example Domain
+        - not: {exists: "#cookie-accept"}
+    message: unexpected page state

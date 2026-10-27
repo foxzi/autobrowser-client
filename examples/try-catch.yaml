@@ -1,0 +1,29 @@
+# try / catch / finally: recover from a failed step and keep going.
+# Run: autobrowser run-script --file examples/try-catch.yaml
+
+session:
+  headless: true
+
+steps:
+  - open: https://example.com
+
+  - try:
+      - click: "#does-not-exist"
+        timeout: 500
+    catch:
+      # the "error" variable holds {message, action, name}
+      - action: set
+        vars: {recovered_from: "${error.action}"}
+      - action: extract
+        locator: p
+        as: intro
+    finally:
+      - get-content: ~
+        format: text
+
+  # fail raises a catchable failure
+  - try:
+      - action: fail
+        message: stop here
+    catch:
+      - assert: {var: error.message, equals: stop here}
