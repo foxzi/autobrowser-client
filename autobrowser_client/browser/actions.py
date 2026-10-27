@@ -92,10 +92,11 @@ def history(
     timeout: int = 30000,
 ) -> dict[str, Any]:
     page = session.get_page(page_id)
+    # "commit": pages restored from bfcache never fire "load".
     if direction == "back":
-        resp = page.go_back(timeout=timeout)
+        resp = page.go_back(timeout=timeout, wait_until="commit")
     elif direction == "forward":
-        resp = page.go_forward(timeout=timeout)
+        resp = page.go_forward(timeout=timeout, wait_until="commit")
     else:
         resp = page.reload(timeout=timeout)
     return {"url": page.url, "title": page.title(), "status": resp.status if resp else None}
