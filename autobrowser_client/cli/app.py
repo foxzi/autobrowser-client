@@ -190,7 +190,8 @@ def run_script(
     )
 
     try:
-        results = execute_script(
+        results = session.call(
+            execute_script,
             session,
             script.steps,
             stop_on_error=script.stop_on_error,
@@ -258,20 +259,22 @@ def run(
     )
 
     try:
-        pages_data: dict[str, Any] = {}
-        for page_id in session.list_pages():
-            pages_data[page_id] = {
-                "url": session.get_page(page_id).url,
-                "headers": session.get_headers(page_id),
-                "content": session.get_content(page_id, fmt=content_format),
+        def collect() -> dict[str, Any]:
+            pages_data: dict[str, Any] = {}
+            for page_id in session.list_pages():
+                pages_data[page_id] = {
+                    "url": session.get_page(page_id).url,
+                    "headers": session.get_headers(page_id),
+                    "content": session.get_content(page_id, fmt=content_format),
+                }
+            return {
+                "success": True,
+                "sessionId": session.session_id,
+                "cookies": session.get_cookies(),
+                "pages": pages_data,
             }
 
-        result = {
-            "success": True,
-            "sessionId": session.session_id,
-            "cookies": session.get_cookies(),
-            "pages": pages_data,
-        }
+        result = session.call(collect)
 
         output = json.dumps(result, indent=2, ensure_ascii=False)
 

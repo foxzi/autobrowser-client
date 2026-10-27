@@ -285,7 +285,7 @@ def create_app(settings: Settings) -> FastAPI:
     @app.get("/api/v1/session/{session_id}/cookies", tags=["page-data"])
     async def get_cookies(session_id: str) -> dict[str, Any]:
         session = manager.get_session(session_id)
-        cookies = await asyncio.to_thread(session.get_cookies)
+        cookies = await asyncio.to_thread(session.call, session.get_cookies)
         return {"success": True, "sessionId": session_id, "cookies": cookies}
 
     @app.get("/api/v1/session/{session_id}/headers", tags=["page-data"])
@@ -296,7 +296,7 @@ def create_app(settings: Settings) -> FastAPI:
     @app.get("/api/v1/session/{session_id}/content", tags=["page-data"])
     async def get_content(session_id: str, page_id: str | None = None, fmt: str = "html") -> dict[str, Any]:
         session = manager.get_session(session_id)
-        content = await asyncio.to_thread(session.get_content, page_id, fmt)
+        content = await asyncio.to_thread(session.call, session.get_content, page_id, fmt)
         return {"success": True, "sessionId": session_id, "content": content}
 
     # =======================================================================
@@ -307,7 +307,7 @@ def create_app(settings: Settings) -> FastAPI:
     async def api_find(session_id: str, page_id: str, body: ElementRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         data, ms = await asyncio.to_thread(
-            _timed, actions.find_element,
+            session.call, _timed, actions.find_element,
             session, page_id, body.locator.type, body.locator.value, body.timeout,
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": "find", "durationMs": ms, "result": data}
@@ -316,7 +316,7 @@ def create_app(settings: Settings) -> FastAPI:
     async def api_find_all(session_id: str, page_id: str, body: ElementRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         data, ms = await asyncio.to_thread(
-            _timed, actions.find_all_elements,
+            session.call, _timed, actions.find_all_elements,
             session, page_id, body.locator.type, body.locator.value, body.timeout,
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": "find-all", "durationMs": ms, "result": data}
@@ -325,7 +325,7 @@ def create_app(settings: Settings) -> FastAPI:
     async def api_read(session_id: str, page_id: str, body: ElementRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         data, ms = await asyncio.to_thread(
-            _timed, actions.read_element,
+            session.call, _timed, actions.read_element,
             session, page_id, body.locator.type, body.locator.value, body.timeout,
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": "read", "durationMs": ms, "result": data}
@@ -334,7 +334,7 @@ def create_app(settings: Settings) -> FastAPI:
     async def api_click(session_id: str, page_id: str, body: ClickRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         _, ms = await asyncio.to_thread(
-            _timed, actions.click_element,
+            session.call, _timed, actions.click_element,
             session, page_id, body.locator.type, body.locator.value, body.timeout, body.double,
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": "click", "durationMs": ms}
@@ -343,7 +343,7 @@ def create_app(settings: Settings) -> FastAPI:
     async def api_hover(session_id: str, page_id: str, body: ElementRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         _, ms = await asyncio.to_thread(
-            _timed, actions.hover_element,
+            session.call, _timed, actions.hover_element,
             session, page_id, body.locator.type, body.locator.value, body.timeout,
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": "hover", "durationMs": ms}
@@ -352,7 +352,7 @@ def create_app(settings: Settings) -> FastAPI:
     async def api_focus(session_id: str, page_id: str, body: ElementRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         _, ms = await asyncio.to_thread(
-            _timed, actions.focus_element,
+            session.call, _timed, actions.focus_element,
             session, page_id, body.locator.type, body.locator.value, body.timeout,
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": "focus", "durationMs": ms}
@@ -361,7 +361,7 @@ def create_app(settings: Settings) -> FastAPI:
     async def api_fill(session_id: str, page_id: str, body: FillRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         _, ms = await asyncio.to_thread(
-            _timed, actions.fill_element,
+            session.call, _timed, actions.fill_element,
             session, page_id, body.locator.type, body.locator.value,
             body.value, body.clear_before, body.timeout,
         )
@@ -371,7 +371,7 @@ def create_app(settings: Settings) -> FastAPI:
     async def api_clear(session_id: str, page_id: str, body: ElementRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         _, ms = await asyncio.to_thread(
-            _timed, actions.clear_element,
+            session.call, _timed, actions.clear_element,
             session, page_id, body.locator.type, body.locator.value, body.timeout,
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": "clear", "durationMs": ms}
@@ -380,7 +380,7 @@ def create_app(settings: Settings) -> FastAPI:
     async def api_select(session_id: str, page_id: str, body: SelectRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         data, ms = await asyncio.to_thread(
-            _timed, actions.select_option,
+            session.call, _timed, actions.select_option,
             session, page_id, body.locator.type, body.locator.value, body.option, body.timeout,
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": "select", "durationMs": ms, "result": {"selected": data}}
@@ -390,7 +390,7 @@ def create_app(settings: Settings) -> FastAPI:
         session = manager.get_session(session_id)
         action_name = "check" if body.checked else "uncheck"
         _, ms = await asyncio.to_thread(
-            _timed, actions.check_element,
+            session.call, _timed, actions.check_element,
             session, page_id, body.locator.type, body.locator.value, body.checked, body.timeout,
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": action_name, "durationMs": ms}
@@ -399,7 +399,7 @@ def create_app(settings: Settings) -> FastAPI:
     async def api_submit(session_id: str, page_id: str, body: ElementRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         _, ms = await asyncio.to_thread(
-            _timed, actions.submit_form,
+            session.call, _timed, actions.submit_form,
             session, page_id, body.locator.type, body.locator.value, body.timeout,
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": "submit", "durationMs": ms}
@@ -409,12 +409,12 @@ def create_app(settings: Settings) -> FastAPI:
         session = manager.get_session(session_id)
         if body.locator:
             _, ms = await asyncio.to_thread(
-                _timed, actions.wait_for_element,
+                session.call, _timed, actions.wait_for_element,
                 session, page_id, body.locator.type, body.locator.value, body.state, body.timeout,
             )
         else:
             _, ms = await asyncio.to_thread(
-                _timed, actions.wait_for_navigation,
+                session.call, _timed, actions.wait_for_navigation,
                 session, page_id, None, body.wait_until or "load", body.timeout,
             )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": "wait", "durationMs": ms}
@@ -427,7 +427,7 @@ def create_app(settings: Settings) -> FastAPI:
     async def api_mouse_move(session_id: str, page_id: str, body: MouseMoveRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         _, ms = await asyncio.to_thread(
-            _timed, actions.mouse_move,
+            session.call, _timed, actions.mouse_move,
             session, page_id, body.x, body.y, body.steps,
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": "mouse-move", "durationMs": ms}
@@ -436,7 +436,7 @@ def create_app(settings: Settings) -> FastAPI:
     async def api_mouse_move_to(session_id: str, page_id: str, body: ElementRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         data, ms = await asyncio.to_thread(
-            _timed, actions.mouse_move_to_element,
+            session.call, _timed, actions.mouse_move_to_element,
             session, page_id, body.locator.type, body.locator.value, body.timeout,
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": "mouse-move-to", "durationMs": ms, "result": data}
@@ -445,7 +445,7 @@ def create_app(settings: Settings) -> FastAPI:
     async def api_scroll(session_id: str, page_id: str, body: ScrollRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         _, ms = await asyncio.to_thread(
-            _timed, actions.mouse_scroll,
+            session.call, _timed, actions.mouse_scroll,
             session, page_id, body.delta_x, body.delta_y,
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": "scroll", "durationMs": ms}
@@ -454,7 +454,7 @@ def create_app(settings: Settings) -> FastAPI:
     async def api_scroll_to(session_id: str, page_id: str, body: ElementRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         _, ms = await asyncio.to_thread(
-            _timed, actions.mouse_scroll_to_element,
+            session.call, _timed, actions.mouse_scroll_to_element,
             session, page_id, body.locator.type, body.locator.value, body.timeout,
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": "scroll-to", "durationMs": ms}
@@ -463,7 +463,7 @@ def create_app(settings: Settings) -> FastAPI:
     async def api_mouse_random(session_id: str, page_id: str, body: MouseRandomRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         data, ms = await asyncio.to_thread(
-            _timed, actions.mouse_move_random,
+            session.call, _timed, actions.mouse_move_random,
             session, page_id,
             body.start_x, body.start_y, body.end_x, body.end_y,
             body.steps, body.duration_ms, body.jitter, body.seed,
@@ -474,7 +474,7 @@ def create_app(settings: Settings) -> FastAPI:
     async def api_press(session_id: str, page_id: str, body: PressRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         _, ms = await asyncio.to_thread(
-            _timed, actions.press_key,
+            session.call, _timed, actions.press_key,
             session, page_id, body.key,
         )
         return {"success": True, "sessionId": session_id, "pageId": page_id, "action": "press", "durationMs": ms}
@@ -487,7 +487,7 @@ def create_app(settings: Settings) -> FastAPI:
     async def api_action_chain(session_id: str, page_id: str, body: ActionChainRequest) -> dict[str, Any]:
         session = manager.get_session(session_id)
         results, ms = await asyncio.to_thread(
-            _timed, actions.run_action_chain,
+            session.call, _timed, actions.run_action_chain,
             session, page_id, body.steps, body.timeout,
         )
         all_ok = all(r["success"] for r in results)

@@ -6,6 +6,7 @@ import re
 import threading
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from enum import StrEnum
 from pathlib import Path
 from typing import Any
@@ -188,6 +189,20 @@ class BrowserSession:
         self._proxy_relay: ProxyRelay | None = None
         self._profile_lock: ProfileLock | None = None
         self._profile_dir: Path | None = None
+        # Playwright sync objects are bound to the thread that created them,
+        # so every browser call of this session runs on one worker thread.
+        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix=session_id)
+        self._thread_id: int | None = None
+
+    def call(self, fn: Any, *args: Any, **kwargs: Any) -> Any:
+        """Run fn on the session thread (inline when already on it)."""
+        if threading.get_ident() == self._thread_id:
+            return fn(*args, **kwargs)
+        return self._executor.submit(self._run_owned, fn, args, kwargs).result()
+
+    def _run_owned(self, fn: Any, args: tuple, kwargs: dict) -> Any:
+        self._thread_id = threading.get_ident()
+        return fn(*args, **kwargs)
 
     def _headful_user_agent(self) -> str | None:
         """Real Chrome UA without the "HeadlessChrome" token Cloudflare blocks."""
@@ -208,7 +223,14 @@ class BrowserSession:
             raise BrowserStartError("Browser context is not initialized")
         return self._context
 
-    def start(
+    def start(self, **kwargs: Any) -> None:
+        try:
+            self.call(self._start, **kwargs)
+        except Exception:
+            self._executor.shutdown(wait=False)
+            raise
+
+    def _start(
         self,
         urls: list[str] | None = None,
         profile: str | None = None,
@@ -438,6 +460,14 @@ class BrowserSession:
         self.last_activity = time.time()
 
     def stop(self, preserve_session: bool = False) -> None:
+        if self.state in {SessionState.STOPPED, SessionState.STOPPING, SessionState.FAILED}:
+            return
+        try:
+            self.call(self._stop, preserve_session)
+        finally:
+            self._executor.shutdown(wait=False)
+
+    def _stop(self, preserve_session: bool = False) -> None:
         if self.state in {SessionState.STOPPED, SessionState.STOPPING}:
             return
         self.state = SessionState.STOPPING
