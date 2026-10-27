@@ -109,3 +109,17 @@ def test_dialog_policy_and_logs(session):
     net = client.get(f"{base}/pages/page_0/logs/network").json()["items"]
     assert any(n["failure"] for n in net)
     assert client.get(f"{base}/pages/page_0/logs/bogus").status_code == 400
+
+
+def test_upload(session, tmp_path):
+    client, base = session
+    f = tmp_path / "a.txt"
+    f.write_text("a")
+    client.post(f"{base}/pages/page_0/evaluate", json={"expression": "document.body.insertAdjacentHTML('beforeend', '<input type=file id=f>')"})
+    resp = client.post(f"{base}/pages/page_0/elements/upload", json={"locator": {"type": "id", "value": "f"}, "files": [str(f)]})
+    assert resp.json()["success"]
+    name = client.post(f"{base}/pages/page_0/evaluate", json={"expression": "document.getElementById('f').files[0].name"}).json()
+    assert name["result"]["result"] == "a.txt"
+
+    missing = client.post(f"{base}/pages/page_0/elements/upload", json={"locator": {"type": "id", "value": "f"}, "files": ["/nope"]})
+    assert missing.status_code == 400

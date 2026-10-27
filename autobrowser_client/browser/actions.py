@@ -267,6 +267,27 @@ def fill_element(
     loc.fill(text, timeout=timeout)
 
 
+def upload_files(
+    session: BrowserSession,
+    page_id: str,
+    loc_type: LocatorType,
+    value: str,
+    files: list[str],
+    timeout: int = 10000,
+) -> dict[str, Any]:
+    """Attach local files to a file input, or to the chooser opened by clicking the element."""
+    page = session.get_page(page_id)
+    loc = resolve_locator(page, loc_type, value).first
+    is_input = loc.evaluate("e => e.tagName === 'INPUT' && e.type === 'file'", timeout=timeout)
+    if is_input:
+        loc.set_input_files(files, timeout=timeout)
+    else:
+        with page.expect_file_chooser(timeout=timeout) as chooser:
+            loc.click(timeout=timeout)
+        chooser.value.set_files(files, timeout=timeout)
+    return {"files": files}
+
+
 def clear_element(
     session: BrowserSession,
     page_id: str,

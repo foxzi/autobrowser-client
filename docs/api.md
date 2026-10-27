@@ -129,6 +129,7 @@ Authorization: Bearer <token>
 - `POST .../history` - `direction`: `back`, `forward` or `reload`
 - `POST .../evaluate` - run JS expression or function source (body: `expression`, `isolated`, default main world)
 - `POST .../wait-text` - wait for text to appear, or to disappear with `gone: true`
+- `POST .../elements/upload` - attach local files (body: `locator`, `files`: server-side paths); works on `input[type=file]` or on an element that opens a file chooser
 - `GET .../logs/{kind}` - event log of the tab, `kind`: `console`, `network` or `dialogs`; `?clear=true` empties it after reading (last 500 entries kept)
 - `POST /api/v1/session/{id}/dialog-policy` - how to answer `alert`/`confirm`/`prompt` (body: `accept`, `promptText`); default is dismiss, every dialog is recorded in `logs/dialogs`
 
@@ -467,6 +468,7 @@ Authorization: Bearer <token>
 - `POST .../history` - `direction`: `back`, `forward` или `reload`
 - `POST .../evaluate` - выполнить JS-выражение или функцию (тело: `expression`, `isolated`, по умолчанию main world)
 - `POST .../wait-text` - ждать появления текста, или исчезновения при `gone: true`
+- `POST .../elements/upload` - прикрепить локальные файлы (тело: `locator`, `files`: пути на сервере); работает с `input[type=file]` и с элементом, который открывает выбор файла
 - `GET .../logs/{kind}` - журнал событий вкладки, `kind`: `console`, `network` или `dialogs`; `?clear=true` очищает его после чтения (хранятся последние 500 записей)
 - `POST /api/v1/session/{id}/dialog-policy` - как отвечать на `alert`/`confirm`/`prompt` (тело: `accept`, `promptText`); по умолчанию dismiss, каждый диалог записывается в `logs/dialogs`
 

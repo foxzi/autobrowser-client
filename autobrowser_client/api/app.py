@@ -141,6 +141,12 @@ class WaitTextRequest(BaseModel):
     timeout: int = 10000
 
 
+class UploadRequest(BaseModel):
+    locator: LocatorBody
+    files: list[str]
+    timeout: int = 10000
+
+
 class DialogPolicyRequest(BaseModel):
     accept: bool
     prompt_text: str | None = Field(default=None, alias="promptText")
@@ -600,6 +606,16 @@ def create_app(settings: Settings) -> FastAPI:
     @app.post("/api/v1/session/{session_id}/pages/{page_id}/wait-text", tags=["pages"])
     async def api_wait_text(session_id: str, page_id: str, body: WaitTextRequest) -> dict[str, Any]:
         return await _page_op(session_id, page_id, "wait-text", actions.wait_for_text, body.text, body.gone, body.timeout)
+
+    @app.post("/api/v1/session/{session_id}/pages/{page_id}/elements/upload", tags=["dom"])
+    async def api_upload(session_id: str, page_id: str, body: UploadRequest) -> dict[str, Any]:
+        missing = [f for f in body.files if not Path(f).is_file()]
+        if missing:
+            raise AppError(ErrorCode.INVALID_ARGUMENT, f"Files not found: {', '.join(missing)}")
+        return await _page_op(
+            session_id, page_id, "upload", actions.upload_files,
+            body.locator.type, body.locator.value, body.files, body.timeout,
+        )
 
     @app.get("/api/v1/session/{session_id}/pages/{page_id}/logs/{kind}", tags=["pages"])
     async def api_logs(session_id: str, page_id: str, kind: str, clear: bool = False) -> dict[str, Any]:
