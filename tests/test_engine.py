@@ -466,3 +466,22 @@ def test_execute_script_compat(session, calls):
     results = execute_script(session, steps)
     assert [r["success"] for r in results] == [True, False]
     assert len(execute_script(session, steps, stop_on_error=False)) == 3
+
+
+def test_locator_shorthand_parsed_after_substitution(session, calls):
+    script = _script([
+        {"click": "${sel}"},
+        {"action": "find", "locator": "${sel2}"},
+        {"click": "#${idv}"},
+    ], vars={"sel": "xpath=//a", "sel2": "text=Next", "idv": "go"})
+    assert script.steps[0].locator.value == "${sel}"
+    run_script(session, script)
+    assert (calls[0].locator.type, calls[0].locator.value) == ("xpath", "//a")
+    assert (calls[1].locator.type, calls[1].locator.value) == ("text", "Next")
+    assert (calls[2].locator.type, calls[2].locator.value) == ("id", "go")
+
+
+def test_locator_shorthand_in_condition(session, calls):
+    script = _script([{"assert": {"exists": "${sel}"}}], vars={"sel": "xpath=//a"})
+    session.get_page.return_value.locator.return_value.count.return_value = 1
+    assert run_script(session, script)["success"]

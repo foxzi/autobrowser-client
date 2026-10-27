@@ -90,12 +90,18 @@ class Locator(BaseModel):
 
     type: LocatorType
     value: str
+    # shorthand string with ``${...}``: parsed after variable substitution
+    shorthand: bool = False
 
     @model_validator(mode="before")
     @classmethod
     def _coerce_string(cls, v: object) -> object:
         if isinstance(v, str):
+            if "${" in v:
+                return {"type": "css", "value": v, "shorthand": True}
             return _parse_locator_string(v)
+        if isinstance(v, dict) and v.get("shorthand"):
+            return _parse_locator_string(str(v["value"]))
         return v
 
 
