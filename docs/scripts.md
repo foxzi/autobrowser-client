@@ -476,32 +476,26 @@ JetBrains IDEs: Settings -> Languages & Frameworks -> Schemas and DTDs -> JSON S
 
 ### Validation
 
-Scripts should be validated against JSON Schema before execution.
+`autobrowser validate-script -f s.yaml` loads the scenario without starting a browser. `run-script`, `browser_run_script` (MCP) and `POST /api/v1/session/{id}/script` run the same check before the first step, so an invalid scenario never runs partially.
 
-Validation must check:
+The check uses the pydantic models of the client (not `scenario.schema.json`) and covers:
 
-- required fields;
-- allowed action names;
-- allowed locator types;
-- allowed `waitUntil` values;
-- field types and enum values;
-- unexpected properties.
+- action names, required fields of each action (`open` needs `url`, `click` needs `locator`, ...) and unknown keys;
+- locator types and shorthand strings, `waitUntil` values, field types;
+- shorthand steps, conditions (exactly one primary key) and blocks (`try` needs `catch` or `finally`, `as` only on value-producing actions);
+- `include`: the file exists, stays inside the directory, no cycles.
 
-Validation errors should include:
+`${...}` values are not resolved at this point: an undefined variable or a locator built from a variable fails only when the step runs.
 
-- exit code;
-- path to the invalid field;
-- short human-readable error message.
+On success it prints `{"success": true, "steps": N, "stopOnError": bool}` (exit code 0). On error it prints to stderr and exits with code 1:
+
+```json
+{"success": false, "error": {"code": "SCRIPT_VALIDATION_ERROR", "message": "1 validation error for ScriptDefinition\nsteps.0.step\n  Value error, 'open' step requires 'url' ..."}}
+```
+
+The message contains the path to the invalid field (`steps.0.step` - first step). MCP returns the same text as a tool error, the HTTP API as a 400 response with the same `code`.
 
 ### Execution result
-
-Script execution result should include:
-
-- overall `success` flag;
-- total duration;
-- per-step result;
-- diagnostics for failed steps;
-- output destination details when applicable.
 
 `run-script` prints JSON `{success, sessionId, profile, steps, vars}` (`vars` - final variables); exit code 1 when `success` is false. Flat steps are `{action, success, durationMs, data, error}` plus `name`, `attempts`, `optional`, `handled`, `artifacts` when relevant. Blocks produce nested nodes:
 
@@ -856,32 +850,26 @@ JetBrains IDE: Settings -> Languages & Frameworks -> Schemas and DTDs -> JSON Sc
 
 ### Валидация
 
-Сценарии должны проверяться по JSON Schema до выполнения.
+`autobrowser validate-script -f s.yaml` загружает сценарий без запуска браузера. `run-script`, `browser_run_script` (MCP) и `POST /api/v1/session/{id}/script` выполняют ту же проверку до первого шага, поэтому некорректный сценарий не выполняется частично.
 
-Валидация должна проверять:
+Проверка идёт по pydantic-моделям клиента (не по `scenario.schema.json`) и охватывает:
 
-- обязательные поля;
-- допустимые имена действий;
-- допустимые типы локаторов;
-- допустимые значения `waitUntil`;
-- типы полей и значения перечислений;
-- неожиданные свойства.
+- имена действий, обязательные поля каждого действия (`open` требует `url`, `click` - `locator`, ...) и неизвестные ключи;
+- типы локаторов и сокращённые строки, значения `waitUntil`, типы полей;
+- сокращённые шаги, условия (ровно один основной ключ) и блоки (`try` требует `catch` или `finally`, `as` только у действий, возвращающих значение);
+- `include`: файл существует, не выходит за каталог, нет циклов.
 
-Ошибки валидации должны содержать:
+Значения `${...}` на этом этапе не подставляются: неопределённая переменная или локатор из переменной дают ошибку только при выполнении шага.
 
-- код завершения;
-- путь к некорректному полю;
-- короткое понятное описание ошибки.
+При успехе печатается `{"success": true, "steps": N, "stopOnError": bool}` (код выхода 0). При ошибке JSON выводится в stderr, код выхода 1:
+
+```json
+{"success": false, "error": {"code": "SCRIPT_VALIDATION_ERROR", "message": "1 validation error for ScriptDefinition\nsteps.0.step\n  Value error, 'open' step requires 'url' ..."}}
+```
+
+Сообщение содержит путь к некорректному полю (`steps.0.step` - первый шаг). MCP возвращает тот же текст как ошибку инструмента, HTTP API - как ответ 400 с тем же `code`.
 
 ### Результат выполнения
-
-Результат выполнения сценария должен включать:
-
-- общий признак `success`;
-- общую длительность;
-- результат по каждому шагу;
-- диагностические сведения по ошибочным шагам;
-- сведения о месте вывода результата, если оно задано.
 
 `run-script` печатает JSON `{success, sessionId, profile, steps, vars}` (`vars` - итоговые переменные); код выхода 1, если `success` ложен. Плоские шаги: `{action, success, durationMs, data, error}` плюс `name`, `attempts`, `optional`, `handled`, `artifacts` при необходимости. Блоки дают вложенные узлы:
 
