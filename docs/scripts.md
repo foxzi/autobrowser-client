@@ -362,7 +362,7 @@ Variables are defined in the root `vars` mapping (defaults) and overridden from 
 - `$${` is a literal `${`. An undefined variable is a step error: `undefined variable: name`.
 - Variables are global for the run. The final variables (without environment) are in `vars` of the result.
 - A locator written as a string with `${...}` is parsed after substitution, so a variable can hold `xpath=//a` or `text=Next`.
-- `as: name` stores the result of a value-producing action (`extract` -> value, `evaluate` -> result, `read`, `find-all`, `get-content`, `get-cookies`, `get-headers` -> the whole `data`) into the variable `name`. `set` sets variables directly.
+- `as: name` stores the result of a value-producing action (`extract` -> value, `evaluate` -> result, `read`, `find-all`, `get-content`, `get-cookies`, `get-headers` -> the whole `data`) into the variable `name`. The name is a plain identifier (`[A-Za-z_][A-Za-z0-9_]*`), not a template: `as: first_${index}` is a validation error. Inside a loop the variable is overwritten on every iteration. `set` sets variables directly.
 
 ```yaml
 vars:
@@ -736,7 +736,7 @@ locator:
 - `$${` - буквальное `${`. Неопределённая переменная - ошибка шага: `undefined variable: name`.
 - Переменные глобальны на весь запуск. Итоговые переменные (без окружения) попадают в `vars` результата.
 - Локатор-строка с `${...}` разбирается после подстановки, поэтому переменная может содержать `xpath=//a` или `text=Next`.
-- `as: name` сохраняет результат действия в переменную `name` (`extract` -> значение, `evaluate` -> результат, `read`, `find-all`, `get-content`, `get-cookies`, `get-headers` -> весь `data`). `set` задаёт переменные напрямую.
+- `as: name` сохраняет результат действия в переменную `name` (`extract` -> значение, `evaluate` -> результат, `read`, `find-all`, `get-content`, `get-cookies`, `get-headers` -> весь `data`). Имя - простой идентификатор (`[A-Za-z_][A-Za-z0-9_]*`), а не шаблон: `as: first_${index}` - ошибка валидации. В цикле переменная перезаписывается на каждой итерации. `set` задаёт переменные напрямую.
 
 ```yaml
 vars:
