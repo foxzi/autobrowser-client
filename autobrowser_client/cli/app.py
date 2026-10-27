@@ -327,6 +327,10 @@ def run_script(
         list[str] | None,
         typer.Option("--var", help="Scenario variable NAME=VALUE; repeat for more."),
     ] = None,
+    artifacts: Annotated[
+        Path | None,
+        typer.Option("--artifacts", help="Directory for screenshot and HTML of failed steps."),
+    ] = None,
 ) -> None:
     """Run a YAML/JSON scenario and print the step results as JSON.
 
@@ -339,6 +343,9 @@ def run_script(
     """
     script = load_script(file)
     variables = _parse_vars(var or [])
+    artifacts_dir = str(artifacts) if artifacts else script.error_artifacts
+    if artifacts_dir:
+        _validate_output_path(artifacts_dir)
     if script.output.file:
         _validate_output_path(script.output.file)
     effective_proxy = proxy or script.session.proxy
@@ -385,7 +392,9 @@ def run_script(
     )
 
     try:
-        result = session.call(run_scenario, session, script, vars=variables)
+        result = session.call(
+            run_scenario, session, script, vars=variables, artifacts_dir=artifacts_dir
+        )
 
         all_ok = result["success"]
         output = {

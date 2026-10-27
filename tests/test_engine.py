@@ -209,3 +209,70 @@ def test_assert_step(session, calls):
     assert bad["success"] is False and bad["steps"][0]["error"] == "a is 1"
     bad = run_script(session, _script([{"assert": {"var": "a", "equals": 2}}], vars={"a": 1}))
     assert bad["steps"][0]["error"].startswith("assertion failed: ")
+
+
+@pytest.fixture()
+def no_sleep(monkeypatch):
+    sleeps: list = []
+    monkeypatch.setattr(engine, "_sleep", sleeps.append)
+    return sleeps
+
+
+def test_retry_attempts_and_delay(session, calls, no_sleep):
+    calls.queue["click"] = [RuntimeError("e1"), RuntimeError("e2"), None]
+    out = run_script(session, _script([{"click": "#a", "retry": 2, "retryDelay": 10, "name": "go"}]))
+    step = out["steps"][0]
+    assert out["success"] and step["attempts"] == 3 and step["name"] == "go"
+    assert len(calls) == 3 and no_sleep == [10, 10]
+
+
+def test_retry_exhausted_fails(session, calls, no_sleep):
+    calls.queue["click"] = [RuntimeError("nope")]
+    out = run_script(session, _script([{"click": "#a", "retry": 1}, {"open": "x"}]))
+    assert not out["success"] and len(out["steps"]) == 1
+    assert out["steps"][0]["attempts"] == 2 and out["steps"][0]["error"] == "nope"
+    assert no_sleep == [1000]
+
+
+def test_optional_failure_recorded_and_ignored(session, calls):
+    calls.queue["click"] = [RuntimeError("nope")]
+    out = run_script(session, _script([{"click": "#a", "optional": True}, {"open": "x"}]))
+    first = out["steps"][0]
+    assert out["success"] and len(out["steps"]) == 2
+    assert first["success"] is True and first["optional"] is True and first["error"] == "nope"
+
+
+def test_stop_on_error_false_records_and_continues(session, calls):
+    calls.queue["click"] = [RuntimeError("nope")]
+    out = run_script(session, _script([{"click": "#a", "stopOnError": False}, {"open": "x"}]))
+    assert out["success"] is False and len(out["steps"]) == 2
+    out = run_script(session, _script([{"click": "#a"}, {"open": "x"}], stopOnError=False))
+    assert out["success"] is False and len(out["steps"]) == 2
+
+
+def test_error_artifacts(session, calls, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    page = session.get_page.return_value
+    page.screenshot.side_effect = lambda path: open(path, "wb").write(b"png")
+    page.content.return_value = "<html></html>"
+    calls.queue["click"] = [RuntimeError("nope")]
+    script = _script([{"click": "#a", "stopOnError": False}, {"click": "#b", "stopOnError": False}], errorArtifacts="art")
+    out = run_script(session, script)
+    assert out["steps"][0]["artifacts"] == {"screenshot": "art/001-click.png", "html": "art/001-click.html"}
+    assert out["steps"][1]["artifacts"]["screenshot"] == "art/002-click.png"
+    assert (tmp_path / "art" / "001-click.html").read_text() == "<html></html>"
+
+
+def test_error_artifacts_errors_not_raised(session, calls, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    session.get_page.return_value.screenshot.side_effect = RuntimeError("closed")
+    calls.queue["click"] = [RuntimeError("nope")]
+    out = run_script(session, _script([{"click": "#a"}]), artifacts_dir="art")
+    assert "artifacts" not in out["steps"][0] and out["steps"][0]["error"] == "nope"
+
+
+def test_artifacts_dir_must_be_inside_cwd(session, calls):
+    from autobrowser_client.errors import AppError
+
+    with pytest.raises(AppError):
+        run_script(session, _script([{"open": "x"}]), artifacts_dir="/tmp/art")

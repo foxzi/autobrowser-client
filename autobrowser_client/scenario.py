@@ -338,6 +338,10 @@ class ScriptStep(BaseModel):
     vars: dict[str, Any] | None = None
     condition: Condition | None = None
     message: str | None = None
+    name: str | None = None
+    retry: int = Field(default=0, ge=0)
+    retry_delay: int = Field(default=1000, ge=0, alias="retryDelay")
+    optional: bool = False
 
     @model_validator(mode="before")
     @classmethod
@@ -396,6 +400,7 @@ class ScriptDefinition(BaseModel):
     output: ScriptOutput = Field(default_factory=ScriptOutput)
     stop_on_error: bool = Field(default=True, alias="stopOnError")
     vars: dict[str, Any] = Field(default_factory=dict)
+    error_artifacts: str | None = Field(default=None, alias="errorArtifacts")
 
 
 def load_script(path: str | Path) -> ScriptDefinition:

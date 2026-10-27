@@ -8,10 +8,12 @@ import re
 import time
 from typing import Any
 
+from pathlib import Path
+
 from pydantic import BaseModel
 
 from autobrowser_client.browser.actions import resolve_locator
-from autobrowser_client.browser.executor import StepResult, execute_step
+from autobrowser_client.browser.executor import StepResult, _validate_output_path, execute_step
 from autobrowser_client.browser.service import BrowserSession
 from autobrowser_client.scenario import Condition, ScriptDefinition, ScriptStep
 
@@ -23,6 +25,17 @@ _TOKEN_RE = re.compile(r"\$\$\{|\$\{([^}]+)\}")
 
 class UndefinedVariable(Exception):
     pass
+
+
+class StepFailure(Exception):
+    """An unhandled step failure; propagates up to the nearest ``try`` block."""
+
+    def __init__(self, message: str, action: str, name: str | None, node: dict[str, Any]) -> None:
+        super().__init__(message)
+        self.message = message
+        self.action = action
+        self.name = name
+        self.nodes = [node]  # result nodes the failure passed through, marked handled by ``try``
 
 
 def _lookup(path: str, variables: dict[str, Any]) -> Any:
@@ -143,12 +156,33 @@ class _Context:
         variables: dict[str, Any],
         stop_on_error: bool = True,
         page_id: str | None = None,
+        artifacts_dir: str | None = None,
     ) -> None:
         self.session = session
         self.vars = variables
         self.stop_on_error = stop_on_error
         self.page_id = page_id
         self.failed = False
+        self.artifacts_dir = artifacts_dir
+        self.artifact_count = 0
+
+    def save_artifacts(self, action: str) -> dict[str, str]:
+        """Save a screenshot and the HTML of the page; errors are logged, never raised."""
+        self.artifact_count += 1
+        base = Path(self.artifacts_dir) / f"{self.artifact_count:03d}-{action}"
+        saved: dict[str, str] = {}
+        try:
+            page = self.session.get_page(self.page_id)
+            shot = _validate_output_path(f"{base}.png")
+            shot.parent.mkdir(parents=True, exist_ok=True)
+            page.screenshot(path=str(shot))
+            saved["screenshot"] = str(shot)
+            html = _validate_output_path(f"{base}.html")
+            html.write_text(page.content(), encoding="utf-8")
+            saved["html"] = str(html)
+        except Exception as exc:
+            logger.warning("Saving error artifacts failed: %s", exc)
+        return saved
 
 
 def _stored_value(step: ScriptStep, data: Any) -> Any:
@@ -194,23 +228,61 @@ def _attempt(step: ScriptStep, ctx: _Context) -> StepResult:
     return result
 
 
+def _run_step(step: ScriptStep, ctx: _Context, out: list[dict[str, Any]]) -> None:
+    """Run a step with retries; record its result in ``out`` and raise StepFailure when it stops the script."""
+    attempts = 0
+    while True:
+        attempts += 1
+        result = _attempt(step, ctx)
+        if result.success or attempts > step.retry:
+            break
+        logger.info("Step '%s' failed (attempt %d): %s", step.action, attempts, result.error)
+        _sleep(step.retry_delay)
+
+    node = result.to_dict()
+    if step.name:
+        node["name"] = step.name
+    if step.retry:
+        node["attempts"] = attempts
+    out.append(node)
+    if result.success:
+        return
+    if step.optional:
+        node["success"] = True
+        node["optional"] = True
+        return
+    if ctx.artifacts_dir:
+        artifacts = ctx.save_artifacts(step.action)
+        if artifacts:
+            node["artifacts"] = artifacts
+    stop = ctx.stop_on_error if step.stop_on_error is None else step.stop_on_error
+    if stop:
+        raise StepFailure(result.error or "", step.action, step.name, node)
+    ctx.failed = True
+
+
+def _run_steps(steps: list[ScriptStep], ctx: _Context, out: list[dict[str, Any]]) -> None:
+    for step in steps:
+        logger.info("Executing step: %s", step.action)
+        _run_step(step, ctx, out)
+
+
 def run_script(
     session: BrowserSession,
     script: ScriptDefinition,
     page_id: str | None = None,
     vars: dict[str, Any] | None = None,
+    artifacts_dir: str | None = None,
 ) -> dict[str, Any]:
     """Run a scenario on an open session; returns success, step results and variables."""
-    ctx = _Context(session, {**script.vars, **(vars or {})}, script.stop_on_error, page_id)
+    artifacts_dir = artifacts_dir or script.error_artifacts
+    if artifacts_dir:
+        _validate_output_path(artifacts_dir)
+    ctx = _Context(session, {**script.vars, **(vars or {})}, script.stop_on_error, page_id, artifacts_dir)
     results: list[dict[str, Any]] = []
-    for i, step in enumerate(script.steps):
-        logger.info("Executing step %d/%d: %s", i + 1, len(script.steps), step.action)
-        result = _attempt(step, ctx)
-        results.append(result.to_dict())
-        if not result.success:
-            ctx.failed = True
-            stop = ctx.stop_on_error if step.stop_on_error is None else step.stop_on_error
-            if stop:
-                logger.error("Stopping script at step %d due to error: %s", i + 1, result.error)
-                break
+    try:
+        _run_steps(script.steps, ctx, results)
+    except StepFailure as exc:
+        logger.error("Stopping script: %s", exc.message)
+        ctx.failed = True
     return {"success": not ctx.failed, "steps": results, "vars": ctx.vars}
