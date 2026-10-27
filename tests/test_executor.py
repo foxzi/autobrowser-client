@@ -179,3 +179,10 @@ def test_submit_and_upload(session):
     r = execute_step(session, _step({"upload": ["#f", "a.txt"]}))
     assert r.data == {"files": ["a.txt"]}
     loc.set_input_files.assert_called_once_with(["a.txt"], timeout=1000)
+
+
+def test_error_message_has_no_empty_api_prefix(session):
+    loc = _page(session).locator.return_value
+    loc.first.wait_for.side_effect = RuntimeError(": Timeout 300ms exceeded.")
+    r = execute_step(session, _step({"extract": "h1"}))
+    assert r.error == "Timeout 300ms exceeded."

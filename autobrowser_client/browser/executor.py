@@ -383,7 +383,8 @@ def execute_step(session: BrowserSession, step: ScriptStep, page_id: str | None 
 
     except Exception as exc:
         result.success = False
-        result.error = str(exc)
+        # patchright prefixes messages with an empty API name: ": Timeout ..."
+        result.error = str(exc).removeprefix(": ")
         logger.warning("Step '%s' failed: %s", step.action, exc)
 
     result.duration_ms = (time.monotonic() - t0) * 1000
