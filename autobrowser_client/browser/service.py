@@ -6,6 +6,7 @@ import re
 import threading
 import time
 import uuid
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from enum import StrEnum
 from pathlib import Path
@@ -190,6 +191,10 @@ class BrowserSession:
         self._profile_lock: ProfileLock | None = None
         self._profile_dir: Path | None = None
         self._next_page = 0
+        # Per-page event logs for agents: console, network, dialogs
+        self._logs: dict[str, dict[str, deque[dict[str, Any]]]] = {}
+        # How to answer JS dialogs (alert/confirm/prompt); applied immediately
+        self.dialog_policy: dict[str, Any] = {"accept": False, "promptText": None}
         # Playwright sync objects are bound to the thread that created them,
         # so every browser call of this session runs on one worker thread.
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix=session_id)
@@ -613,6 +618,50 @@ class BrowserSession:
                 entries.append(entry)
 
         page.on("response", on_response)
+
+        logs = self._logs.setdefault(page_id, {k: deque(maxlen=500) for k in ("console", "network", "dialogs")})
+
+        def on_console(msg: Any) -> None:
+            logs["console"].append({"type": msg.type, "text": msg.text, "time": time.time()})
+
+        def on_net(response: Response) -> None:
+            req = response.request
+            logs["network"].append({
+                "method": req.method, "url": req.url, "resourceType": req.resource_type,
+                "status": response.status, "failure": None,
+            })
+
+        def on_failed(req: Request) -> None:
+            logs["network"].append({
+                "method": req.method, "url": req.url, "resourceType": req.resource_type,
+                "status": None, "failure": req.failure,
+            })
+
+        def on_dialog(dialog: Any) -> None:
+            policy = self.dialog_policy
+            logs["dialogs"].append({
+                "type": dialog.type, "message": dialog.message,
+                "accepted": policy["accept"], "time": time.time(),
+            })
+            if policy["accept"]:
+                dialog.accept(policy["promptText"] or "") if dialog.type == "prompt" else dialog.accept()
+            else:
+                dialog.dismiss()
+
+        page.on("console", on_console)
+        page.on("response", on_net)
+        page.on("requestfailed", on_failed)
+        page.on("dialog", on_dialog)
+
+    def get_log(self, page_id: str, kind: str, clear: bool = False) -> list[dict[str, Any]]:
+        self.get_page(page_id)
+        log = self._logs.get(page_id, {}).get(kind)
+        if log is None:
+            return []
+        items = list(log)
+        if clear:
+            log.clear()
+        return items
 
     def get_cookies(self) -> list[dict[str, Any]]:
         return self.context.cookies()

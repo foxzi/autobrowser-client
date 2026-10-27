@@ -89,3 +89,23 @@ def test_tabs_popup_new_and_close(session):
     assert new_id == "page_2"
     client.delete(f"{base}/pages/{new_id}")
     assert new_id not in client.get(f"{base}/pages").json()["pages"]
+
+
+def test_dialog_policy_and_logs(session):
+    client, base = session
+    client.post(f"{base}/pages/page_0/evaluate", json={"expression": "document.title = String(confirm('q'))"})
+    assert client.post(f"{base}/pages/page_0/evaluate", json={"expression": "document.title"}).json()["result"]["result"] == "false"
+
+    client.post(f"{base}/dialog-policy", json={"accept": True, "promptText": "hi"})
+    client.post(f"{base}/pages/page_0/evaluate", json={"expression": "document.title = prompt('name')"})
+    assert client.post(f"{base}/pages/page_0/evaluate", json={"expression": "document.title"}).json()["result"]["result"] == "hi"
+
+    dialogs = client.get(f"{base}/pages/page_0/logs/dialogs?clear=true").json()["items"]
+    assert [(d["type"], d["accepted"]) for d in dialogs] == [("confirm", False), ("prompt", True)]
+    assert client.get(f"{base}/pages/page_0/logs/dialogs").json()["items"] == []
+
+    client.post(f"{base}/pages/page_0/evaluate", json={"expression": "fetch('http://127.0.0.1:9/x').catch(() => 0)"})
+    time.sleep(0.3)
+    net = client.get(f"{base}/pages/page_0/logs/network").json()["items"]
+    assert any(n["failure"] for n in net)
+    assert client.get(f"{base}/pages/page_0/logs/bogus").status_code == 400

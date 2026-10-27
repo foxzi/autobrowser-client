@@ -129,6 +129,10 @@ Authorization: Bearer <token>
 - `POST .../history` - `direction`: `back`, `forward` or `reload`
 - `POST .../evaluate` - run JS expression or function source (body: `expression`, `isolated`, default main world)
 - `POST .../wait-text` - wait for text to appear, or to disappear with `gone: true`
+- `GET .../logs/{kind}` - event log of the tab, `kind`: `console`, `network` or `dialogs`; `?clear=true` empties it after reading (last 500 entries kept)
+- `POST /api/v1/session/{id}/dialog-policy` - how to answer `alert`/`confirm`/`prompt` (body: `accept`, `promptText`); default is dismiss, every dialog is recorded in `logs/dialogs`
+
+> Console log contains only browser-level messages (failed resources, security warnings). Patchright does not deliver page `console.log` and uncaught errors by design, to stay undetectable.
 
 > Refs are valid until the page changes; take a new snapshot after navigation or DOM updates.
 
@@ -463,6 +467,10 @@ Authorization: Bearer <token>
 - `POST .../history` - `direction`: `back`, `forward` или `reload`
 - `POST .../evaluate` - выполнить JS-выражение или функцию (тело: `expression`, `isolated`, по умолчанию main world)
 - `POST .../wait-text` - ждать появления текста, или исчезновения при `gone: true`
+- `GET .../logs/{kind}` - журнал событий вкладки, `kind`: `console`, `network` или `dialogs`; `?clear=true` очищает его после чтения (хранятся последние 500 записей)
+- `POST /api/v1/session/{id}/dialog-policy` - как отвечать на `alert`/`confirm`/`prompt` (тело: `accept`, `promptText`); по умолчанию dismiss, каждый диалог записывается в `logs/dialogs`
+
+> Журнал console содержит только сообщения уровня браузера (ошибки загрузки ресурсов, предупреждения безопасности). Patchright намеренно не передает `console.log` страницы и необработанные ошибки, чтобы не выдавать автоматизацию.
 
 > Ref действительны, пока страница не изменилась; после навигации или обновления DOM сделайте новый snapshot.
 

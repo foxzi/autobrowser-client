@@ -141,6 +141,11 @@ class WaitTextRequest(BaseModel):
     timeout: int = 10000
 
 
+class DialogPolicyRequest(BaseModel):
+    accept: bool
+    prompt_text: str | None = Field(default=None, alias="promptText")
+
+
 class NewTabRequest(BaseModel):
     url: str | None = None
 
@@ -595,5 +600,19 @@ def create_app(settings: Settings) -> FastAPI:
     @app.post("/api/v1/session/{session_id}/pages/{page_id}/wait-text", tags=["pages"])
     async def api_wait_text(session_id: str, page_id: str, body: WaitTextRequest) -> dict[str, Any]:
         return await _page_op(session_id, page_id, "wait-text", actions.wait_for_text, body.text, body.gone, body.timeout)
+
+    @app.get("/api/v1/session/{session_id}/pages/{page_id}/logs/{kind}", tags=["pages"])
+    async def api_logs(session_id: str, page_id: str, kind: str, clear: bool = False) -> dict[str, Any]:
+        if kind not in ("console", "network", "dialogs"):
+            raise AppError(ErrorCode.INVALID_ARGUMENT, "kind must be console, network or dialogs")
+        session = manager.get_session(session_id)
+        items = await asyncio.to_thread(session.call, session.get_log, page_id, kind, clear)
+        return {"success": True, "sessionId": session_id, "pageId": page_id, "kind": kind, "items": items}
+
+    @app.post("/api/v1/session/{session_id}/dialog-policy", tags=["pages"])
+    async def api_dialog_policy(session_id: str, body: DialogPolicyRequest) -> dict[str, Any]:
+        session = manager.get_session(session_id)
+        session.dialog_policy = {"accept": body.accept, "promptText": body.prompt_text}
+        return {"success": True, "sessionId": session_id, "dialogPolicy": session.dialog_policy}
 
     return app
