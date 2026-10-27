@@ -131,6 +131,8 @@ Browser --> browser engine (proxy=http://127.0.0.1:PORT) --> socks2http --> upst
 - Converts HTTP proxy protocol to SOCKS5 upstream
 - Shuts down automatically when the browser session ends
 
+If `socks2http` is not found (`proxy.socks2httpBin` is empty and the binary is not in `PATH`), a built-in Python relay with the same behavior is started in-process. It supports SOCKS5 (with or without auth) and HTTP upstream proxies and needs no extra install. An explicitly set `socks2httpBin` that does not exist is an error.
+
 #### Configuration
 
 ```yaml
@@ -153,7 +155,7 @@ proxy:
 | `port` | `1080`/`8080` | Upstream proxy port (default depends on scheme) |
 | `username` | - | Proxy authentication username |
 | `password` | - | Proxy authentication password |
-| `socks2httpBin` | (auto) | Path to `socks2http` binary |
+| `socks2httpBin` | (auto) | Path to `socks2http` binary; built-in relay is used if empty and not in `PATH` |
 | `localPort` | `0` | Local relay port (`0` = auto-detect free port) |
 
 Environment variables:
@@ -447,6 +449,8 @@ Browser --> browser engine (proxy=http://127.0.0.1:PORT) --> socks2http --> upst
 - Конвертирует протокол HTTP-прокси в upstream SOCKS5
 - Автоматически завершается при окончании браузерной сессии
 
+Если `socks2http` не найден (`proxy.socks2httpBin` пуст и бинарника нет в `PATH`), внутри процесса запускается встроенный relay на Python с тем же поведением. Он поддерживает upstream SOCKS5 (с авторизацией и без) и HTTP и не требует установки. Явно заданный несуществующий `socks2httpBin` считается ошибкой.
+
 #### Конфигурация
 
 ```yaml
@@ -469,7 +473,7 @@ proxy:
 | `port` | `1080`/`8080` | Порт upstream прокси (по умолчанию зависит от scheme) |
 | `username` | - | Логин для аутентификации прокси |
 | `password` | - | Пароль для аутентификации прокси |
-| `socks2httpBin` | (авто) | Путь к бинарнику `socks2http` |
+| `socks2httpBin` | (авто) | Путь к бинарнику `socks2http`; если пусто и нет в `PATH`, используется встроенный relay |
 | `localPort` | `0` | Локальный порт relay (`0` = автовыбор свободного порта) |
 
 Переменные окружения:

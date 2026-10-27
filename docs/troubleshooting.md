@@ -116,7 +116,7 @@ Neither engine passes every case every time. In tests on two Cloudflare sites, p
 
 Chromium cannot use a SOCKS5 proxy with authentication, so autobrowser starts a local HTTP relay (`socks2http`) that forwards to the upstream proxy.
 
-**Session does not start: socks2http not found.** The binary is searched in `proxy.socks2httpBin` / `AUTOBROWSER_SOCKS2HTTP_BIN`, then in `PATH`. In the Docker image it is already at `/usr/local/bin/socks2http`. Outside Docker download a release from https://github.com/foxzi/socks2http/releases, check the sha256 and put it in `PATH`:
+**socks2http is optional.** The binary is searched in `proxy.socks2httpBin` / `AUTOBROWSER_SOCKS2HTTP_BIN`, then in `PATH`; if it is not found, the built-in Python relay is used (log line `Built-in proxy relay is ready`). If `socks2httpBin` is set explicitly but the file does not exist, the session fails with `socks2http binary not found`. In the Docker image the binary is at `/usr/local/bin/socks2http`. To use it outside Docker, download a release from https://github.com/foxzi/socks2http/releases, check the sha256 and put it in `PATH`:
 
 ```bash
 curl -fsSL -o socks2http https://github.com/foxzi/socks2http/releases/download/v1.0.0/socks2http-linux-amd64
@@ -163,7 +163,7 @@ DOM access (`document.title`, `querySelector`) works in both modes.
 3. Challenge: add `solve-challenge` with a timeout of 60-90 s.
 4. Loop on cloakbrowser: `AUTOBROWSER_FINGERPRINT_PLATFORM=linux`, or run in Docker.
 5. Still blocked: switch the engine, then the exit IP.
-6. Proxy: check its type with curl, make sure `socks2http` is in `PATH`, verify the exit IP.
+6. Proxy: check its type with curl, check which relay started in the log, verify the exit IP.
 
 ## Русский
 
@@ -281,7 +281,7 @@ AUTOBROWSER_BROWSER_ENGINE=cloakbrowser AUTOBROWSER_FINGERPRINT_PLATFORM=linux \
 
 Chromium не умеет работать с SOCKS5-прокси с авторизацией, поэтому autobrowser запускает локальный HTTP-релей (`socks2http`), который пересылает трафик на внешний прокси.
 
-**Сессия не стартует: socks2http не найден.** Программа ищется в `proxy.socks2httpBin` / `AUTOBROWSER_SOCKS2HTTP_BIN`, затем в `PATH`. В Docker-образе она уже лежит в `/usr/local/bin/socks2http`. Без Docker скачайте релиз с https://github.com/foxzi/socks2http/releases, проверьте sha256 и положите в `PATH`:
+**socks2http не обязателен.** Программа ищется в `proxy.socks2httpBin` / `AUTOBROWSER_SOCKS2HTTP_BIN`, затем в `PATH`; если её нет, используется встроенный relay на Python (в логе `Built-in proxy relay is ready`). Если `socks2httpBin` задан явно, а файла нет, сессия падает с `socks2http binary not found`. В Docker-образе программа лежит в `/usr/local/bin/socks2http`. Чтобы использовать её без Docker, скачайте релиз с https://github.com/foxzi/socks2http/releases, проверьте sha256 и положите в `PATH`:
 
 ```bash
 curl -fsSL -o socks2http https://github.com/foxzi/socks2http/releases/download/v1.0.0/socks2http-linux-amd64
@@ -328,4 +328,4 @@ page.evaluate("() => typeof window._cf_chl_opt", isolated_context=False)
 3. Проверка: добавьте `solve-challenge` с таймаутом 60-90 с.
 4. Зацикливание на cloakbrowser: `AUTOBROWSER_FINGERPRINT_PLATFORM=linux` или запуск в Docker.
 5. Всё ещё блокирует: смените движок, затем внешний IP.
-6. Прокси: проверьте тип через curl, убедитесь, что `socks2http` есть в `PATH`, проверьте внешний IP.
+6. Прокси: проверьте тип через curl, посмотрите в логе, какой relay запущен, проверьте внешний IP.

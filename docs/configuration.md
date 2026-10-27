@@ -73,7 +73,7 @@ proxy:
   port: 1080
   username: ""
   password: ""
-  socks2httpBin: ""       # path to socks2http binary, auto-detected via PATH if empty
+  socks2httpBin: ""       # path to socks2http binary; if empty: PATH, then built-in relay
   localPort: 0            # 0 = auto-select free port
 
 logging:
@@ -310,7 +310,7 @@ proxy:
   port: 1080
   username: ""
   password: ""
-  socks2httpBin: ""       # путь к бинарнику socks2http, автоопределение через PATH если пусто
+  socks2httpBin: ""       # путь к бинарнику socks2http; если пусто: PATH, затем встроенный relay
   localPort: 0            # 0 = автовыбор свободного порта
 
 logging:

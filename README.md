@@ -61,7 +61,7 @@ Install autobrowser by following https://github.com/foxzi/autobrowser-client/blo
 
 ### Proxy
 - `socks5://user:pass@host:port` or HTTP proxies, per run (`--proxy`), per scenario or in the config.
-- A local `socks2http` relay is started for the session and stopped with it, which makes authenticated SOCKS5 work in Chromium.
+- A local relay is started for the session and stopped with it, which makes authenticated SOCKS5 work in Chromium: `socks2http` if it is installed, otherwise a built-in Python relay (nothing to install).
 - Proxy passwords and sensitive headers (`authorization`, `cookie`, `set-cookie`, `proxy-authorization`) are masked in output and logs.
 
 ### YAML scenarios
@@ -104,7 +104,7 @@ Install autobrowser by following https://github.com/foxzi/autobrowser-client/blo
 
 ### Прокси
 - `socks5://user:pass@host:port` или HTTP-прокси: на запуск (`--proxy`), в сценарии или в конфиге.
-- На время сессии запускается локальный relay `socks2http`, благодаря ему SOCKS5 с авторизацией работает в Chromium.
+- На время сессии запускается локальный relay, благодаря ему SOCKS5 с авторизацией работает в Chromium: `socks2http`, если он установлен, иначе встроенный relay на Python (ничего ставить не нужно).
 - Пароли прокси и чувствительные заголовки (`authorization`, `cookie`, `set-cookie`, `proxy-authorization`) скрываются в выводе и логах.
 
 ### YAML-сценарии
