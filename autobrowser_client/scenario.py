@@ -26,6 +26,24 @@ ActionName = Literal[
     "save",
     "browse-tabs",
     "solve-challenge",
+    "hover",
+    "dblclick",
+    "focus",
+    "clear",
+    "check",
+    "uncheck",
+    "submit",
+    "select",
+    "upload",
+    "evaluate",
+    "history",
+    "wait-text",
+    "extract",
+    "find-all",
+    "read",
+    "mouse-move",
+    "mouse-scroll-to",
+    "mouse-random",
 ]
 LocatorType = Literal["css", "xpath", "id", "name", "class", "text", "attribute", "ref"]
 WaitUntil = Literal["domcontentloaded", "load", "networkidle", "visible", "hidden"]
@@ -37,7 +55,15 @@ _CLASS_RE = re.compile(r"^\.[a-zA-Z_][\w-]*$")
 _WAIT_STATES = {"load", "domcontentloaded", "networkidle"}
 _KNOWN_ACTIONS = set(get_args(ActionName))
 # Actions whose shorthand value maps to a specific field
-_SHORTHAND_NULL_ACTIONS = {"get-content", "get-cookies", "get-headers", "browse-tabs", "solve-challenge"}
+_SHORTHAND_NULL_ACTIONS = {
+    "get-content", "get-cookies", "get-headers", "browse-tabs", "solve-challenge",
+    "mouse-move", "mouse-random",
+}
+# Actions whose shorthand value is the locator
+_LOCATOR_ACTIONS = {
+    "find", "click", "hover", "dblclick", "focus", "clear", "check", "uncheck",
+    "submit", "extract", "find-all", "read", "mouse-scroll-to",
+}
 
 
 def _parse_locator_string(s: str) -> dict:
@@ -157,7 +183,7 @@ def _expand_shorthand_step(d: dict) -> dict:
                 f"wait shorthand expects int (ms) or load-state string, got: {value!r}"
             )
 
-    elif verb in {"click", "find"}:
+    elif verb in _LOCATOR_ACTIONS:
         _check_conflict("locator")
         result["locator"] = value
 
@@ -174,6 +200,38 @@ def _expand_shorthand_step(d: dict) -> dict:
     elif verb == "press":
         _check_conflict("key")
         result["key"] = value
+
+    elif verb == "select":
+        if not isinstance(value, list) or len(value) != 2:
+            raise ValueError(f"'select' shorthand expects a 2-element list [locator, option], got: {value!r}")
+        _check_conflict("locator")
+        result["locator"] = value[0]
+        if isinstance(value[1], list):
+            _check_conflict("options")
+            result["options"] = value[1]
+        else:
+            _check_conflict("value")
+            result["value"] = value[1]
+
+    elif verb == "upload":
+        if not isinstance(value, list) or len(value) != 2:
+            raise ValueError(f"'upload' shorthand expects a 2-element list [locator, file(s)], got: {value!r}")
+        _check_conflict("locator")
+        _check_conflict("files")
+        result["locator"] = value[0]
+        result["files"] = value[1] if isinstance(value[1], list) else [value[1]]
+
+    elif verb == "evaluate":
+        _check_conflict("script")
+        result["script"] = value
+
+    elif verb == "history":
+        _check_conflict("direction")
+        result["direction"] = value
+
+    elif verb == "wait-text":
+        _check_conflict("text")
+        result["text"] = value
 
     elif verb in {"screenshot", "save"}:
         _check_conflict("file")
@@ -205,6 +263,24 @@ class ScriptStep(BaseModel):
     full_page: bool = Field(default=False, alias="fullPage")
     file: str | None = None
     stop_on_error: bool | None = Field(default=None, alias="stopOnError")
+    options: list[str] | None = None
+    files: list[str] | None = None
+    script: str | None = None
+    direction: Literal["back", "forward", "reload"] | None = None
+    text: str | None = None
+    gone: bool = False
+    attribute: str | None = None
+    all_: bool = Field(default=False, alias="all")
+    x: float | None = None
+    y: float | None = None
+    move_steps: int | None = Field(default=None, alias="steps")
+    start_x: float = Field(default=0, alias="startX")
+    start_y: float = Field(default=0, alias="startY")
+    end_x: float | None = Field(default=None, alias="endX")
+    end_y: float | None = Field(default=None, alias="endY")
+    duration_ms: int | None = Field(default=None, alias="durationMs")
+    jitter: float | None = None
+    seed: int | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -217,8 +293,22 @@ class ScriptStep(BaseModel):
     def validate_action_payload(self) -> "ScriptStep":
         if self.action == "open" and not self.url:
             raise ValueError("'open' step requires 'url'")
-        if self.action in {"find", "click", "fill", "type"} and not self.locator:
+        if self.action in _LOCATOR_ACTIONS | {"fill", "type", "select", "upload"} and not self.locator:
             raise ValueError(f"'{self.action}' step requires 'locator'")
+        if self.action == "select" and (self.value is None) == (not self.options):
+            raise ValueError("'select' step requires exactly one of 'value' or 'options'")
+        if self.action == "upload" and not self.files:
+            raise ValueError("'upload' step requires 'files'")
+        if self.action == "evaluate" and not self.script:
+            raise ValueError("'evaluate' step requires 'script'")
+        if self.action == "history" and not self.direction:
+            raise ValueError("'history' step requires 'direction'")
+        if self.action == "wait-text" and not self.text:
+            raise ValueError("'wait-text' step requires 'text'")
+        if self.action == "mouse-move" and (self.x is None or self.y is None):
+            raise ValueError("'mouse-move' step requires 'x' and 'y'")
+        if self.action == "mouse-random" and (self.end_x is None or self.end_y is None):
+            raise ValueError("'mouse-random' step requires 'endX' and 'endY'")
         if self.action in {"fill", "type"} and self.value is None:
             raise ValueError(f"'{self.action}' step requires 'value'")
         if self.action == "wait" and self.wait_until in {"visible", "hidden"} and not self.locator:

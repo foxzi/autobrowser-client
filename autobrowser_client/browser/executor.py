@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from autobrowser_client.browser import actions
 from autobrowser_client.browser.actions import resolve_locator
 from autobrowser_client.browser.service import BrowserSession
 from autobrowser_client.errors import AppError, ErrorCode
@@ -293,6 +294,88 @@ def execute_step(session: BrowserSession, step: ScriptStep, page_id: str | None 
                     logger.warning("browse-tabs: failed on %s (%s): %s", pid, url, exc)
                     visited.append({"page": pid, "url": url, "error": str(exc)})
             result.data = {"visited": visited, "count": len(visited)}
+
+        elif step.action in {"hover", "dblclick", "focus", "clear", "check", "uncheck"}:
+            loc = _resolve_locator(session, step.locator, effective_page_id, step.index)
+            if step.action == "dblclick":
+                loc.dblclick(timeout=timeout)
+            elif step.action == "check":
+                loc.check(timeout=timeout)
+            elif step.action == "uncheck":
+                loc.uncheck(timeout=timeout)
+            else:
+                getattr(loc, step.action)(timeout=timeout)
+
+        elif step.action == "submit":
+            actions.submit_form(session, effective_page_id, step.locator.type, step.locator.value, timeout)
+
+        elif step.action == "select":
+            option = step.options if step.options else step.value
+            selected = actions.select_option(
+                session, effective_page_id, step.locator.type, step.locator.value, option, timeout
+            )
+            result.data = {"selected": selected}
+
+        elif step.action == "upload":
+            result.data = actions.upload_files(
+                session, effective_page_id, step.locator.type, step.locator.value, step.files, timeout
+            )
+
+        elif step.action == "evaluate":
+            result.data = actions.evaluate(session, effective_page_id, step.script)
+
+        elif step.action == "history":
+            nav = actions.history(
+                session, effective_page_id, step.direction,
+                step.timeout or session.settings.timeouts.navigation_ms,
+            )
+            result.data = {"url": nav["url"]}
+
+        elif step.action == "wait-text":
+            actions.wait_for_text(session, effective_page_id, step.text, step.gone, timeout)
+
+        elif step.action == "extract":
+            loc = _resolve_locator(session, step.locator, effective_page_id, step.index)
+            loc.first.wait_for(state="attached", timeout=timeout)
+            if step.all_:
+                if step.attribute:
+                    value = loc.evaluate_all("(els, a) => els.map(e => e.getAttribute(a))", step.attribute)
+                else:
+                    value = loc.evaluate_all("els => els.map(e => e.innerText)")
+            elif step.attribute:
+                value = loc.first.get_attribute(step.attribute, timeout=timeout)
+            else:
+                value = loc.first.inner_text(timeout=timeout)
+            result.data = {"value": value}
+
+        elif step.action == "find-all":
+            result.data = actions.find_all_elements(
+                session, effective_page_id, step.locator.type, step.locator.value, timeout
+            )
+
+        elif step.action == "read":
+            result.data = actions.read_element(
+                session, effective_page_id, step.locator.type, step.locator.value, timeout
+            )
+
+        elif step.action == "mouse-move":
+            actions.mouse_move(session, effective_page_id, step.x, step.y, step.move_steps or 1)
+
+        elif step.action == "mouse-scroll-to":
+            actions.mouse_scroll_to_element(
+                session, effective_page_id, step.locator.type, step.locator.value, timeout
+            )
+
+        elif step.action == "mouse-random":
+            points = actions.mouse_move_random(
+                session, effective_page_id,
+                step.start_x, step.start_y, step.end_x, step.end_y,
+                steps=step.move_steps or 25,
+                duration_ms=300 if step.duration_ms is None else step.duration_ms,
+                jitter=3.0 if step.jitter is None else step.jitter,
+                seed=step.seed,
+            )
+            result.data = {"points": len(points)}
 
         else:
             result.success = False

@@ -176,3 +176,38 @@ def test_extra_fields_rejected():
             load_script(path)
     finally:
         path.unlink()
+
+
+# --- new actions: validation ---
+
+
+@pytest.mark.parametrize(
+    "step",
+    [
+        {"action": "hover"},
+        {"action": "extract"},
+        {"action": "select", "locator": "#s"},
+        {"action": "select", "locator": "#s", "value": "a", "options": ["b"]},
+        {"action": "upload", "locator": "#f"},
+        {"action": "evaluate"},
+        {"action": "history"},
+        {"action": "history", "direction": "sideways"},
+        {"action": "wait-text"},
+        {"action": "mouse-move", "x": 1},
+        {"action": "mouse-random", "endX": 1},
+    ],
+)
+def test_new_action_validation_errors(step):
+    with pytest.raises(ValueError):
+        ScriptStep.model_validate(step)
+
+
+def test_new_action_fields():
+    s = ScriptStep.model_validate(
+        {"action": "extract", "locator": "a", "attribute": "href", "all": True}
+    )
+    assert s.all_ is True and s.attribute == "href"
+    s = ScriptStep.model_validate(
+        {"action": "mouse-random", "startX": 1, "startY": 2, "endX": 3, "endY": 4, "durationMs": 10}
+    )
+    assert (s.start_x, s.end_y, s.duration_ms) == (1, 4, 10)

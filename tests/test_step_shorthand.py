@@ -213,3 +213,46 @@ def test_pages_in_yaml_raises():
     """Existing YAML with 'pages:' key should raise validation error (extra='forbid')."""
     with pytest.raises(ValidationError):
         ScriptDefinition.model_validate({"pages": ["https://x.com"], "steps": []})
+
+
+# --- new actions shorthand ---
+
+
+@pytest.mark.parametrize(
+    "verb",
+    ["hover", "dblclick", "focus", "clear", "check", "uncheck", "submit",
+     "extract", "find-all", "read", "mouse-scroll-to"],
+)
+def test_locator_shorthand_new_actions(verb):
+    s = ScriptStep.model_validate({verb: "#a"})
+    assert s.action == verb
+    assert s.locator.type == "id" and s.locator.value == "a"
+
+
+def test_select_shorthand():
+    s = ScriptStep.model_validate({"select": ["#s", "b"]})
+    assert s.value == "b" and s.options is None
+    s = ScriptStep.model_validate({"select": ["#s", ["a", "b"]]})
+    assert s.options == ["a", "b"] and s.value is None
+
+
+def test_upload_shorthand():
+    assert ScriptStep.model_validate({"upload": ["#f", "a.txt"]}).files == ["a.txt"]
+    assert ScriptStep.model_validate({"upload": ["#f", ["a", "b"]]}).files == ["a", "b"]
+
+
+def test_misc_shorthand_new_actions():
+    assert ScriptStep.model_validate({"evaluate": "1+1"}).script == "1+1"
+    assert ScriptStep.model_validate({"history": "back"}).direction == "back"
+    s = ScriptStep.model_validate({"wait-text": "Done", "gone": True})
+    assert s.text == "Done" and s.gone is True
+
+
+def test_extract_shorthand_with_options():
+    s = ScriptStep.model_validate({"extract": "a", "attribute": "href", "all": True})
+    assert s.attribute == "href" and s.all_ is True
+
+
+def test_select_shorthand_conflict():
+    with pytest.raises(ValueError, match="conflict"):
+        ScriptStep.model_validate({"select": ["#s", "b"], "value": "c"})
