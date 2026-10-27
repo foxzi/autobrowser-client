@@ -41,7 +41,38 @@ Element tools accept `by`: `css`, `xpath`, `text`, `id`, `name`, `class`, `attri
 
 ## Many steps at once
 
-For a known multi-step flow (login, pagination, scraping a list) use `browser_run_script(script=...)` instead of many single calls: one YAML scenario with `vars`, `if`, `try`/`catch`, `forEach`, `while`, `retry`, `extract` and `assert`. It returns `{success, steps, vars}`; read the failed step's `error` and fix the scenario. Syntax: `docs/scripts.md` in the autobrowser-client repository. Use the single tools when the next step depends on what you see.
+For a known multi-step flow (login, pagination, scraping a list) use `browser_run_script(script=...)` instead of many single calls. It runs on the current browser session (the scenario `session` block is ignored) and returns `{success, steps, vars}`; read the failed step's `error` and fix the scenario. Use the single tools when the next step depends on what you see.
+
+```yaml
+vars: {base: "https://quotes.toscrape.com"}
+steps:
+  - open: "${base}"
+  - if: {exists: "#cookie-accept"}
+    then: [{click: "#cookie-accept"}]
+  - action: find-all
+    locator: "div.quote span.text"
+    as: quotes
+  - while: {exists: "li.next a"}
+    max: 5
+    do:
+      - click: "li.next a"
+      - wait-text: Quotes
+  - try:
+      - action: click
+        locator: "text=Login"
+        retry: 2
+    catch:
+      - fail: "login link missing: ${error.message}"
+  - assert: {url: "/login"}
+```
+
+- Locators: `"css"`, `"xpath=//a"`, `"text=Next"`, or `{type, value}`.
+- Actions: `open`, `history`, `click`, `dblclick`, `hover`, `focus`, `fill`, `type`, `clear`, `press`, `check`/`uncheck`, `select`, `submit`, `upload`, `wait` (ms or element), `wait-text`, `find`, `scroll`, `evaluate`, `extract`, `find-all`, `read`, `get-content`, `get-cookies`, `get-headers`, `screenshot`, `save`, `solve-challenge`, `browse-tabs`, `mouse-move`, `mouse-scroll-to`, `mouse-random`, `set`, `assert`, `fail`.
+- Variables: root `vars`, `${name}`, `${item.url}`, `${env.NAME}`; `as: name` stores a result; `set` assigns.
+- Conditions (`if`, `while`, `assert`): `exists`, `visible`, `text`, `url`, `urlMatches`, `title`, `var` with `equals`/`contains`/`matches`, combined by `not`/`all`/`any`; `timeout: ms` waits until true.
+- Blocks: `if/then/else`, `try/catch/finally` (`error` in catch), `forEach/as/do` (`index` too), `repeat/do`, `while/max/do`, `include`.
+- Step options: `name`, `retry`, `retryDelay`, `optional`, `stopOnError`.
+- Full syntax: https://github.com/foxzi/autobrowser-client/blob/main/docs/scripts.md
 
 ## Cloudflare and blocks
 
