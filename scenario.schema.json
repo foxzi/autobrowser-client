@@ -1,10 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "autobrowser-client scenario",
-  "description": "Schema for CLI script scenarios",
+  "description": "Schema for CLI script scenarios (editor support only; the pydantic models in autobrowser_client/scenario.py are authoritative)",
   "type": "object",
   "additionalProperties": false,
-  "required": ["steps"],
+  "required": [
+    "steps"
+  ],
   "properties": {
     "session": {
       "type": "object",
@@ -30,31 +32,54 @@
         "viewport": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["width", "height"],
+          "required": [
+            "width",
+            "height"
+          ],
           "properties": {
-            "width": { "type": "integer", "minimum": 1 },
-            "height": { "type": "integer", "minimum": 1 }
+            "width": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 1
+            }
           },
           "description": "Browser viewport size, e.g. {width: 1920, height: 1080}"
         },
         "timeout": {
           "type": "integer",
           "minimum": 0
+        },
+        "preserveSession": {
+          "type": "boolean",
+          "default": false
+        },
+        "fingerprint": {
+          "description": "Fingerprint overrides, or a boolean to toggle",
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "$ref": "#/$defs/fingerprint"
+            }
+          ]
         }
       }
     },
-    "pages": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
+    "vars": {
+      "type": "object",
+      "description": "Default variables, available as ${name}; overridden by --var"
     },
-    "steps": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "$ref": "#/$defs/step"
-      }
+    "errorArtifacts": {
+      "type": "string",
+      "description": "Directory for screenshots and HTML of failed steps"
+    },
+    "stopOnError": {
+      "type": "boolean",
+      "default": true
     },
     "output": {
       "type": "object",
@@ -65,37 +90,301 @@
         }
       }
     },
-    "stopOnError": {
-      "type": "boolean",
-      "default": true
+    "steps": {
+      "$ref": "#/$defs/steps",
+      "description": "Steps and control blocks"
     }
   },
   "$defs": {
-    "locator": {
+    "text": {
+      "description": "String (numbers are accepted and converted to strings)",
+      "type": [
+        "string",
+        "number"
+      ]
+    },
+    "fingerprint": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["type", "value"],
       "properties": {
-        "type": {
-          "type": "string",
-          "enum": ["css", "xpath", "id", "name", "class", "text", "attribute"]
+        "seed": {
+          "type": "integer"
         },
-        "value": {
+        "canvas": {
+          "type": "boolean"
+        },
+        "webgl": {
+          "type": "boolean"
+        },
+        "webglVendor": {
           "type": "string"
+        },
+        "webglRenderer": {
+          "type": "string"
+        },
+        "audio": {
+          "type": "boolean"
+        },
+        "clientRects": {
+          "type": "boolean"
+        },
+        "fonts": {
+          "type": "boolean"
         }
       }
     },
+    "locator": {
+      "description": "String shorthand (\"#id\", \".class\", \"//xpath\", \"css selector\", \"type=value\") or {type, value}",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "enum": [
+                "css",
+                "xpath",
+                "id",
+                "name",
+                "class",
+                "text",
+                "attribute",
+                "ref"
+              ]
+            },
+            "value": {
+              "$ref": "#/$defs/text"
+            }
+          }
+        }
+      ]
+    },
     "waitUntil": {
-      "type": "string",
-      "enum": ["domcontentloaded", "load", "networkidle", "visible", "hidden"]
+      "enum": [
+        "domcontentloaded",
+        "load",
+        "networkidle",
+        "visible",
+        "hidden"
+      ]
+    },
+    "condition": {
+      "type": "object",
+      "description": "Check used by if, while and assert: exactly one of exists, visible, text, url, urlMatches, title, var, not, all, any",
+      "additionalProperties": false,
+      "properties": {
+        "exists": {
+          "$ref": "#/$defs/locator"
+        },
+        "visible": {
+          "$ref": "#/$defs/locator"
+        },
+        "text": {
+          "$ref": "#/$defs/text",
+          "description": "Page text contains"
+        },
+        "url": {
+          "$ref": "#/$defs/text",
+          "description": "Current URL contains"
+        },
+        "urlMatches": {
+          "type": "string",
+          "description": "Current URL matches regex"
+        },
+        "title": {
+          "$ref": "#/$defs/text",
+          "description": "Page title contains"
+        },
+        "var": {
+          "type": "string",
+          "description": "Variable name, combine with equals / contains / matches"
+        },
+        "equals": {
+          "description": "Variable equals this value (any type)"
+        },
+        "contains": {
+          "$ref": "#/$defs/text"
+        },
+        "matches": {
+          "type": "string",
+          "description": "Regex"
+        },
+        "not": {
+          "$ref": "#/$defs/condition"
+        },
+        "all": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/condition"
+          }
+        },
+        "any": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/condition"
+          }
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Milliseconds to wait for a leaf condition; not allowed with not/all/any"
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "exists"
+          ]
+        },
+        {
+          "required": [
+            "visible"
+          ]
+        },
+        {
+          "required": [
+            "text"
+          ]
+        },
+        {
+          "required": [
+            "url"
+          ]
+        },
+        {
+          "required": [
+            "urlMatches"
+          ]
+        },
+        {
+          "required": [
+            "title"
+          ]
+        },
+        {
+          "required": [
+            "var"
+          ]
+        },
+        {
+          "required": [
+            "not"
+          ]
+        },
+        {
+          "required": [
+            "all"
+          ]
+        },
+        {
+          "required": [
+            "any"
+          ]
+        }
+      ],
+      "allOf": [
+        {
+          "if": {
+            "anyOf": [
+              {
+                "required": [
+                  "equals"
+                ]
+              },
+              {
+                "required": [
+                  "contains"
+                ]
+              },
+              {
+                "required": [
+                  "matches"
+                ]
+              }
+            ]
+          },
+          "then": {
+            "required": [
+              "var"
+            ]
+          }
+        },
+        {
+          "if": {
+            "anyOf": [
+              {
+                "required": [
+                  "not"
+                ]
+              },
+              {
+                "required": [
+                  "all"
+                ]
+              },
+              {
+                "required": [
+                  "any"
+                ]
+              }
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "timeout"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/stepOrBlock"
+      }
+    },
+    "stepOrBlock": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/step"
+        },
+        {
+          "$ref": "#/$defs/ifBlock"
+        },
+        {
+          "$ref": "#/$defs/tryBlock"
+        },
+        {
+          "$ref": "#/$defs/forEachBlock"
+        },
+        {
+          "$ref": "#/$defs/repeatBlock"
+        },
+        {
+          "$ref": "#/$defs/whileBlock"
+        },
+        {
+          "$ref": "#/$defs/includeStep"
+        }
+      ]
     },
     "step": {
       "type": "object",
+      "description": "Single action: canonical {action: ...} form or a shorthand verb-key form such as `click: \"#sel\"`",
       "additionalProperties": false,
-      "required": ["action"],
       "properties": {
         "action": {
-          "type": "string",
+          "description": "Action to perform",
           "enum": [
             "open",
             "wait",
@@ -109,31 +398,66 @@
             "get-content",
             "get-cookies",
             "get-headers",
-            "save"
+            "save",
+            "browse-tabs",
+            "solve-challenge",
+            "hover",
+            "dblclick",
+            "focus",
+            "clear",
+            "check",
+            "uncheck",
+            "submit",
+            "select",
+            "upload",
+            "evaluate",
+            "history",
+            "wait-text",
+            "extract",
+            "find-all",
+            "read",
+            "mouse-move",
+            "mouse-scroll-to",
+            "mouse-random",
+            "set",
+            "assert",
+            "fail"
           ]
         },
+        "name": {
+          "type": "string",
+          "description": "Step label shown in results"
+        },
+        "page": {
+          "type": "string",
+          "description": "Page (tab) id"
+        },
         "url": {
-          "type": "string"
+          "$ref": "#/$defs/text"
         },
         "locator": {
           "$ref": "#/$defs/locator"
         },
         "value": {
-          "type": "string"
+          "$ref": "#/$defs/text"
         },
         "key": {
-          "type": "string"
+          "type": "string",
+          "description": "Key name for press"
         },
         "format": {
-          "type": "string",
-          "enum": ["html", "text"]
+          "enum": [
+            "html",
+            "text"
+          ]
         },
         "waitUntil": {
           "$ref": "#/$defs/waitUntil"
         },
         "timeout": {
           "type": "integer",
-          "minimum": 0
+          "minimum": 0,
+          "description": "Milliseconds"
         },
         "deltaX": {
           "type": "integer"
@@ -158,85 +482,1062 @@
         },
         "stopOnError": {
           "type": "boolean"
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/text"
+          },
+          "description": "Options for select (alternative to value)"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/text"
+          },
+          "description": "Files for upload"
+        },
+        "script": {
+          "type": "string",
+          "description": "JavaScript for evaluate"
+        },
+        "direction": {
+          "enum": [
+            "back",
+            "forward",
+            "reload"
+          ]
+        },
+        "text": {
+          "$ref": "#/$defs/text"
+        },
+        "gone": {
+          "type": "boolean",
+          "default": false,
+          "description": "wait-text: wait until the text disappears"
+        },
+        "attribute": {
+          "type": "string",
+          "description": "Attribute to read/extract"
+        },
+        "all": {
+          "type": "boolean",
+          "default": false
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "steps": {
+          "type": "integer",
+          "description": "Number of intermediate mouse-move points"
+        },
+        "startX": {
+          "type": "number",
+          "default": 0
+        },
+        "startY": {
+          "type": "number",
+          "default": 0
+        },
+        "endX": {
+          "type": "number"
+        },
+        "endY": {
+          "type": "number"
+        },
+        "durationMs": {
+          "type": "integer"
+        },
+        "jitter": {
+          "type": "number"
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "as": {
+          "type": "string",
+          "pattern": "^[A-Za-z_]\\w*$",
+          "description": "Store the result in a variable (extract, evaluate, read, find-all, get-content, get-cookies, get-headers)"
+        },
+        "vars": {
+          "type": "object",
+          "description": "Variables for set"
+        },
+        "condition": {
+          "$ref": "#/$defs/condition"
+        },
+        "message": {
+          "type": "string",
+          "description": "Message for fail"
+        },
+        "retry": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "retryDelay": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 1000
+        },
+        "optional": {
+          "type": "boolean",
+          "default": false
+        },
+        "open": {
+          "description": "Shorthand: URL to open",
+          "$ref": "#/$defs/text"
+        },
+        "wait": {
+          "description": "Shorthand: milliseconds (integer) or a load state",
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "enum": [
+                "load",
+                "domcontentloaded",
+                "networkidle"
+              ]
+            }
+          ]
+        },
+        "fill": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "Shorthand: [locator, value]",
+          "prefixItems": [
+            {
+              "$ref": "#/$defs/locator"
+            },
+            {
+              "$ref": "#/$defs/text"
+            }
+          ]
+        },
+        "type": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "Shorthand: [locator, value]",
+          "prefixItems": [
+            {
+              "$ref": "#/$defs/locator"
+            },
+            {
+              "$ref": "#/$defs/text"
+            }
+          ]
+        },
+        "press": {
+          "description": "Shorthand: key name",
+          "$ref": "#/$defs/text"
+        },
+        "select": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "Shorthand: [locator, option] or [locator, [options]]",
+          "prefixItems": [
+            {
+              "$ref": "#/$defs/locator"
+            },
+            {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/text"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/text"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "upload": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "Shorthand: [locator, file or [files]]",
+          "prefixItems": [
+            {
+              "$ref": "#/$defs/locator"
+            },
+            {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/text"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/text"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "evaluate": {
+          "description": "Shorthand: JavaScript to run",
+          "$ref": "#/$defs/text"
+        },
+        "history": {
+          "description": "Shorthand: direction",
+          "enum": [
+            "back",
+            "forward",
+            "reload"
+          ]
+        },
+        "wait-text": {
+          "description": "Shorthand: text to wait for",
+          "$ref": "#/$defs/text"
+        },
+        "fail": {
+          "description": "Shorthand: failure message",
+          "$ref": "#/$defs/text"
+        },
+        "assert": {
+          "description": "Shorthand: condition",
+          "$ref": "#/$defs/condition"
+        },
+        "set": {
+          "description": "Shorthand: variables to set",
+          "type": "object"
+        },
+        "screenshot": {
+          "description": "Shorthand: output file",
+          "type": "string"
+        },
+        "save": {
+          "description": "Shorthand: output file",
+          "type": "string"
+        },
+        "find": {
+          "description": "Shorthand: locator",
+          "$ref": "#/$defs/locator"
+        },
+        "click": {
+          "description": "Shorthand: locator",
+          "$ref": "#/$defs/locator"
+        },
+        "hover": {
+          "description": "Shorthand: locator",
+          "$ref": "#/$defs/locator"
+        },
+        "dblclick": {
+          "description": "Shorthand: locator",
+          "$ref": "#/$defs/locator"
+        },
+        "focus": {
+          "description": "Shorthand: locator",
+          "$ref": "#/$defs/locator"
+        },
+        "clear": {
+          "description": "Shorthand: locator",
+          "$ref": "#/$defs/locator"
+        },
+        "check": {
+          "description": "Shorthand: locator",
+          "$ref": "#/$defs/locator"
+        },
+        "uncheck": {
+          "description": "Shorthand: locator",
+          "$ref": "#/$defs/locator"
+        },
+        "submit": {
+          "description": "Shorthand: locator",
+          "$ref": "#/$defs/locator"
+        },
+        "extract": {
+          "description": "Shorthand: locator",
+          "$ref": "#/$defs/locator"
+        },
+        "find-all": {
+          "description": "Shorthand: locator",
+          "$ref": "#/$defs/locator"
+        },
+        "read": {
+          "description": "Shorthand: locator",
+          "$ref": "#/$defs/locator"
+        },
+        "mouse-scroll-to": {
+          "description": "Shorthand: locator",
+          "$ref": "#/$defs/locator"
+        },
+        "get-content": {
+          "description": "Shorthand: use null (or empty value)",
+          "type": "null"
+        },
+        "get-cookies": {
+          "description": "Shorthand: use null (or empty value)",
+          "type": "null"
+        },
+        "get-headers": {
+          "description": "Shorthand: use null (or empty value)",
+          "type": "null"
+        },
+        "browse-tabs": {
+          "description": "Shorthand: use null (or empty value)",
+          "type": "null"
+        },
+        "solve-challenge": {
+          "description": "Shorthand: use null (or empty value)",
+          "type": "null"
+        },
+        "mouse-move": {
+          "description": "Shorthand: use null (or empty value)",
+          "type": "null"
+        },
+        "mouse-random": {
+          "description": "Shorthand: use null (or empty value)",
+          "type": "null"
         }
       },
+      "anyOf": [
+        {
+          "required": [
+            "action"
+          ]
+        },
+        {
+          "required": [
+            "open"
+          ]
+        },
+        {
+          "required": [
+            "wait"
+          ]
+        },
+        {
+          "required": [
+            "find"
+          ]
+        },
+        {
+          "required": [
+            "click"
+          ]
+        },
+        {
+          "required": [
+            "fill"
+          ]
+        },
+        {
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "required": [
+            "press"
+          ]
+        },
+        {
+          "required": [
+            "scroll"
+          ]
+        },
+        {
+          "required": [
+            "screenshot"
+          ]
+        },
+        {
+          "required": [
+            "get-content"
+          ]
+        },
+        {
+          "required": [
+            "get-cookies"
+          ]
+        },
+        {
+          "required": [
+            "get-headers"
+          ]
+        },
+        {
+          "required": [
+            "save"
+          ]
+        },
+        {
+          "required": [
+            "browse-tabs"
+          ]
+        },
+        {
+          "required": [
+            "solve-challenge"
+          ]
+        },
+        {
+          "required": [
+            "hover"
+          ]
+        },
+        {
+          "required": [
+            "dblclick"
+          ]
+        },
+        {
+          "required": [
+            "focus"
+          ]
+        },
+        {
+          "required": [
+            "clear"
+          ]
+        },
+        {
+          "required": [
+            "check"
+          ]
+        },
+        {
+          "required": [
+            "uncheck"
+          ]
+        },
+        {
+          "required": [
+            "submit"
+          ]
+        },
+        {
+          "required": [
+            "select"
+          ]
+        },
+        {
+          "required": [
+            "upload"
+          ]
+        },
+        {
+          "required": [
+            "evaluate"
+          ]
+        },
+        {
+          "required": [
+            "history"
+          ]
+        },
+        {
+          "required": [
+            "wait-text"
+          ]
+        },
+        {
+          "required": [
+            "extract"
+          ]
+        },
+        {
+          "required": [
+            "find-all"
+          ]
+        },
+        {
+          "required": [
+            "read"
+          ]
+        },
+        {
+          "required": [
+            "mouse-move"
+          ]
+        },
+        {
+          "required": [
+            "mouse-scroll-to"
+          ]
+        },
+        {
+          "required": [
+            "mouse-random"
+          ]
+        },
+        {
+          "required": [
+            "set"
+          ]
+        },
+        {
+          "required": [
+            "assert"
+          ]
+        },
+        {
+          "required": [
+            "fail"
+          ]
+        }
+      ],
       "allOf": [
         {
           "if": {
-            "properties": { "action": { "const": "open" } }
+            "properties": {
+              "action": {
+                "enum": [
+                  "open"
+                ]
+              }
+            },
+            "required": [
+              "action"
+            ]
           },
           "then": {
-            "required": ["url"]
+            "required": [
+              "url"
+            ]
           }
         },
         {
           "if": {
-            "properties": { "action": { "const": "find" } }
+            "properties": {
+              "action": {
+                "enum": [
+                  "find",
+                  "click",
+                  "hover",
+                  "dblclick",
+                  "focus",
+                  "clear",
+                  "check",
+                  "uncheck",
+                  "submit",
+                  "extract",
+                  "find-all",
+                  "read",
+                  "mouse-scroll-to",
+                  "fill",
+                  "type",
+                  "select",
+                  "upload"
+                ]
+              }
+            },
+            "required": [
+              "action"
+            ]
           },
           "then": {
-            "required": ["locator"]
+            "required": [
+              "locator"
+            ]
           }
         },
         {
           "if": {
-            "properties": { "action": { "const": "click" } }
+            "properties": {
+              "action": {
+                "enum": [
+                  "fill",
+                  "type"
+                ]
+              }
+            },
+            "required": [
+              "action"
+            ]
           },
           "then": {
-            "required": ["locator"]
+            "required": [
+              "value"
+            ]
           }
         },
         {
           "if": {
-            "properties": { "action": { "const": "fill" } }
-          },
-          "then": {
-            "required": ["locator", "value"]
-          }
-        },
-        {
-          "if": {
-            "properties": { "action": { "const": "type" } }
-          },
-          "then": {
-            "required": ["locator", "value"]
-          }
-        },
-        {
-          "if": {
-            "properties": { "action": { "const": "screenshot" } }
-          },
-          "then": {
-            "required": ["file"]
-          }
-        },
-        {
-          "if": {
-            "properties": { "action": { "const": "press" } }
-          },
-          "then": {
-            "required": ["key"]
-          }
-        },
-        {
-          "if": {
-            "properties": { "action": { "const": "save" } }
-          },
-          "then": {
-            "required": ["file"]
-          }
-        },
-        {
-          "if": {
-            "properties": { "action": { "const": "scroll" } }
+            "properties": {
+              "action": {
+                "enum": [
+                  "select"
+                ]
+              }
+            },
+            "required": [
+              "action"
+            ]
           },
           "then": {
             "anyOf": [
-              { "required": ["deltaX"] },
-              { "required": ["deltaY"] }
+              {
+                "required": [
+                  "value"
+                ]
+              },
+              {
+                "required": [
+                  "options"
+                ]
+              }
             ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "enum": [
+                  "upload"
+                ]
+              }
+            },
+            "required": [
+              "action"
+            ]
+          },
+          "then": {
+            "required": [
+              "files"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "enum": [
+                  "evaluate"
+                ]
+              }
+            },
+            "required": [
+              "action"
+            ]
+          },
+          "then": {
+            "required": [
+              "script"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "enum": [
+                  "history"
+                ]
+              }
+            },
+            "required": [
+              "action"
+            ]
+          },
+          "then": {
+            "required": [
+              "direction"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "enum": [
+                  "wait-text"
+                ]
+              }
+            },
+            "required": [
+              "action"
+            ]
+          },
+          "then": {
+            "required": [
+              "text"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "enum": [
+                  "mouse-move"
+                ]
+              }
+            },
+            "required": [
+              "action"
+            ]
+          },
+          "then": {
+            "required": [
+              "x",
+              "y"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "enum": [
+                  "mouse-random"
+                ]
+              }
+            },
+            "required": [
+              "action"
+            ]
+          },
+          "then": {
+            "required": [
+              "endX",
+              "endY"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "enum": [
+                  "press"
+                ]
+              }
+            },
+            "required": [
+              "action"
+            ]
+          },
+          "then": {
+            "required": [
+              "key"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "enum": [
+                  "scroll"
+                ]
+              }
+            },
+            "required": [
+              "action"
+            ]
+          },
+          "then": {
+            "anyOf": [
+              {
+                "required": [
+                  "deltaX"
+                ]
+              },
+              {
+                "required": [
+                  "deltaY"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "enum": [
+                  "save",
+                  "screenshot"
+                ]
+              }
+            },
+            "required": [
+              "action"
+            ]
+          },
+          "then": {
+            "required": [
+              "file"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "enum": [
+                  "set"
+                ]
+              }
+            },
+            "required": [
+              "action"
+            ]
+          },
+          "then": {
+            "required": [
+              "vars"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "enum": [
+                  "fail"
+                ]
+              }
+            },
+            "required": [
+              "action"
+            ]
+          },
+          "then": {
+            "required": [
+              "message"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "enum": [
+                  "assert"
+                ]
+              }
+            },
+            "required": [
+              "action"
+            ]
+          },
+          "then": {
+            "required": [
+              "condition"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "wait"
+              },
+              "waitUntil": {
+                "enum": [
+                  "visible",
+                  "hidden"
+                ]
+              }
+            },
+            "required": [
+              "action",
+              "waitUntil"
+            ]
+          },
+          "then": {
+            "required": [
+              "locator"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "as",
+              "action"
+            ]
+          },
+          "then": {
+            "properties": {
+              "action": {
+                "enum": [
+                  "extract",
+                  "evaluate",
+                  "read",
+                  "find-all",
+                  "get-content",
+                  "get-cookies",
+                  "get-headers"
+                ]
+              }
+            }
           }
         }
       ]
+    },
+    "ifBlock": {
+      "type": "object",
+      "description": "Conditional",
+      "additionalProperties": false,
+      "required": [
+        "if",
+        "then"
+      ],
+      "properties": {
+        "if": {
+          "$ref": "#/$defs/condition"
+        },
+        "then": {
+          "$ref": "#/$defs/steps"
+        },
+        "else": {
+          "$ref": "#/$defs/steps"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "tryBlock": {
+      "type": "object",
+      "description": "Error handling; the error is available as ${error.message} in catch",
+      "additionalProperties": false,
+      "required": [
+        "try"
+      ],
+      "properties": {
+        "try": {
+          "$ref": "#/$defs/steps"
+        },
+        "catch": {
+          "$ref": "#/$defs/steps"
+        },
+        "finally": {
+          "$ref": "#/$defs/steps"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "catch"
+          ]
+        },
+        {
+          "required": [
+            "finally"
+          ]
+        }
+      ]
+    },
+    "forEachBlock": {
+      "type": "object",
+      "description": "Loop over a list or a variable holding a list",
+      "additionalProperties": false,
+      "required": [
+        "forEach",
+        "do"
+      ],
+      "properties": {
+        "forEach": {
+          "anyOf": [
+            {
+              "type": "array"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "List or \"${var}\""
+        },
+        "as": {
+          "type": "string",
+          "pattern": "^[A-Za-z_]\\w*$",
+          "default": "item"
+        },
+        "do": {
+          "$ref": "#/$defs/steps"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "repeatBlock": {
+      "type": "object",
+      "description": "Repeat N times",
+      "additionalProperties": false,
+      "required": [
+        "repeat",
+        "do"
+      ],
+      "properties": {
+        "repeat": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "Count or \"${var}\""
+        },
+        "do": {
+          "$ref": "#/$defs/steps"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "whileBlock": {
+      "type": "object",
+      "description": "Loop while the condition holds",
+      "additionalProperties": false,
+      "required": [
+        "while",
+        "do"
+      ],
+      "properties": {
+        "while": {
+          "$ref": "#/$defs/condition"
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 100
+        },
+        "do": {
+          "$ref": "#/$defs/steps"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "includeStep": {
+      "type": "object",
+      "description": "Insert steps of another file (relative path inside the scenario directory)",
+      "additionalProperties": false,
+      "required": [
+        "include"
+      ],
+      "properties": {
+        "include": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
     }
   }
 }
