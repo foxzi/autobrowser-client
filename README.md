@@ -4,11 +4,20 @@ Python client for launching and controlling a browser through CLI scripts and HT
 
 Проект предназначен для запуска браузера с профилями, прокси, пользовательским `User-Agent`, получением cookies, headers и content, а также для интерактивного браузинга через CLI и HTTP API.
 
+## Quick install for AI agents / Быстрая установка через AI-агента
+
+Give your agent this link / Дайте агенту эту ссылку:
+
+```
+Install autobrowser by following https://github.com/foxzi/autobrowser-client/blob/main/docs/install-agent.md
+```
+
 ## Documentation
 
 - Technical specification / Техническое задание: [`tz.md`](tz.md)
 - MCP server for AI agents / MCP-сервер для AI-агентов: [`docs/mcp.md`](docs/mcp.md)
 - Agent skill / Skill для агента: [`skills/autobrowser/SKILL.md`](skills/autobrowser/SKILL.md)
+- Install via an AI agent / Установка через AI-агента: [`docs/install-agent.md`](docs/install-agent.md)
 - HTTP API / HTTP API: [`docs/api.md`](docs/api.md)
 - Configuration / Конфигурация: [`docs/configuration.md`](docs/configuration.md)
 - CLI scripts / CLI-сценарии: [`docs/scripts.md`](docs/scripts.md)
