@@ -269,7 +269,11 @@ def create_server(settings: Settings, profile: str | None = None) -> MCPServer:
         clear: bool = False,
         page_id: PageId = None,
     ) -> str:
-        """Recent console messages, network responses/failures, or JS dialogs of the tab."""
+        """Recent console messages, network responses/failures, or JS dialogs of the tab.
+
+        Console has only browser-level messages (failed resources, security warnings):
+        page console.log and uncaught errors are not delivered, to stay undetectable.
+        """
         return json.dumps(
             run(lambda s: s.get_log(page_id_of(s, page_id), kind, clear)),
             ensure_ascii=False,

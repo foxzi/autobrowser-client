@@ -61,7 +61,7 @@ Check `status` and `title` after `browser_navigate`:
 
 ## Debugging
 
-- `browser_logs(kind="console")` - JS errors on the page.
+- `browser_logs(kind="console")` - browser-level messages only (failed resources, security warnings). Page `console.log` and uncaught errors are not captured by design (stealth); to read page state use `browser_evaluate`.
 - `browser_logs(kind="network")` - failed requests and HTTP statuses (API 401/500, blocked resources).
 - Tool errors carry the browser message (e.g. timeout waiting for element): take a fresh snapshot and retry with a correct ref or a `by` locator rather than repeating the same call.
 - `browser_close` then any call gives a fresh browser if the state is broken.

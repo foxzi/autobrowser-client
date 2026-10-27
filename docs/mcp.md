@@ -85,7 +85,7 @@ There is one browser per server process. It starts on the first call and closes 
 | `browser_wait_for` | wait for text to appear or disappear |
 | `browser_get_text` | visible page text |
 | `browser_tabs` | list / new / close tabs |
-| `browser_logs` | console, network and dialogs log |
+| `browser_logs` | console (browser-level messages only, no page `console.log`), network and dialogs log |
 | `browser_handle_dialogs` | accept or dismiss alert/confirm/prompt |
 | `browser_solve_challenge` | wait through a Cloudflare challenge |
 | `browser_close` | close the browser |
@@ -199,7 +199,7 @@ autobrowser mcp [--headless/--headed] [--profile NAME] [--proxy socks5://user:pa
 | `browser_wait_for` | дождаться появления или исчезновения текста |
 | `browser_get_text` | видимый текст страницы |
 | `browser_tabs` | список, новая вкладка, закрыть вкладку |
-| `browser_logs` | журнал консоли, сети и диалогов |
+| `browser_logs` | журнал консоли (только сообщения браузера, без `console.log` страницы), сети и диалогов |
 | `browser_handle_dialogs` | принимать или отклонять alert/confirm/prompt |
 | `browser_solve_challenge` | дождаться прохождения проверки Cloudflare |
 | `browser_close` | закрыть браузер |
