@@ -35,8 +35,6 @@ Any client with a JSON config (`mcpServers`):
 }
 ```
 
-While the repository is private, uv clones it with your git credentials. Use the `git+ssh://git@github.com/foxzi/autobrowser-client` URL if you have SSH access.
-
 To pin a release, add the tag to the URL: `git+https://github.com/foxzi/autobrowser-client@v0.1.0`. See [releases.md](releases.md).
 
 The first start downloads dependencies and the browser, which takes about a minute. To do it in advance, run the same `uvx --from ... autobrowser install` command with the same environment.
@@ -119,8 +117,6 @@ claude mcp add autobrowser \
   }
 }
 ```
-
-Пока репозиторий приватный, uv клонирует его с вашими git-учётными данными. Если есть доступ по SSH, используйте URL `git+ssh://git@github.com/foxzi/autobrowser-client`.
 
 Чтобы зафиксировать релиз, добавьте тег к URL: `git+https://github.com/foxzi/autobrowser-client@v0.1.0`. Подробнее в [releases.md](releases.md).
 
