@@ -45,9 +45,16 @@ RUN groupadd -r browser && useradd -r -g browser -m -d /home/browser browser
 
 # Install socks2http relay binary for SOCKS5 proxy support
 ARG SOCKS2HTTP_VERSION=v1.0.0
-RUN curl -fsSL "https://github.com/foxzi/socks2http/releases/download/${SOCKS2HTTP_VERSION}/socks2http-linux-amd64" \
-    -o /usr/local/bin/socks2http && \
-    chmod +x /usr/local/bin/socks2http
+ARG TARGETARCH
+RUN set -e; \
+    bin="socks2http-linux-${TARGETARCH:-amd64}"; \
+    url="https://github.com/foxzi/socks2http/releases/download/${SOCKS2HTTP_VERSION}/${bin}"; \
+    cd /tmp; \
+    curl -fsSL "$url" -o "$bin"; \
+    curl -fsSL "$url.sha256" -o "$bin.sha256"; \
+    sha256sum -c "$bin.sha256"; \
+    install -m 0755 "$bin" /usr/local/bin/socks2http; \
+    rm -f "$bin" "$bin.sha256"
 
 # Python venv
 RUN python3 -m venv /opt/venv
