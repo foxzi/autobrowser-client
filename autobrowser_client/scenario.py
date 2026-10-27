@@ -3,10 +3,10 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import Any, Literal, get_args
+from typing import Annotated, Any, Literal, Union, get_args
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Discriminator, Field, Tag, model_validator
 
 from autobrowser_client.errors import ScriptValidationError
 
@@ -46,6 +46,7 @@ ActionName = Literal[
     "mouse-random",
     "set",
     "assert",
+    "fail",
 ]
 LocatorType = Literal["css", "xpath", "id", "name", "class", "text", "attribute", "ref"]
 WaitUntil = Literal["domcontentloaded", "load", "networkidle", "visible", "hidden"]
@@ -238,6 +239,10 @@ def _expand_shorthand_step(d: dict) -> dict:
         _check_conflict("text")
         result["text"] = value
 
+    elif verb == "fail":
+        _check_conflict("message")
+        result["message"] = value
+
     elif verb == "assert":
         _check_conflict("condition")
         result["condition"] = value
@@ -382,6 +387,8 @@ class ScriptStep(BaseModel):
             raise ValueError(f"'{self.action}' step requires 'file'")
         if self.action == "set" and not self.vars:
             raise ValueError("'set' step requires 'vars'")
+        if self.action == "fail" and not self.message:
+            raise ValueError("'fail' step requires 'message'")
         if self.action == "assert" and self.condition is None:
             raise ValueError("'assert' step requires 'condition'")
         if self.as_name is not None:
@@ -392,34 +399,183 @@ class ScriptStep(BaseModel):
         return self
 
 
+class IfBlock(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    if_: Condition = Field(alias="if")
+    then: list[Step]
+    else_: list[Step] | None = Field(default=None, alias="else")
+    name: str | None = None
+
+
+class TryBlock(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    try_: list[Step] = Field(alias="try")
+    catch: list[Step] | None = None
+    finally_: list[Step] | None = Field(default=None, alias="finally")
+    name: str | None = None
+
+    @model_validator(mode="after")
+    def _needs_catch_or_finally(self) -> "TryBlock":
+        if self.catch is None and self.finally_ is None:
+            raise ValueError("'try' requires 'catch' or 'finally'")
+        return self
+
+
+class ForEachBlock(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    for_each: list[Any] | str = Field(alias="forEach")
+    as_name: str = Field(default="item", alias="as")
+    do: list[Step]
+    name: str | None = None
+
+    @model_validator(mode="after")
+    def _valid_name(self) -> "ForEachBlock":
+        if not _NAME_RE.match(self.as_name):
+            raise ValueError(f"invalid variable name: {self.as_name!r}")
+        return self
+
+
+class RepeatBlock(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    repeat: int | str
+    do: list[Step]
+    name: str | None = None
+
+
+class WhileBlock(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    while_: Condition = Field(alias="while")
+    max: int = Field(default=100, ge=1)
+    do: list[Step]
+    name: str | None = None
+
+
+_BLOCK_KEYS = {
+    "if": "if", "try": "try", "forEach": "forEach", "repeat": "repeat", "while": "while",
+}
+# Keys that hold nested step lists in a control block
+_BLOCK_BODIES = ("then", "else", "try", "catch", "finally", "do")
+_BLOCK_TYPES: dict[type, str] = {
+    IfBlock: "if", TryBlock: "try", ForEachBlock: "forEach", RepeatBlock: "repeat", WhileBlock: "while",
+}
+
+
+def _step_kind(value: object) -> str:
+    if isinstance(value, dict):
+        return next((tag for key, tag in _BLOCK_KEYS.items() if key in value), "step")
+    return _BLOCK_TYPES.get(type(value), "step")
+
+
+Step = Annotated[
+    Union[
+        Annotated[IfBlock, Tag("if")],
+        Annotated[TryBlock, Tag("try")],
+        Annotated[ForEachBlock, Tag("forEach")],
+        Annotated[RepeatBlock, Tag("repeat")],
+        Annotated[WhileBlock, Tag("while")],
+        Annotated[ScriptStep, Tag("step")],
+    ],
+    Discriminator(_step_kind),
+]
+
+for _block in _BLOCK_TYPES:
+    _block.model_rebuild()
+
+
 class ScriptDefinition(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     session: SessionConfig = Field(default_factory=SessionConfig)
-    steps: list[ScriptStep]
+    steps: list[Step]
     output: ScriptOutput = Field(default_factory=ScriptOutput)
     stop_on_error: bool = Field(default=True, alias="stopOnError")
     vars: dict[str, Any] = Field(default_factory=dict)
     error_artifacts: str | None = Field(default=None, alias="errorArtifacts")
 
 
-def load_script(path: str | Path) -> ScriptDefinition:
-    script_path = Path(path)
-    if not script_path.exists():
-        raise ScriptValidationError(f"Script file does not exist: {script_path}")
+def _read_data(path: Path) -> dict:
+    if not path.exists():
+        raise ScriptValidationError(f"Script file does not exist: {path}")
 
-    raw = script_path.read_text(encoding="utf-8")
-    if script_path.suffix in {".yaml", ".yml"}:
+    raw = path.read_text(encoding="utf-8")
+    if path.suffix in {".yaml", ".yml"}:
         data = yaml.safe_load(raw) or {}
-    elif script_path.suffix == ".json":
+    elif path.suffix == ".json":
         data = json.loads(raw)
     else:
-        raise ScriptValidationError(f"Unsupported script format: {script_path.suffix}")
+        raise ScriptValidationError(f"Unsupported script format: {path.suffix}")
 
     if not isinstance(data, dict):
         raise ScriptValidationError("Script root must be an object")
+    return data
 
+
+def _load_include(item: dict, base_dir: Path, stack: list[Path], variables: dict) -> list:
+    target = item["include"]
+    if len(item) != 1:
+        raise ScriptValidationError("'include' step takes no other keys")
+    if not isinstance(target, str) or not target:
+        raise ScriptValidationError(f"'include' expects a file path, got: {target!r}")
+    if Path(target).is_absolute():
+        raise ScriptValidationError(f"Absolute include paths are not allowed: {target}")
+    path = (base_dir / target).resolve()
+    if not path.is_relative_to(base_dir.resolve()):
+        raise ScriptValidationError(f"Include path escapes the scenario directory: {target}")
+    if path in stack:
+        chain = " -> ".join(p.name for p in [*stack, path])
+        raise ScriptValidationError(f"Include cycle: {chain}")
+
+    data = _read_data(path)
+    included_vars = data.get("vars")
+    if isinstance(included_vars, dict):
+        for key, value in included_vars.items():
+            variables.setdefault(key, value)
+    return _expand_includes(data.get("steps") or [], path.parent, [*stack, path], variables)
+
+
+def _expand_includes(steps: list, base_dir: Path, stack: list[Path], variables: dict) -> list:
+    """Replace ``include`` steps with the steps of the included file (recursively)."""
+    result: list = []
+    for item in steps:
+        if isinstance(item, dict) and "include" in item:
+            result.extend(_load_include(item, base_dir, stack, variables))
+            continue
+        if isinstance(item, dict):
+            for key in _BLOCK_BODIES:
+                if isinstance(item.get(key), list):
+                    item[key] = _expand_includes(item[key], base_dir, stack, variables)
+        result.append(item)
+    return result
+
+
+def _build_script(data: dict, base_dir: Path, stack: list[Path]) -> ScriptDefinition:
+    if isinstance(data.get("steps"), list):
+        variables = data.setdefault("vars", {})
+        if not isinstance(variables, dict):
+            variables = {}
+        data["steps"] = _expand_includes(data["steps"], base_dir, stack, variables)
     try:
         return ScriptDefinition.model_validate(data)
     except Exception as exc:
         raise ScriptValidationError(str(exc)) from exc
+
+
+def load_script(path: str | Path) -> ScriptDefinition:
+    script_path = Path(path)
+    data = _read_data(script_path)
+    resolved = script_path.resolve()
+    return _build_script(data, resolved.parent, [resolved])
+
+
+def parse_script(data: dict | str, base_dir: str | Path) -> ScriptDefinition:
+    """Build a scenario from an object or YAML text; ``include`` paths are relative to base_dir."""
+    if isinstance(data, str):
+        data = yaml.safe_load(data) or {}
+    if not isinstance(data, dict):
+        raise ScriptValidationError("Script root must be an object")
+    return _build_script(data, Path(base_dir), [])

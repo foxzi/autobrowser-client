@@ -62,3 +62,18 @@ class TestValidateScript:
         path.write_text(yaml.dump(script))
         r = run_cli("validate-script", "--file", str(path))
         assert r.returncode != 0
+
+
+class TestRunScriptOptions:
+    def test_invalid_var(self, tmp_path: Path):
+        path = tmp_path / "s.yaml"
+        path.write_text("steps: [{open: 'https://example.com'}]")
+        r = run_cli("run-script", "--file", str(path), "--var", "novalue")
+        assert r.returncode != 0
+        assert "NAME=VALUE" in r.stderr + r.stdout
+
+    def test_artifacts_outside_cwd_rejected(self, tmp_path: Path):
+        path = tmp_path / "s.yaml"
+        path.write_text("steps: [{open: 'https://example.com'}]")
+        r = run_cli("run-script", "--file", str(path), "--artifacts", "/tmp/art")
+        assert r.returncode != 0

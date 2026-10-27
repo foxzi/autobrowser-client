@@ -276,3 +276,193 @@ def test_artifacts_dir_must_be_inside_cwd(session, calls):
 
     with pytest.raises(AppError):
         run_script(session, _script([{"open": "x"}]), artifacts_dir="/tmp/art")
+
+
+# --- control blocks -------------------------------------------------------
+
+
+def _ok(r):
+    return r["success"]
+
+
+def _fail_queue(calls, action="click", msg="nope"):
+    calls.queue[action] = [RuntimeError(msg)]
+
+
+def test_if_branches(session, calls):
+    script = _script([
+        {"if": {"var": "a"}, "then": [{"open": "then"}], "else": [{"open": "else"}]},
+        {"if": {"var": "nope"}, "then": [{"open": "x"}]},
+        {"if": {"var": "a"}, "then": [], "name": "n"},
+    ], vars={"a": 1})
+    out = run_script(session, script)
+    s = out["steps"]
+    assert out["success"] and [c.url for c in calls] == ["then"]
+    assert (s[0]["condition"], s[0]["branch"], len(s[0]["steps"])) == (True, "then", 1)
+    assert (s[1]["condition"], s[1]["branch"], s[1]["steps"]) == (False, None, [])
+    assert s[2]["name"] == "n"
+
+
+def test_if_else_branch_taken(session, calls):
+    script = _script([{"if": {"var": "a"}, "then": [{"open": "t"}], "else": [{"open": "e"}]}])
+    out = run_script(session, script, vars={"a": 0})
+    assert out["steps"][0]["branch"] == "else" and calls[0].url == "e"
+
+
+def test_if_condition_substituted_and_undefined(session, calls):
+    out = run_script(session, _script([{"if": {"var": "a", "equals": "${b}"}, "then": [{"open": "t"}]}]), vars={"a": 1, "b": 1})
+    assert out["steps"][0]["condition"] is True
+    out = run_script(session, _script([{"if": {"var": "a", "equals": "${zz}"}, "then": []}]), vars={"a": 1})
+    assert not out["success"] and out["steps"][0]["error"] == "undefined variable: zz"
+
+
+def test_try_catch_handles_failure(session, calls):
+    _fail_queue(calls)
+    script = _script([
+        {"try": [{"open": "a"}, {"click": "#x"}, {"open": "skipped"}],
+         "catch": [{"open": "c/${error.message}/${error.action}"}],
+         "finally": [{"open": "f"}]},
+        {"open": "after"},
+    ])
+    out = run_script(session, script)
+    assert out["success"]
+    assert [c.url for c in calls if c.action == "open"] == ["a", "c/nope/click", "f", "after"]
+    node = out["steps"][0]
+    assert node["success"] is True
+    assert node["steps"][1]["handled"] is True and node["steps"][1]["success"] is False
+    assert len(node["catch"]) == 1 and len(node["finally"]) == 1
+    assert out["vars"]["error"] == {"message": "nope", "action": "click", "name": None}
+
+
+def test_try_without_catch_propagates_after_finally(session, calls):
+    _fail_queue(calls)
+    script = _script([
+        {"try": [{"click": "#x"}], "finally": [{"open": "f"}]},
+        {"open": "after"},
+    ])
+    out = run_script(session, script)
+    assert not out["success"] and len(out["steps"]) == 1
+    node = out["steps"][0]
+    assert node["success"] is False and len(node["finally"]) == 1
+    assert [c.url for c in calls if c.action == "open"] == ["f"]
+
+
+def test_failure_in_catch_propagates_after_finally(session, calls):
+    script = _script([
+        {"try": [{"fail": "one"}], "catch": [{"fail": "two"}], "finally": [{"open": "f"}]},
+    ])
+    out = run_script(session, script)
+    node = out["steps"][0]
+    assert not out["success"] and not node["success"]
+    assert node["catch"][0]["error"] == "two" and node["finally"][0]["success"]
+    assert node["steps"][0]["handled"] is True
+
+
+def test_nested_try_outer_catches_inner_propagation(session, calls):
+    script = _script([
+        {"try": [{"try": [{"fail": "deep"}], "finally": [{"open": "inner-f"}]}],
+         "catch": [{"open": "outer-c"}]},
+    ])
+    out = run_script(session, script)
+    outer = out["steps"][0]
+    inner = outer["steps"][0]
+    assert out["success"] and outer["success"] and inner["success"] is False
+    assert inner["handled"] is True and inner["steps"][0]["handled"] is True
+    assert [c.url for c in calls] == ["inner-f", "outer-c"]
+
+
+def test_try_does_not_catch_recorded_failure(session, calls):
+    _fail_queue(calls)
+    script = _script([{"try": [{"click": "#x", "stopOnError": False}, {"open": "next"}], "catch": [{"open": "c"}]}])
+    out = run_script(session, script)
+    assert not out["success"] and [c.url for c in calls if c.action == "open"] == ["next"]
+    assert out["steps"][0]["success"] is False
+
+
+def test_optional_inside_try_does_not_trigger_catch(session, calls):
+    _fail_queue(calls)
+    script = _script([{"try": [{"click": "#x", "optional": True}], "catch": [{"open": "c"}]}])
+    out = run_script(session, script)
+    assert out["success"] and not any(c.action == "open" for c in calls)
+
+
+def test_fail_action_and_top_level_stop(session, calls):
+    out = run_script(session, _script([{"fail": "bad ${a}"}, {"open": "x"}]), vars={"a": 1})
+    assert not out["success"] and len(out["steps"]) == 1
+    assert out["steps"][0]["error"] == "bad 1" and calls == []
+
+
+def test_failure_in_nested_block_stops_script(session, calls):
+    script = _script([
+        {"repeat": 3, "do": [{"open": "a"}, {"fail": "x"}]},
+        {"open": "never"},
+    ])
+    out = run_script(session, script)
+    assert not out["success"] and len(calls) == 1
+    node = out["steps"][0]
+    assert node["success"] is False and len(node["iterations"]) == 1
+
+
+def test_for_each_items_index_and_literal(session, calls):
+    script = _script([
+        {"forEach": ["a", "b"], "as": "x", "do": [{"open": "${index}:${x}"}]},
+        {"set": {"urls": ["u1", "u2"]}},
+        {"forEach": "${urls}", "do": [{"open": "${item}"}]},
+    ])
+    out = run_script(session, script)
+    assert [c.url for c in calls] == ["0:a", "1:b", "u1", "u2"]
+    assert len(out["steps"][0]["iterations"]) == 2 and out["success"]
+
+
+def test_for_each_not_a_list(session, calls):
+    out = run_script(session, _script([{"forEach": "${v}", "do": []}]), vars={"v": "str"})
+    assert not out["success"] and "expects a list" in out["steps"][0]["error"]
+
+
+def test_repeat(session, calls):
+    out = run_script(session, _script([{"repeat": 3, "do": [{"open": "u${index}"}]}]))
+    assert [c.url for c in calls] == ["u0", "u1", "u2"] and len(out["steps"][0]["iterations"]) == 3
+    out = run_script(session, _script([{"repeat": "${n}", "do": []}]), vars={"n": "2"})
+    assert len(out["steps"][0]["iterations"]) == 2
+
+
+def test_while_runs_until_false_and_max(session, calls):
+    script = _script([
+        {"while": {"var": "go"}, "max": 5, "do": [{"open": "x"}, {"if": {"var": "index", "equals": 1}, "then": [{"set": {"go": False}}]}]},
+    ], vars={"go": True})
+    out = run_script(session, script)
+    assert out["success"] and len(out["steps"][0]["iterations"]) == 2
+
+    out = run_script(session, _script([{"while": {"var": "go"}, "max": 3, "do": [{"open": "x"}]}], vars={"go": True}))
+    assert not out["success"] and len(out["steps"][0]["iterations"]) == 3
+    assert out["steps"][0]["error"] == "while exceeded max 3 iterations"
+
+
+def test_while_exact_max_is_ok(session, calls):
+    script = _script([
+        {"while": {"var": "go"}, "max": 2, "do": [{"if": {"var": "index", "equals": 1}, "then": [{"set": {"go": False}}]}]},
+    ], vars={"go": True})
+    assert run_script(session, script)["success"]
+
+
+def test_block_validation():
+    for bad in (
+        {"try": []},
+        {"forEach": [1], "as": "1x", "do": []},
+        {"if": {"var": "a"}},
+        {"while": {"var": "a"}, "max": 0, "do": []},
+        {"repeat": 2, "do": [], "bogus": 1},
+    ):
+        with pytest.raises(ValueError):
+            _script([bad])
+
+
+def test_execute_script_compat(session, calls):
+    from autobrowser_client.browser.executor import execute_script
+    from autobrowser_client.scenario import ScriptStep
+
+    calls.queue["click"] = [RuntimeError("nope")]
+    steps = [ScriptStep.model_validate({"open": "a"}), ScriptStep.model_validate({"click": "#x"}), ScriptStep.model_validate({"open": "b"})]
+    results = execute_script(session, steps)
+    assert [r["success"] for r in results] == [True, False]
+    assert len(execute_script(session, steps, stop_on_error=False)) == 3

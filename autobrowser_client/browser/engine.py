@@ -15,7 +15,17 @@ from pydantic import BaseModel
 from autobrowser_client.browser.actions import resolve_locator
 from autobrowser_client.browser.executor import StepResult, _validate_output_path, execute_step
 from autobrowser_client.browser.service import BrowserSession
-from autobrowser_client.scenario import Condition, ScriptDefinition, ScriptStep
+from autobrowser_client.scenario import (
+    Condition,
+    ForEachBlock,
+    IfBlock,
+    RepeatBlock,
+    ScriptDefinition,
+    ScriptStep,
+    Step,
+    TryBlock,
+    WhileBlock,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -210,6 +220,11 @@ def _attempt(step: ScriptStep, ctx: _Context) -> StepResult:
         result.duration_ms = (time.monotonic() - t0) * 1000
         return result
 
+    if concrete.action == "fail":
+        result = StepResult("fail", success=False)
+        result.error = concrete.message
+        return result
+
     if concrete.action == "assert":
         t0 = time.monotonic()
         ok = check_condition(ctx.session, concrete.condition, ctx.vars, ctx.page_id)
@@ -261,10 +276,138 @@ def _run_step(step: ScriptStep, ctx: _Context, out: list[dict[str, Any]]) -> Non
     ctx.failed = True
 
 
-def _run_steps(steps: list[ScriptStep], ctx: _Context, out: list[dict[str, Any]]) -> None:
+def _block_fail(node: dict[str, Any], kind: str, name: str | None, message: str) -> StepFailure:
+    node["error"] = message
+    return StepFailure(message, kind, name, node)
+
+
+def _substitute_block(
+    value: Any, ctx: _Context, node: dict[str, Any], kind: str, name: str | None
+) -> Any:
+    try:
+        if isinstance(value, BaseModel):
+            return _substitute_model(value, ctx.vars)
+        return substitute(value, ctx.vars)
+    except UndefinedVariable as exc:
+        raise _block_fail(node, kind, name, str(exc)) from exc
+
+
+def _run_if(block: IfBlock, ctx: _Context, node: dict[str, Any]) -> None:
+    cond = _substitute_block(block.if_, ctx, node, "if", block.name)
+    matched = check_condition(ctx.session, cond, ctx.vars, ctx.page_id)
+    branch = block.then if matched else block.else_
+    node["condition"] = matched
+    node["branch"] = "then" if matched else ("else" if block.else_ is not None else None)
+    node["steps"] = []
+    _run_steps(branch or [], ctx, node["steps"])
+
+
+def _run_try(block: TryBlock, ctx: _Context, node: dict[str, Any]) -> None:
+    node["steps"] = []
+    pending: StepFailure | None = None
+    try:
+        _run_steps(block.try_, ctx, node["steps"])
+    except StepFailure as exc:
+        pending = exc
+        if block.catch is not None:
+            for failed in exc.nodes:
+                failed["handled"] = True
+            ctx.vars["error"] = {"message": exc.message, "action": exc.action, "name": exc.name}
+            node["catch"] = []
+            pending = None
+            try:
+                _run_steps(block.catch, ctx, node["catch"])
+            except StepFailure as catch_exc:
+                pending = catch_exc
+    if block.finally_ is not None:
+        node["finally"] = []
+        _run_steps(block.finally_, ctx, node["finally"])
+    if pending is not None:
+        raise pending
+
+
+def _run_iteration(steps: list[Step], ctx: _Context, node: dict[str, Any], index: int) -> None:
+    ctx.vars["index"] = index
+    iteration: list[dict[str, Any]] = []
+    node["iterations"].append(iteration)
+    _run_steps(steps, ctx, iteration)
+
+
+def _run_for_each(block: ForEachBlock, ctx: _Context, node: dict[str, Any]) -> None:
+    items = _substitute_block(block.for_each, ctx, node, "forEach", block.name)
+    if not isinstance(items, list):
+        raise _block_fail(node, "forEach", block.name, f"forEach expects a list, got {type(items).__name__}")
+    node["iterations"] = []
+    for i, item in enumerate(items):
+        ctx.vars[block.as_name] = item
+        _run_iteration(block.do, ctx, node, i)
+
+
+def _run_repeat(block: RepeatBlock, ctx: _Context, node: dict[str, Any]) -> None:
+    raw = _substitute_block(block.repeat, ctx, node, "repeat", block.name)
+    try:
+        count = int(raw)
+    except (TypeError, ValueError):
+        count = -1
+    if count < 0:
+        raise _block_fail(node, "repeat", block.name, f"repeat expects a non-negative integer, got {raw!r}")
+    node["iterations"] = []
+    for i in range(count):
+        _run_iteration(block.do, ctx, node, i)
+
+
+def _run_while(block: WhileBlock, ctx: _Context, node: dict[str, Any]) -> None:
+    node["iterations"] = []
+    while True:
+        cond = _substitute_block(block.while_, ctx, node, "while", block.name)
+        if not check_condition(ctx.session, cond, ctx.vars, ctx.page_id):
+            return
+        if len(node["iterations"]) >= block.max:
+            raise _block_fail(node, "while", block.name, f"while exceeded max {block.max} iterations")
+        _run_iteration(block.do, ctx, node, len(node["iterations"]))
+
+
+_BLOCK_RUNNERS = {
+    IfBlock: ("if", _run_if),
+    TryBlock: ("try", _run_try),
+    ForEachBlock: ("forEach", _run_for_each),
+    RepeatBlock: ("repeat", _run_repeat),
+    WhileBlock: ("while", _run_while),
+}
+
+
+def _children_ok(node: dict[str, Any]) -> bool:
+    """A block succeeds when all its results succeeded or were handled by a ``try``."""
+    groups = [node.get("steps", []), node.get("catch", []), node.get("finally", [])]
+    for iteration in node.get("iterations", []):
+        groups.append(iteration)
+    return all(r["success"] or r.get("handled") for group in groups for r in group)
+
+
+def _run_block(block: Any, ctx: _Context, out: list[dict[str, Any]]) -> None:
+    kind, runner = _BLOCK_RUNNERS[type(block)]
+    node: dict[str, Any] = {"action": kind}
+    if block.name:
+        node["name"] = block.name
+    node["success"] = True
+    out.append(node)
+    try:
+        runner(block, ctx, node)
+    except StepFailure as exc:
+        node["success"] = False
+        if all(n is not node for n in exc.nodes):
+            exc.nodes.append(node)
+        raise
+    node["success"] = _children_ok(node)
+
+
+def _run_steps(steps: list[Step], ctx: _Context, out: list[dict[str, Any]]) -> None:
     for step in steps:
-        logger.info("Executing step: %s", step.action)
-        _run_step(step, ctx, out)
+        if isinstance(step, ScriptStep):
+            logger.info("Executing step: %s", step.action)
+            _run_step(step, ctx, out)
+        else:
+            _run_block(step, ctx, out)
 
 
 def run_script(
