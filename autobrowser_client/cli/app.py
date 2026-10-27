@@ -14,7 +14,6 @@ from autobrowser_client.errors import AppError, NotImplementedAppError
 from autobrowser_client.logging_utils import configure_logging
 from autobrowser_client.scenario import load_script
 
-
 app = typer.Typer(help="CLI for autobrowser-client")
 
 
@@ -22,11 +21,15 @@ def _parse_viewport(viewport_str: str) -> dict[str, int]:
     """Parse viewport string like '1920x1080' into {width, height}."""
     parts = viewport_str.lower().split("x")
     if len(parts) != 2:
-        raise typer.BadParameter(f"Invalid viewport format: '{viewport_str}', expected WIDTHxHEIGHT (e.g. 1920x1080)")
+        raise typer.BadParameter(
+            f"Invalid viewport format: '{viewport_str}', expected WIDTHxHEIGHT (e.g. 1920x1080)"
+        )
     try:
         return {"width": int(parts[0]), "height": int(parts[1])}
     except ValueError:
-        raise typer.BadParameter(f"Invalid viewport format: '{viewport_str}', expected WIDTHxHEIGHT (e.g. 1920x1080)")
+        raise typer.BadParameter(
+            f"Invalid viewport format: '{viewport_str}', expected WIDTHxHEIGHT (e.g. 1920x1080)"
+        )
 
 
 def _settings_from_options(
@@ -82,7 +85,9 @@ def version() -> None:
 
 @app.command("show-config")
 def show_config(
-    config: Annotated[Path | None, typer.Option("--config", exists=False, dir_okay=False)] = None,
+    config: Annotated[
+        Path | None, typer.Option("--config", exists=False, dir_okay=False)
+    ] = None,
 ) -> None:
     settings = _settings_from_options(config=config)
     typer.echo(json.dumps(settings.safe_dump(), indent=2, ensure_ascii=False))
@@ -109,9 +114,13 @@ def validate_script(
 @app.command("generate-fingerprint")
 def generate_fingerprint_cmd(
     profile: Annotated[str, typer.Option("--profile", help="Profile directory path")],
-    platform: Annotated[str, typer.Option("--platform", help="Target platform: windows, linux, android")] = "windows",
+    platform: Annotated[
+        str, typer.Option("--platform", help="Target platform: windows, linux, android")
+    ] = "windows",
     seed: Annotated[int | None, typer.Option("--seed", help="Fixed seed value")] = None,
-    force: Annotated[bool, typer.Option("--force", help="Overwrite existing fingerprint.json")] = False,
+    force: Annotated[
+        bool, typer.Option("--force", help="Overwrite existing fingerprint.json")
+    ] = False,
 ) -> None:
     """Generate fingerprint.json for a browser profile."""
     from autobrowser_client.fingerprint.config import (
@@ -145,12 +154,24 @@ def generate_fingerprint_cmd(
 @app.command("run-script")
 def run_script(
     file: Annotated[Path, typer.Option("--file", exists=True, dir_okay=False)],
-    config: Annotated[Path | None, typer.Option("--config", exists=False, dir_okay=False)] = None,
+    config: Annotated[
+        Path | None, typer.Option("--config", exists=False, dir_okay=False)
+    ] = None,
     profile: Annotated[str | None, typer.Option("--profile")] = None,
-    proxy: Annotated[str | None, typer.Option("--proxy", help="Proxy URL: socks5://user:pass@host:port")] = None,
-    viewport: Annotated[str | None, typer.Option("--viewport", help="Viewport size: WIDTHxHEIGHT (e.g. 1920x1080)")] = None,
-    output_file: Annotated[Path | None, typer.Option("--output", help="Save result to file")] = None,
-    preserve_session: Annotated[bool, typer.Option("--preserve-session", help="Save open tabs for next session")] = False,
+    proxy: Annotated[
+        str | None,
+        typer.Option("--proxy", help="Proxy URL: socks5://user:pass@host:port"),
+    ] = None,
+    viewport: Annotated[
+        str | None,
+        typer.Option("--viewport", help="Viewport size: WIDTHxHEIGHT (e.g. 1920x1080)"),
+    ] = None,
+    output_file: Annotated[
+        Path | None, typer.Option("--output", help="Save result to file")
+    ] = None,
+    preserve_session: Annotated[
+        bool, typer.Option("--preserve-session", help="Save open tabs for next session")
+    ] = False,
 ) -> None:
     script = load_script(file)
     effective_proxy = proxy or script.session.proxy
@@ -160,9 +181,14 @@ def run_script(
     if viewport:
         effective_viewport = _parse_viewport(viewport)
     elif script.session.viewport:
-        effective_viewport = {"width": script.session.viewport.width, "height": script.session.viewport.height}
+        effective_viewport = {
+            "width": script.session.viewport.width,
+            "height": script.session.viewport.height,
+        }
 
-    settings = _settings_from_options(config=config, proxy=effective_proxy, viewport=effective_viewport)
+    settings = _settings_from_options(
+        config=config, proxy=effective_proxy, viewport=effective_viewport
+    )
     effective_profile = profile or script.session.profile
     headless = script.session.headless
     user_agent = script.session.user_agent
@@ -175,7 +201,9 @@ def run_script(
         fp_arg = fp_raw
     elif fp_raw is not None:
         # FingerprintOverrides model -> dict of non-None fields
-        fp_arg = {k: v for k, v in fp_raw.model_dump(by_alias=True).items() if v is not None}
+        fp_arg = {
+            k: v for k, v in fp_raw.model_dump(by_alias=True).items() if v is not None
+        }
         if not fp_arg:
             fp_arg = True  # fingerprint: {} means enable
 
@@ -228,16 +256,30 @@ def run_script(
 @app.command("run")
 def run(
     url: Annotated[list[str], typer.Option("--url")],
-    config: Annotated[Path | None, typer.Option("--config", exists=False, dir_okay=False)] = None,
+    config: Annotated[
+        Path | None, typer.Option("--config", exists=False, dir_okay=False)
+    ] = None,
     profile: Annotated[str | None, typer.Option("--profile")] = None,
-    profile_dir: Annotated[Path | None, typer.Option("--profile-dir", exists=False, file_okay=False)] = None,
+    profile_dir: Annotated[
+        Path | None, typer.Option("--profile-dir", exists=False, file_okay=False)
+    ] = None,
     user_agent: Annotated[str | None, typer.Option("--user-agent")] = None,
     headless: Annotated[bool | None, typer.Option("--headless/--headful")] = None,
     timeout: Annotated[int | None, typer.Option("--timeout")] = None,
-    proxy: Annotated[str | None, typer.Option("--proxy", help="Proxy URL: socks5://user:pass@host:port")] = None,
-    viewport_str: Annotated[str | None, typer.Option("--viewport", help="Viewport size: WIDTHxHEIGHT (e.g. 1920x1080)")] = None,
-    output_file: Annotated[Path | None, typer.Option("--output", help="Save result to file")] = None,
-    content_format: Annotated[str, typer.Option("--format", help="Content format: html or text")] = "html",
+    proxy: Annotated[
+        str | None,
+        typer.Option("--proxy", help="Proxy URL: socks5://user:pass@host:port"),
+    ] = None,
+    viewport_str: Annotated[
+        str | None,
+        typer.Option("--viewport", help="Viewport size: WIDTHxHEIGHT (e.g. 1920x1080)"),
+    ] = None,
+    output_file: Annotated[
+        Path | None, typer.Option("--output", help="Save result to file")
+    ] = None,
+    content_format: Annotated[
+        str, typer.Option("--format", help="Content format: html or text")
+    ] = "html",
 ) -> None:
     vp = _parse_viewport(viewport_str) if viewport_str else None
     settings = _settings_from_options(
@@ -259,6 +301,7 @@ def run(
     )
 
     try:
+
         def collect() -> dict[str, Any]:
             pages_data: dict[str, Any] = {}
             for page_id in session.list_pages():
@@ -290,7 +333,9 @@ def run(
 
 @app.command("serve")
 def serve(
-    config: Annotated[Path | None, typer.Option("--config", exists=False, dir_okay=False)] = None,
+    config: Annotated[
+        Path | None, typer.Option("--config", exists=False, dir_okay=False)
+    ] = None,
     host: Annotated[str, typer.Option("--host")] = "127.0.0.1",
     port: Annotated[int, typer.Option("--port")] = 8080,
 ) -> None:
@@ -331,7 +376,6 @@ def install(
 ) -> None:
     """Download the browser for the configured engine."""
     import subprocess
-    import sys
 
     settings = _settings_from_options(config=config)
     if settings.browser.engine == "cloakbrowser":
@@ -339,9 +383,13 @@ def install(
 
         typer.echo(ensure_binary())
     else:
-        # Google Chrome; on Linux this installs a system package and may ask for sudo
+        # Google Chrome; on Linux this installs a system package and may ask for sudo.
+        # Call the driver directly: in a frozen binary sys.executable is not Python.
+        from patchright._impl._driver import compute_driver_executable, get_driver_env
+
+        driver, cli = compute_driver_executable()
         raise typer.Exit(
-            subprocess.call([sys.executable, "-m", "patchright", "install", "chrome"])
+            subprocess.call([driver, cli, "install", "chrome"], env=get_driver_env())
         )
 
 
