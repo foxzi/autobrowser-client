@@ -88,11 +88,22 @@ There is one browser per server process. It starts on the first call and closes 
 | `browser_logs` | console (browser-level messages only, no page `console.log`), network and dialogs log |
 | `browser_handle_dialogs` | accept or dismiss alert/confirm/prompt |
 | `browser_solve_challenge` | wait through a Cloudflare challenge |
+| `browser_run_script` | run a multi-step YAML scenario in one call |
 | `browser_close` | close the browser |
 
 Element tools take `target` and `by`. By default `target` is a ref from the latest snapshot (`e12`). With `by` set to `css`, `xpath`, `text`, `id`, `name`, `class` or `attribute` it is a locator value.
 
 Failures come back as tool errors with the browser's message, for example a timeout while waiting for an element.
+
+#### `browser_run_script`
+
+Runs a scenario (see [`scripts.md`](scripts.md)) on the current browser: variables, `if`/`try`/`forEach`/`while`, retries, `assert`, `extract` in one call instead of many tool calls. Parameters:
+
+- `script` - scenario as YAML text (JSON also works), or `file` - path of a scenario file; exactly one of them;
+- `vars` - string variables that override the scenario `vars`;
+- `page_id` - tab to start on (default: the first tab).
+
+The scenario `session` block is ignored: the run uses the current MCP session. `include` paths are relative to the file's directory, or to the working directory for inline `script`. The result is JSON `{success, steps, vars}`; a failed step gives `success: false` with the error in `steps`, an invalid scenario is a tool error.
 
 ### Skill
 
@@ -202,11 +213,22 @@ autobrowser mcp [--headless/--headed] [--profile NAME] [--proxy socks5://user:pa
 | `browser_logs` | журнал консоли (только сообщения браузера, без `console.log` страницы), сети и диалогов |
 | `browser_handle_dialogs` | принимать или отклонять alert/confirm/prompt |
 | `browser_solve_challenge` | дождаться прохождения проверки Cloudflare |
+| `browser_run_script` | выполнить многошаговый YAML-сценарий одним вызовом |
 | `browser_close` | закрыть браузер |
 
 Инструменты для элементов принимают `target` и `by`. По умолчанию `target` — это ref из последнего snapshot (`e12`). Если `by` равен `css`, `xpath`, `text`, `id`, `name`, `class` или `attribute`, то `target` — значение локатора.
 
 Ошибки возвращаются как ошибки инструмента с сообщением браузера, например таймаут ожидания элемента.
+
+#### `browser_run_script`
+
+Выполняет сценарий (см. [`scripts.md`](scripts.md)) в текущем браузере: переменные, `if`/`try`/`forEach`/`while`, повторы, `assert`, `extract` одним вызовом вместо множества вызовов инструментов. Параметры:
+
+- `script` - сценарий текстом YAML (JSON тоже подходит) или `file` - путь к файлу сценария; ровно один из них;
+- `vars` - строковые переменные, переопределяют `vars` сценария;
+- `page_id` - вкладка для старта (по умолчанию первая).
+
+Блок `session` сценария игнорируется: используется текущая MCP-сессия. Пути `include` задаются относительно каталога файла, а для встроенного `script` - относительно рабочего каталога. Результат - JSON `{success, steps, vars}`; упавший шаг даёт `success: false` с ошибкой в `steps`, некорректный сценарий - ошибка инструмента.
 
 ### Skill
 

@@ -39,6 +39,10 @@ Element tools accept `by`: `css`, `xpath`, `text`, `id`, `name`, `class`, `attri
 - `gone=true` waits for a spinner or "Loading..." text to disappear.
 - Do not sleep via `browser_evaluate`; wait for text instead.
 
+## Many steps at once
+
+For a known multi-step flow (login, pagination, scraping a list) use `browser_run_script(script=...)` instead of many single calls: one YAML scenario with `vars`, `if`, `try`/`catch`, `forEach`, `while`, `retry`, `extract` and `assert`. It returns `{success, steps, vars}`; read the failed step's `error` and fix the scenario. Syntax: `docs/scripts.md` in the autobrowser-client repository. Use the single tools when the next step depends on what you see.
+
 ## Cloudflare and blocks
 
 Check `status` and `title` after `browser_navigate`:

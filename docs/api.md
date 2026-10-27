@@ -117,6 +117,7 @@ Authorization: Bearer <token>
 #### Action chains
 
 - `POST /api/v1/session/{id}/pages/{pageId}/actions/run` - run a sequence of actions
+- `POST /api/v1/session/{id}/script` - run a scenario (variables, conditions, loops) on the session; see "Run script"
 
 #### Pages and agent operations
 
@@ -318,12 +319,37 @@ Note: the browser engine (`patchright` or `cloakbrowser`) is a process-wide sett
 }
 ```
 
+#### Run script
+
+`POST /api/v1/session/{id}/script` runs a scenario in the format of [`scripts.md`](scripts.md) on an existing session. The scenario `session` block is ignored.
+
+```json
+{
+  "script": {
+    "steps": [
+      {"open": "https://example.com"},
+      {"action": "extract", "locator": "p", "as": "intro"},
+      {"assert": {"var": "intro", "contains": "documentation"}}
+    ]
+  },
+  "vars": {"key": "value"},
+  "pageId": "page_1"
+}
+```
+
+- `script` - an object, or a YAML string (`include` paths are relative to the server working directory);
+- `vars` - optional, overrides the scenario `vars`;
+- `pageId` - optional, default is the first tab.
+
+Response: `{"success", "sessionId", "steps", "vars", "durationMs"}`. A failing step gives HTTP 200 with `success: false` and the error inside `steps`; an invalid script gives HTTP 400 with `SCRIPT_VALIDATION_ERROR`.
+
 ### Error codes
 
 | Code | HTTP Status | Description |
 |------|-------------|-------------|
 | `INVALID_ARGUMENT` | 400 | Bad request or invalid parameter |
 | `CONFIG_ERROR` | 400 | Configuration error |
+| `SCRIPT_VALIDATION_ERROR` | 400 | Invalid scenario |
 | `UNAUTHORIZED` | 401 | Missing or invalid token |
 | `SESSION_NOT_FOUND` | 404 | Session ID not found |
 | `PAGE_NOT_FOUND` | 404 | Page ID not found |
@@ -456,6 +482,7 @@ Authorization: Bearer <token>
 #### Цепочки действий
 
 - `POST /api/v1/session/{id}/pages/{pageId}/actions/run` - запуск последовательности действий
+- `POST /api/v1/session/{id}/script` - запуск сценария (переменные, условия, циклы) в сессии; см. «Запуск сценария»
 
 #### Вкладки и операции для агентов
 
@@ -656,12 +683,37 @@ Authorization: Bearer <token>
 }
 ```
 
+#### Запуск сценария
+
+`POST /api/v1/session/{id}/script` выполняет сценарий формата [`scripts.md`](scripts.md) в существующей сессии. Блок `session` сценария игнорируется.
+
+```json
+{
+  "script": {
+    "steps": [
+      {"open": "https://example.com"},
+      {"action": "extract", "locator": "p", "as": "intro"},
+      {"assert": {"var": "intro", "contains": "documentation"}}
+    ]
+  },
+  "vars": {"key": "value"},
+  "pageId": "page_1"
+}
+```
+
+- `script` - объект или строка YAML (пути `include` задаются относительно рабочего каталога сервера);
+- `vars` - необязательно, переопределяет `vars` сценария;
+- `pageId` - необязательно, по умолчанию первая вкладка.
+
+Ответ: `{"success", "sessionId", "steps", "vars", "durationMs"}`. Упавший шаг даёт HTTP 200 с `success: false` и ошибкой внутри `steps`; некорректный сценарий - HTTP 400 с `SCRIPT_VALIDATION_ERROR`.
+
 ### Коды ошибок
 
 | Код | HTTP-статус | Описание |
 |-----|-------------|----------|
 | `INVALID_ARGUMENT` | 400 | Некорректный запрос или параметр |
 | `CONFIG_ERROR` | 400 | Ошибка конфигурации |
+| `SCRIPT_VALIDATION_ERROR` | 400 | Некорректный сценарий |
 | `UNAUTHORIZED` | 401 | Отсутствующий или недействительный токен |
 | `SESSION_NOT_FOUND` | 404 | Сессия не найдена |
 | `PAGE_NOT_FOUND` | 404 | Страница не найдена |

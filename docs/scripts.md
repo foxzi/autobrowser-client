@@ -34,13 +34,11 @@ autobrowser validate-script --file scenario.yaml
 
 The script format is intentionally limited:
 
-- declarative structure only;
-- no loops;
-- no conditional branches;
-- no user-defined functions;
-- one ordered list of steps.
+- declarative structure only (no user-defined functions or embedded code, except the `evaluate` action);
+- one ordered list of steps;
+- flow control through blocks: `if`, `try`/`catch`/`finally`, `forEach`, `repeat`, `while`, `include` (see "Control blocks").
 
-This keeps the format predictable, easy to validate, and suitable for simple automation tasks.
+This keeps the format predictable and easy to validate.
 
 ### Top-level structure
 
@@ -49,7 +47,9 @@ A script may contain the following sections:
 - `session` - browser session parameters;
 - `steps` - ordered actions to execute;
 - `output` - final result handling;
-- `stopOnError` - stop on first failed step or continue.
+- `stopOnError` - stop on first failed step or continue;
+- `vars` - variables (defaults), see "Variables";
+- `errorArtifacts` - directory for screenshots and HTML of failed steps.
 
 Minimal example:
 
@@ -329,6 +329,129 @@ The `<locator-str>` value uses the same string parsing rules described in "Short
 
 Дополнительные поля шага (`timeout`, `stopOnError`, `fullPage` и т.д.) можно добавлять рядом с ключом сокращения. Объектная форма по-прежнему работает без изменений.
 
+### Additional actions
+
+| Action | Description | Fields | Result `data` |
+|--------|-------------|--------|---------------|
+| `hover`, `dblclick`, `focus`, `clear`, `check`, `uncheck`, `submit` | Act on an element | `locator` | - |
+| `select` | Choose in a `<select>` | `locator`, `value` (one) or `options` (list) | `{selected}` |
+| `upload` | Attach files to a file input | `locator`, `files` (list of paths) | `{files}` |
+| `evaluate` | Run JS (expression or function source) | `script` | `{result}` |
+| `history` | Navigate history | `direction`: `back`, `forward`, `reload` | `{url}` |
+| `wait-text` | Wait for text in the page | `text`, `gone` (wait until it disappears, default false) | - |
+| `extract` | Read text or an attribute | `locator`, `attribute` (default: inner text), `all` (list of all matches) | `{value}` |
+| `find-all`, `read` | List matching elements / read an element | `locator` | as in the HTTP API |
+| `mouse-move` | Move the mouse | `x`, `y`, `steps` | as in the HTTP API |
+| `mouse-scroll-to` | Scroll an element into view | `locator` | as in the HTTP API |
+| `mouse-random` | Human-like random mouse path | `endX`, `endY`; optional `startX`, `startY`, `steps`, `durationMs`, `jitter`, `seed` | as in the HTTP API |
+| `set` | Set variables | `vars` (mapping) | `{vars}` |
+| `assert` | Fail unless a condition holds | `condition`, `message` (optional) | `{condition: true}` |
+| `fail` | Always fail with a message (catchable) | `message` | - |
+
+`press` takes an optional `locator`: then the key is pressed on that element. `type` waits a random delay in `[delay*0.5, delay*1.5]` between characters. `wait` with `waitUntil: visible|hidden` requires a `locator`.
+
+Shorthand forms: `hover`/`dblclick`/`focus`/`clear`/`check`/`uncheck`/`submit`/`extract`/`find-all`/`read: <locator>`; `select: [<locator>, <option or list>]`; `upload: [<locator>, <file or list>]`; `evaluate: <script>`; `history: <direction>`; `wait-text: <text>`; `set: {name: value}`; `assert: <condition>`; `fail: <message>`.
+
+### Variables
+
+Variables are defined in the root `vars` mapping (defaults) and overridden from the command line: `autobrowser run-script -f s.yaml --var user=me --var pass=secret`.
+
+- `${name}` is substituted at execution time in every string field of a step: `url`, `value`, `key`, `file`, `script`, `message`, locator value, condition strings, items of `files`. Numeric fields (`timeout`) are not substituted.
+- `${env.NAME}` reads the environment variable `NAME`. Dotted paths index dicts and lists: `${item.url}`, `${error.message}`, `${rows.0}`.
+- A string that is exactly one `${...}` keeps the type of the value (list, dict, number); otherwise the value is interpolated as text.
+- `$${` is a literal `${`. An undefined variable is a step error: `undefined variable: name`.
+- Variables are global for the run. The final variables (without environment) are in `vars` of the result.
+- A locator written as a string with `${...}` is parsed after substitution, so a variable can hold `xpath=//a` or `text=Next`.
+- `as: name` stores the result of a value-producing action (`extract` -> value, `evaluate` -> result, `read`, `find-all`, `get-content`, `get-cookies`, `get-headers` -> the whole `data`) into the variable `name`. `set` sets variables directly.
+
+```yaml
+vars:
+  base: https://quotes.toscrape.com
+steps:
+  - open: "${base}"
+  - action: extract
+    locator: h1
+    as: title
+  - assert: {var: title, contains: Quotes}
+```
+
+### Conditions
+
+Used by `if`, `while` and `assert`. A condition is a mapping with exactly one of:
+
+| Key | True when |
+|-----|-----------|
+| `exists: <locator>` | the locator matches at least one element |
+| `visible: <locator>` | the first match is visible |
+| `text: <str>` | the page text contains the string |
+| `url: <str>` / `urlMatches: <regex>` | the URL contains the string / matches the regex |
+| `title: <str>` | the title contains the string |
+| `var: <name>` | the variable is truthy (undefined = false); with `equals`, `contains` or `matches` it is compared |
+| `not: <condition>` | the inner condition is false |
+| `all: [..]` / `any: [..]` | all / any of the conditions are true |
+
+A leaf condition accepts `timeout: <ms>`: it is polled every 250 ms until true or until the time is up. The default is `0`: one check, no waiting. Checking a condition never fails because an element is missing.
+
+### Step options
+
+Any action step accepts:
+
+- `name` - a label copied into the result;
+- `retry: N` - extra attempts after a failure (default 0), `retryDelay: ms` between them (default 1000); the result has `attempts`;
+- `optional: true` - a failure is recorded (`success: true`, `optional: true`, `error`) and never stops the script;
+- `stopOnError` - override the root setting for this step;
+- `page` - target tab.
+
+### Control blocks
+
+A block is a step without `action`, recognised by its key. Blocks accept `name`.
+
+```yaml
+steps:
+  - if: {exists: "#cookie-accept"}
+    then:
+      - click: "#cookie-accept"
+    else:                      # optional
+      - wait: 100
+
+  - try:
+      - click: "#maybe"
+    catch:                     # optional; variable "error" = {message, action, name}
+      - screenshot: failed.png
+    finally:                   # optional, always runs
+      - get-cookies: ~
+
+  - forEach: ["a", "b"]        # or "${list_var}"
+    as: item                   # default "item"; variable "index" is the 0-based position
+    do:
+      - open: "https://example.com/${item}"
+
+  - repeat: 3                  # variable "index"
+    do:
+      - action: scroll
+        deltaY: 400
+
+  - while: {exists: "a.next"}
+    max: 50                    # default 100; exceeding it is an error
+    do:
+      - click: "a.next"
+
+  - include: common/login.yaml
+```
+
+`include` inserts the `steps` of another file at load time; its `vars` are added as defaults under the current ones. The path is relative to the including file and must stay inside its directory (absolute paths, paths escaping the directory and include cycles are validation errors). For inline scripts (MCP, HTTP API) the base directory is the working directory.
+
+Failure semantics follow exceptions:
+
+- A step that fails (after retries, not `optional`) with an effective `stopOnError: true` raises a failure; with `false` it is recorded and execution continues.
+- `try` catches a failure raised inside it: `catch` runs with the `error` variable and the failure is marked `handled: true`. Without `catch` the failure propagates after `finally`. A failure inside `catch` or `finally` propagates.
+- `fail` raises immediately and can be caught.
+- An unhandled failure at top level stops the script. Script `success` is true when there is no unhandled failure and no recorded failure; handled failures do not count.
+
+### Error artifacts
+
+`errorArtifacts: <dir>` in the scenario, or `autobrowser run-script --artifacts DIR`: when a non-optional step fails (last attempt), a viewport screenshot and the page HTML are saved as `<dir>/<NNN>-<action>.png` and `.html` (the counter grows during the run). The step result gets `artifacts: {screenshot, html}`. The paths follow the same rules as other output files (inside the working directory). A failure to save artifacts is logged and never raised.
+
 ### Validation
 
 Scripts should be validated against JSON Schema before execution.
@@ -357,6 +480,13 @@ Script execution result should include:
 - per-step result;
 - diagnostics for failed steps;
 - output destination details when applicable.
+
+`run-script` prints JSON `{success, sessionId, profile, steps, vars}` (`vars` - final variables); exit code 1 when `success` is false. Flat steps are `{action, success, durationMs, data, error}` plus `name`, `attempts`, `optional`, `handled`, `artifacts` when relevant. Blocks produce nested nodes:
+
+- `if`: `{action: "if", success, condition: bool, branch: "then"|"else"|null, steps: [...]}`
+- `try`: `{action: "try", success, steps: [...], catch: [...], finally: [...]}`
+- `forEach` / `repeat` / `while`: `{action, success, iterations: [[...], ...]}`
+- `include` is flattened at load time and has no result node.
 
 ## Русский
 
@@ -392,13 +522,11 @@ autobrowser validate-script --file scenario.yaml
 
 Формат сценария намеренно ограничен:
 
-- только декларативная структура;
-- без циклов;
-- без условных ветвлений;
-- без пользовательских функций;
-- только один упорядоченный список шагов.
+- только декларативная структура (без пользовательских функций и встроенного кода, кроме действия `evaluate`);
+- один упорядоченный список шагов;
+- управление потоком через блоки: `if`, `try`/`catch`/`finally`, `forEach`, `repeat`, `while`, `include` (см. «Блоки управления»).
 
-Это делает формат предсказуемым, удобным для валидации и подходящим для простых задач автоматизации.
+Это делает формат предсказуемым и удобным для валидации.
 
 ### Структура верхнего уровня
 
@@ -407,7 +535,9 @@ autobrowser validate-script --file scenario.yaml
 - `session` - параметры браузерной сессии;
 - `steps` - упорядоченные действия для выполнения;
 - `output` - правила обработки итогового результата;
-- `stopOnError` - остановка на первой ошибке или продолжение выполнения.
+- `stopOnError` - остановка на первой ошибке или продолжение выполнения;
+- `vars` - переменные (значения по умолчанию), см. «Переменные»;
+- `errorArtifacts` - каталог для скриншотов и HTML упавших шагов.
 
 Минимальный пример:
 
@@ -557,6 +687,129 @@ locator:
 - `text`
 - `attribute`
 
+### Дополнительные действия
+
+| Действие | Описание | Поля | `data` результата |
+|----------|----------|------|-------------------|
+| `hover`, `dblclick`, `focus`, `clear`, `check`, `uncheck`, `submit` | Действие с элементом | `locator` | - |
+| `select` | Выбор в `<select>` | `locator`, `value` (один) или `options` (список) | `{selected}` |
+| `upload` | Прикрепить файлы к file input | `locator`, `files` (список путей) | `{files}` |
+| `evaluate` | Выполнить JS (выражение или код функции) | `script` | `{result}` |
+| `history` | Навигация по истории | `direction`: `back`, `forward`, `reload` | `{url}` |
+| `wait-text` | Дождаться текста на странице | `text`, `gone` (ждать исчезновения, по умолчанию false) | - |
+| `extract` | Прочитать текст или атрибут | `locator`, `attribute` (по умолчанию: текст), `all` (список всех совпадений) | `{value}` |
+| `find-all`, `read` | Список подходящих элементов / чтение элемента | `locator` | как в HTTP API |
+| `mouse-move` | Переместить мышь | `x`, `y`, `steps` | как в HTTP API |
+| `mouse-scroll-to` | Прокрутить элемент в область видимости | `locator` | как в HTTP API |
+| `mouse-random` | Случайная «человеческая» траектория мыши | `endX`, `endY`; необязательно `startX`, `startY`, `steps`, `durationMs`, `jitter`, `seed` | как в HTTP API |
+| `set` | Задать переменные | `vars` (словарь) | `{vars}` |
+| `assert` | Упасть, если условие не выполнено | `condition`, `message` (необязательно) | `{condition: true}` |
+| `fail` | Всегда падает с сообщением (можно перехватить) | `message` | - |
+
+У `press` есть необязательный `locator`: тогда клавиша нажимается на этом элементе. `type` ждёт случайную паузу в диапазоне `[delay*0.5, delay*1.5]` между символами. `wait` с `waitUntil: visible|hidden` требует `locator`.
+
+Сокращённая запись: `hover`/`dblclick`/`focus`/`clear`/`check`/`uncheck`/`submit`/`extract`/`find-all`/`read: <локатор>`; `select: [<локатор>, <значение или список>]`; `upload: [<локатор>, <файл или список>]`; `evaluate: <скрипт>`; `history: <направление>`; `wait-text: <текст>`; `set: {имя: значение}`; `assert: <условие>`; `fail: <сообщение>`.
+
+### Переменные
+
+Переменные задаются в корневом `vars` (значения по умолчанию) и переопределяются из командной строки: `autobrowser run-script -f s.yaml --var user=me --var pass=secret`.
+
+- `${name}` подставляется во время выполнения во все строковые поля шага: `url`, `value`, `key`, `file`, `script`, `message`, значение локатора, строки условий, элементы `files`. Числовые поля (`timeout`) не подставляются.
+- `${env.NAME}` читает переменную окружения `NAME`. Точечные пути индексируют словари и списки: `${item.url}`, `${error.message}`, `${rows.0}`.
+- Строка, состоящая ровно из одного `${...}`, сохраняет тип значения (список, словарь, число); иначе значение вставляется как текст.
+- `$${` - буквальное `${`. Неопределённая переменная - ошибка шага: `undefined variable: name`.
+- Переменные глобальны на весь запуск. Итоговые переменные (без окружения) попадают в `vars` результата.
+- Локатор-строка с `${...}` разбирается после подстановки, поэтому переменная может содержать `xpath=//a` или `text=Next`.
+- `as: name` сохраняет результат действия в переменную `name` (`extract` -> значение, `evaluate` -> результат, `read`, `find-all`, `get-content`, `get-cookies`, `get-headers` -> весь `data`). `set` задаёт переменные напрямую.
+
+```yaml
+vars:
+  base: https://quotes.toscrape.com
+steps:
+  - open: "${base}"
+  - action: extract
+    locator: h1
+    as: title
+  - assert: {var: title, contains: Quotes}
+```
+
+### Условия
+
+Используются в `if`, `while` и `assert`. Условие - словарь ровно с одним из ключей:
+
+| Ключ | Истинно, когда |
+|------|----------------|
+| `exists: <локатор>` | локатор находит хотя бы один элемент |
+| `visible: <локатор>` | первое совпадение видимо |
+| `text: <строка>` | текст страницы содержит строку |
+| `url: <строка>` / `urlMatches: <regex>` | URL содержит строку / соответствует regex |
+| `title: <строка>` | заголовок содержит строку |
+| `var: <имя>` | переменная истинна (не задана = ложь); с `equals`, `contains` или `matches` сравнивается |
+| `not: <условие>` | вложенное условие ложно |
+| `all: [..]` / `any: [..]` | все / любое из условий истинны |
+
+У простого условия есть `timeout: <мс>`: оно проверяется каждые 250 мс, пока не станет истинным или не истечёт время. По умолчанию `0`: одна проверка без ожидания. Отсутствие элемента никогда не приводит к ошибке проверки.
+
+### Опции шага
+
+Любой шаг-действие принимает:
+
+- `name` - метка, копируется в результат;
+- `retry: N` - дополнительные попытки после ошибки (по умолчанию 0), `retryDelay: мс` между ними (по умолчанию 1000); в результате есть `attempts`;
+- `optional: true` - ошибка записывается (`success: true`, `optional: true`, `error`) и никогда не останавливает сценарий;
+- `stopOnError` - переопределить корневую настройку для шага;
+- `page` - целевая вкладка.
+
+### Блоки управления
+
+Блок - шаг без `action`, определяется по ключу. Блоки принимают `name`.
+
+```yaml
+steps:
+  - if: {exists: "#cookie-accept"}
+    then:
+      - click: "#cookie-accept"
+    else:                      # необязательно
+      - wait: 100
+
+  - try:
+      - click: "#maybe"
+    catch:                     # необязательно; переменная "error" = {message, action, name}
+      - screenshot: failed.png
+    finally:                   # необязательно, выполняется всегда
+      - get-cookies: ~
+
+  - forEach: ["a", "b"]        # или "${list_var}"
+    as: item                   # по умолчанию "item"; переменная "index" - позиция с нуля
+    do:
+      - open: "https://example.com/${item}"
+
+  - repeat: 3                  # переменная "index"
+    do:
+      - action: scroll
+        deltaY: 400
+
+  - while: {exists: "a.next"}
+    max: 50                    # по умолчанию 100; превышение - ошибка
+    do:
+      - click: "a.next"
+
+  - include: common/login.yaml
+```
+
+`include` на этапе загрузки вставляет `steps` другого файла; его `vars` добавляются как значения по умолчанию под текущие. Путь задаётся относительно включающего файла и должен оставаться внутри его каталога (абсолютные пути, выход за каталог и циклы include - ошибки валидации). Для встроенных сценариев (MCP, HTTP API) базовый каталог - рабочий.
+
+Семантика ошибок как у исключений:
+
+- Шаг, упавший (после повторов, не `optional`) при действующем `stopOnError: true`, вызывает сбой; при `false` ошибка записывается и выполнение продолжается.
+- `try` перехватывает сбой внутри себя: выполняется `catch` с переменной `error`, сбой помечается `handled: true`. Без `catch` сбой идёт дальше после `finally`. Сбой внутри `catch` или `finally` идёт дальше.
+- `fail` падает сразу, его можно перехватить.
+- Необработанный сбой на верхнем уровне останавливает сценарий. `success` сценария истинен, если нет необработанных и записанных сбоев; обработанные не считаются.
+
+### Артефакты ошибок
+
+`errorArtifacts: <каталог>` в сценарии или `autobrowser run-script --artifacts DIR`: при падении неопционального шага (последняя попытка) сохраняются скриншот области просмотра и HTML страницы как `<каталог>/<NNN>-<действие>.png` и `.html` (счётчик растёт в течение запуска). В результате шага появляется `artifacts: {screenshot, html}`. Пути подчиняются тем же правилам, что и другие выходные файлы (внутри рабочего каталога). Ошибка сохранения артефактов логируется и не пробрасывается.
+
 ### Валидация
 
 Сценарии должны проверяться по JSON Schema до выполнения.
@@ -585,3 +838,10 @@ locator:
 - результат по каждому шагу;
 - диагностические сведения по ошибочным шагам;
 - сведения о месте вывода результата, если оно задано.
+
+`run-script` печатает JSON `{success, sessionId, profile, steps, vars}` (`vars` - итоговые переменные); код выхода 1, если `success` ложен. Плоские шаги: `{action, success, durationMs, data, error}` плюс `name`, `attempts`, `optional`, `handled`, `artifacts` при необходимости. Блоки дают вложенные узлы:
+
+- `if`: `{action: "if", success, condition: bool, branch: "then"|"else"|null, steps: [...]}`
+- `try`: `{action: "try", success, steps: [...], catch: [...], finally: [...]}`
+- `forEach` / `repeat` / `while`: `{action, success, iterations: [[...], ...]}`
+- `include` разворачивается при загрузке и узла результата не имеет.

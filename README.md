@@ -67,7 +67,10 @@ Install autobrowser by following https://github.com/foxzi/autobrowser-client/blo
 ### YAML scenarios
 - Steps: `open`, `wait`, `click`, `fill`, `type`, `press`, `scroll`, `find`, `screenshot`, `get-content`, `get-cookies`, `get-headers`, `browse-tabs`, `solve-challenge`.
 - Short form: `- open: https://example.com`, `- click: "text=Sign in"`; locators by CSS, XPath, text, id, name, class or attribute.
+- More actions: `hover`, `select`, `upload`, `evaluate`, `extract`, `wait-text`, `history`, `set`, `assert`, `fail` and others.
+- Variables `${name}` / `${env.NAME}` (`vars:` in the file, `--var NAME=VALUE`), conditions, and blocks `if`, `try`/`catch`/`finally`, `forEach`, `repeat`, `while`, `include`; step options `retry`, `optional`; `--artifacts DIR` saves a screenshot and HTML of failed steps.
 - `autobrowser validate-script` checks a scenario without a browser; the result is JSON with per-step status, exit code 1 on failure.
+- The same scenarios run over MCP (`browser_run_script`) and HTTP (`POST /api/v1/session/{id}/script`).
 
 ### HTTP API
 - `autobrowser serve`: sessions, tabs, navigation, history, snapshots, screenshots, element actions (find, read, click, hover, fill, select, check, upload, submit), mouse and keyboard, JavaScript evaluation, console/network logs, dialog policy, profiles.
@@ -110,6 +113,9 @@ Install autobrowser by following https://github.com/foxzi/autobrowser-client/blo
 ### YAML-сценарии
 - Шаги: `open`, `wait`, `click`, `fill`, `type`, `press`, `scroll`, `find`, `screenshot`, `get-content`, `get-cookies`, `get-headers`, `browse-tabs`, `solve-challenge`.
 - Короткая запись: `- open: https://example.com`, `- click: "text=Sign in"`; локаторы по CSS, XPath, тексту, id, name, class или атрибуту.
+- Другие действия: `hover`, `select`, `upload`, `evaluate`, `extract`, `wait-text`, `history`, `set`, `assert`, `fail` и др.
+- Переменные `${name}` / `${env.NAME}` (`vars:` в файле, `--var NAME=VALUE`), условия и блоки `if`, `try`/`catch`/`finally`, `forEach`, `repeat`, `while`, `include`; опции шага `retry`, `optional`; `--artifacts DIR` сохраняет скриншот и HTML упавших шагов.
+- Те же сценарии выполняются через MCP (`browser_run_script`) и HTTP (`POST /api/v1/session/{id}/script`).
 - `autobrowser validate-script` проверяет сценарий без браузера; результат в JSON со статусом каждого шага, при ошибке код выхода 1.
 
 ### HTTP API
