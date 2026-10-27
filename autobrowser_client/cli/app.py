@@ -13,6 +13,7 @@ from autobrowser_client.config import Settings, load_settings
 from autobrowser_client.errors import AppError, NotImplementedAppError
 from autobrowser_client.logging_utils import configure_logging
 from autobrowser_client.scenario import load_script
+from autobrowser_client.updater import start_auto_update
 
 app = typer.Typer(help="CLI for autobrowser-client")
 
@@ -81,6 +82,30 @@ def _apply_proxy_url(proxy_url: str, overrides: dict[str, Any]) -> None:
 @app.command("version")
 def version() -> None:
     typer.echo(__version__)
+
+
+@app.command("update")
+def update(
+    check: Annotated[
+        bool, typer.Option("--check", help="Only report whether an update exists")
+    ] = False,
+) -> None:
+    """Update the binary to the latest GitHub release."""
+    from autobrowser_client import updater
+
+    latest = updater.latest_version()
+    if not updater.is_newer(latest):
+        typer.echo(f"Up to date: {__version__}")
+        return
+    if check:
+        typer.echo(f"Update available: {__version__} -> {latest}")
+        return
+    try:
+        path = updater.install_version(latest)
+    except RuntimeError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+    typer.echo(f"Updated {path}: {__version__} -> {latest}")
 
 
 @app.command("show-config")
@@ -344,6 +369,7 @@ def serve(
     from autobrowser_client.api.app import create_app
 
     settings = _settings_from_options(config=config)
+    start_auto_update()
     api_app = create_app(settings)
     uvicorn.run(api_app, host=host, port=port)
 
@@ -365,6 +391,7 @@ def mcp(
     from autobrowser_client.mcp_server import run_server
 
     settings = _settings_from_options(config=config, headless=headless, proxy=proxy)
+    start_auto_update()
     run_server(settings, profile)
 
 
