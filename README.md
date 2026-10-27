@@ -7,6 +7,7 @@ Python client for launching and controlling a browser through CLI scripts and HT
 ## Documentation
 
 - Technical specification / Техническое задание: [`tz.md`](tz.md)
+- MCP server for AI agents / MCP-сервер для AI-агентов: [`docs/mcp.md`](docs/mcp.md)
 - HTTP API / HTTP API: [`docs/api.md`](docs/api.md)
 - Configuration / Конфигурация: [`docs/configuration.md`](docs/configuration.md)
 - CLI scripts / CLI-сценарии: [`docs/scripts.md`](docs/scripts.md)
@@ -24,6 +25,8 @@ Python client for launching and controlling a browser through CLI scripts and HT
 | `autobrowser run-script --file scenario.yaml` | Run YAML/JSON scenario |
 | `autobrowser run --url https://example.com` | Open URL and collect data |
 | `autobrowser serve` | Start HTTP API server |
+| `autobrowser mcp` | Start MCP server (stdio) for AI agents |
+| `autobrowser install` | Download the browser for the configured engine |
 | `autobrowser generate-fingerprint --profile DIR` | Generate fingerprint.json for a profile |
 
 Common flags: `--config`, `--profile`, `--proxy`, `--viewport`, `--output`, `--headless/--headful`, `--timeout`, `--preserve-session`.

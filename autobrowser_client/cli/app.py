@@ -303,6 +303,48 @@ def serve(
     uvicorn.run(api_app, host=host, port=port)
 
 
+@app.command("mcp")
+def mcp(
+    config: Annotated[
+        Path | None, typer.Option("--config", exists=False, dir_okay=False)
+    ] = None,
+    profile: Annotated[
+        str | None, typer.Option("--profile", help="Persistent profile name")
+    ] = None,
+    headless: Annotated[bool | None, typer.Option("--headless/--headed")] = None,
+    proxy: Annotated[
+        str | None, typer.Option("--proxy", help="e.g. socks5://user:pass@host:port")
+    ] = None,
+) -> None:
+    """Run the MCP server over stdio."""
+    from autobrowser_client.mcp_server import run_server
+
+    settings = _settings_from_options(config=config, headless=headless, proxy=proxy)
+    run_server(settings, profile)
+
+
+@app.command("install")
+def install(
+    config: Annotated[
+        Path | None, typer.Option("--config", exists=False, dir_okay=False)
+    ] = None,
+) -> None:
+    """Download the browser for the configured engine."""
+    import subprocess
+    import sys
+
+    settings = _settings_from_options(config=config)
+    if settings.browser.engine == "cloakbrowser":
+        from cloakbrowser.download import ensure_binary
+
+        typer.echo(ensure_binary())
+    else:
+        # Google Chrome; on Linux this installs a system package and may ask for sudo
+        raise typer.Exit(
+            subprocess.call([sys.executable, "-m", "patchright", "install", "chrome"])
+        )
+
+
 def main() -> None:
     try:
         app()
