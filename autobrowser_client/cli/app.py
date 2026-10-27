@@ -618,7 +618,7 @@ def main() -> None:
         app()
     except NotImplementedAppError as exc:
         typer.echo(str(exc), err=True)
-        raise typer.Exit(code=2) from exc
+        raise SystemExit(2) from exc
     except AppError as exc:
         typer.echo(
             json.dumps(
@@ -633,4 +633,4 @@ def main() -> None:
             ),
             err=True,
         )
-        raise typer.Exit(code=1) from exc
+        raise SystemExit(1) from exc

@@ -50,7 +50,11 @@ class TestValidateScript:
         path = tmp_path / "bad.yaml"
         path.write_text(yaml.dump(script))
         r = run_cli("validate-script", "--file", str(path))
-        assert r.returncode != 0
+        assert r.returncode == 1
+        error = json.loads(r.stderr)["error"]
+        assert error["code"] == "SCRIPT_VALIDATION_ERROR"
+        assert "requires 'url'" in error["message"]
+        assert "Traceback" not in r.stderr
 
     def test_missing_script_file(self):
         r = run_cli("validate-script", "--file", "/nonexistent/script.yaml")
