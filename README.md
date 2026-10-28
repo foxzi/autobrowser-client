@@ -143,6 +143,7 @@ Install autobrowser by following https://github.com/foxzi/autobrowser-client/blo
 - HTTP API / HTTP API: [`docs/api.md`](docs/api.md)
 - Configuration / Конфигурация: [`docs/configuration.md`](docs/configuration.md)
 - CLI scripts / CLI-сценарии: [`docs/scripts.md`](docs/scripts.md)
+- Scenario guide: variables, templates, JS, files / Руководство по сценариям: переменные, шаблоны, JS, файлы: [`docs/scenario-guide.md`](docs/scenario-guide.md)
 - Runtime (profiles, proxy, fingerprints, storage) / Рантайм: [`docs/runtime.md`](docs/runtime.md)
 - Troubleshooting (Cloudflare, proxy, engines) / Решение проблем: [`docs/troubleshooting.md`](docs/troubleshooting.md)
 - Releases and versions / Релизы и версии: [`docs/releases.md`](docs/releases.md)

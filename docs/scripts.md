@@ -354,6 +354,8 @@ Shorthand forms: `hover`/`dblclick`/`focus`/`clear`/`check`/`uncheck`/`submit`/`
 
 ### Variables
 
+Details, pitfalls and examples (types, `${` in JS, writing files): [scenario-guide.md](scenario-guide.md).
+
 Variables are defined in the root `vars` mapping (defaults) and overridden from the command line: `autobrowser run-script -f s.yaml --var user=me --var pass=secret`.
 
 - `${name}` is substituted at execution time in every string field of a step: `url`, `value`, `key`, `file`, `script`, `message`, locator value, condition strings, items of `files`. Numeric fields (`timeout`) are not substituted.
@@ -727,6 +729,8 @@ locator:
 Сокращённая запись: `hover`/`dblclick`/`focus`/`clear`/`check`/`uncheck`/`submit`/`extract`/`find-all`/`read: <локатор>`; `select: [<локатор>, <значение или список>]`; `upload: [<локатор>, <файл или список>]`; `evaluate: <скрипт>`; `history: <направление>`; `wait-text: <текст>`; `set: {имя: значение}`; `assert: <условие>`; `fail: <сообщение>`.
 
 ### Переменные
+
+Подробности, подводные камни и примеры (типы, `${` в JS, запись файлов): [scenario-guide.md](scenario-guide.md).
 
 Переменные задаются в корневом `vars` (значения по умолчанию) и переопределяются из командной строки: `autobrowser run-script -f s.yaml --var user=me --var pass=secret`.
 
