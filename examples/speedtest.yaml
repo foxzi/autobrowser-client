@@ -5,12 +5,16 @@
 #   autobrowser run-script --file examples/speedtest.yaml
 #   autobrowser run-script --file examples/speedtest.yaml --proxy socks5://127.0.0.1:10800
 #
+# Note: through a SOCKS5 proxy the test was seen to end with "LATENCY TEST ERROR"
+# (cause not established); the error is returned in the "speed" step.
+#
 # Output:
 #   output/speedtest.png - screenshot at the end of the scenario
 #   step "speed" in the JSON result - download/upload/ping or the error
 
 session:
   headless: true
+  # proxy: "socks5://user:pass@host:1080"   # --proxy overrides it
   viewport:
     width: 1920
     height: 1080
