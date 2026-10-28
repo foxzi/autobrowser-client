@@ -8,6 +8,7 @@
 #
 # Output:
 #   output/google-search.png - screenshot at the end of the scenario
+#   output/google-search.txt - top results as text (title and URL)
 #   step "results" in the JSON result - logged-in state, captcha flag, top results
 
 session:
@@ -55,14 +56,20 @@ steps:
             while (Date.now() - t0 < 20000 && !captcha() && !document.querySelector('#search a h3')) {
               await new Promise(r => setTimeout(r, 500));
             }
+            const items = [...document.querySelectorAll('#search a:has(h3)')].slice(0, 10)
+              .map(a => ({title: a.querySelector('h3').innerText, url: a.href}));
             return {
               url: location.href,
               captcha: captcha(),
               logged_in: !!document.querySelector('a[href*="SignOutOptions"], a[aria-label*="Google Account"], a[aria-label*="Аккаунт Google"]'),
-              items: [...document.querySelectorAll('#search a:has(h3)')].slice(0, 10)
-                .map(a => ({title: a.querySelector('h3').innerText, url: a.href})),
+              items,
+              text: items.map((x, i) => (i + 1) + '. ' + x.title + '\n   ' + x.url).join('\n') + '\n',
             };
           }
+
+      - action: save
+        file: output/google-search.txt
+        value: "${results.text}"
     finally:
       - action: screenshot
         file: output/google-search.png
