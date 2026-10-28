@@ -25,7 +25,7 @@ dev = [
   "pytest-anyio>=0.0.0",
   "httpx>=0.28,<1.0",
 ]
-cloak = ["cloakbrowser>=0.6"]
+cloak = ["cloakbrowser[geoip]>=0.6"]
 
 [project.scripts]
 autobrowser = "autobrowser_client.main:main"

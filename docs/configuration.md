@@ -45,6 +45,7 @@ browser:
   headless: true
   engine: patchright   # patchright (default) or cloakbrowser
   fingerprintPlatform: linux   # cloakbrowser only: windows | linux | macos
+  geoip: false
   launchArgs: []
   userAgent: Mozilla/5.0
   viewport:
@@ -94,6 +95,7 @@ All supported environment variables:
 AUTOBROWSER_HEADLESS=true
 AUTOBROWSER_BROWSER_ENGINE=patchright
 AUTOBROWSER_FINGERPRINT_PLATFORM=linux
+AUTOBROWSER_GEOIP=false
 AUTOBROWSER_USER_AGENT=Mozilla/5.0
 AUTOBROWSER_VIEWPORT_WIDTH=1280
 AUTOBROWSER_VIEWPORT_HEIGHT=720
@@ -153,6 +155,8 @@ pip install "autobrowser-client[cloak]"
 Engine is a process-wide setting (config file or env var `AUTOBROWSER_BROWSER_ENGINE`). It cannot be changed per session or per API request.
 
 `browser.fingerprintPlatform` (env `AUTOBROWSER_FINGERPRINT_PLATFORM`) sets the OS that cloakbrowser presents (`--fingerprint-platform`): `windows`, `linux` or `macos`. Unset keeps the cloakbrowser default (Windows). If a Cloudflare challenge loops (checkbox passes, then the challenge reappears), set `linux`: on a desktop Linux host the Windows fingerprint looped on criptonoticias.com while `linux` passed (in the Docker image both passed). Ignored by patchright.
+
+`browser.geoip` (env `AUTOBROWSER_GEOIP`, default `false`) sets the browser timezone and language from the exit IP: through the proxy when one is configured, otherwise the machine's own public IP. Without it the browser keeps the host timezone, which may not match the proxy country (for example `Europe/Moscow` with a Finnish IP), and anti-bot systems can treat that as a sign of spoofing. It works with both engines: cloakbrowser gets the `--fingerprint-timezone`/`--lang` flags, patchright gets the context `timezone_id`/`locale`. The language follows the country, so sites switch their UI language too (a Finnish IP gives `fi-FI`). Lookup uses cloakbrowser's GeoIP module: it needs `pip install 'cloakbrowser[geoip]'` (included in the `cloak` extra, the Docker image and the binaries), finds the exit IP through public echo services (api.ipify.org, checkip.amazonaws.com, ifconfig.me) and on first use downloads the GeoLite2-City database (~70 MB) to `~/.cloakbrowser/geoip/`. If the lookup fails, the session does not start.
 
 ### Headless user agent (patchright)
 
@@ -282,6 +286,7 @@ browser:
   headless: true
   engine: patchright   # patchright (default) или cloakbrowser
   fingerprintPlatform: linux   # только cloakbrowser: windows | linux | macos
+  geoip: false
   launchArgs: []
   userAgent: Mozilla/5.0
   viewport:
@@ -331,6 +336,7 @@ output:
 AUTOBROWSER_HEADLESS=true
 AUTOBROWSER_BROWSER_ENGINE=patchright
 AUTOBROWSER_FINGERPRINT_PLATFORM=linux
+AUTOBROWSER_GEOIP=false
 AUTOBROWSER_USER_AGENT=Mozilla/5.0
 AUTOBROWSER_VIEWPORT_WIDTH=1280
 AUTOBROWSER_VIEWPORT_HEIGHT=720
@@ -390,6 +396,8 @@ pip install "autobrowser-client[cloak]"
 Движок — это настройка уровня процесса (конфиг-файл или переменная окружения `AUTOBROWSER_BROWSER_ENGINE`). Его нельзя изменить на уровне сессии или API-запроса.
 
 `browser.fingerprintPlatform` (env `AUTOBROWSER_FINGERPRINT_PLATFORM`) задаёт ОС, которую показывает cloakbrowser (`--fingerprint-platform`): `windows`, `linux` или `macos`. Если не задано, используется значение cloakbrowser по умолчанию (Windows). Если Cloudflare challenge зацикливается (чекбокс пройден, но challenge появляется снова), ставьте `linux`: на десктопном Linux-хосте Windows-отпечаток зацикливался на criptonoticias.com, а `linux` проходил (в Docker-образе проходили оба). Для patchright игнорируется.
+
+`browser.geoip` (env `AUTOBROWSER_GEOIP`, по умолчанию `false`) задаёт часовой пояс и язык браузера по выходному IP: через прокси, если он настроен, иначе по собственному публичному IP машины. Без этой настройки у браузера остаётся часовой пояс хоста, который может не совпадать со страной прокси (например, `Europe/Moscow` при финском IP), и антибот-системы могут принять это за признак подмены. Работает с обоими движками: cloakbrowser получает флаги `--fingerprint-timezone`/`--lang`, patchright получает `timezone_id`/`locale` контекста. Язык берётся по стране, поэтому сайты тоже переключают язык интерфейса (финский IP даёт `fi-FI`). Определение идёт через модуль GeoIP из cloakbrowser: нужен `pip install 'cloakbrowser[geoip]'` (входит в extra `cloak`, Docker-образ и бинарники), выходной IP узнаётся через публичные сервисы (api.ipify.org, checkip.amazonaws.com, ifconfig.me), а при первом использовании скачивается база GeoLite2-City (~70 МБ) в `~/.cloakbrowser/geoip/`. Если определить не удалось, сессия не запускается.
 
 ### User-Agent в режиме без окна (patchright)
 

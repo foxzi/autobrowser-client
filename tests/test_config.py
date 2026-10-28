@@ -143,3 +143,8 @@ def test_fingerprint_platform_env():
 def test_fingerprint_platform_invalid():
     with pytest.raises(ConfigError):
         load_settings(env={"AUTOBROWSER_FINGERPRINT_PLATFORM": "android"})
+
+
+def test_geoip_env():
+    assert load_settings(env={}).browser.geoip is False
+    assert load_settings(env={"AUTOBROWSER_GEOIP": "true"}).browser.geoip is True

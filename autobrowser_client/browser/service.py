@@ -113,6 +113,20 @@ def _detect_platform_from_ua(user_agent: str) -> dict[str, Any] | None:
     return None
 
 
+def _resolve_geoip(proxy_url: str | None) -> tuple[str | None, str | None]:
+    """Timezone and locale of the exit IP (through proxy_url, or the own IP)."""
+    try:
+        from cloakbrowser.geoip import resolve_proxy_geo
+
+        tz, locale = resolve_proxy_geo(proxy_url)
+    except Exception as exc:
+        raise BrowserStartError(
+            f"browser.geoip failed (needs: pip install 'cloakbrowser[geoip]'): {exc}"
+        ) from exc
+    logger.info("GeoIP: timezone=%s locale=%s", tz, locale)
+    return tz, locale
+
+
 def _apply_platform_spoof(context: BrowserContext, page: Page, user_agent: str) -> None:
     """Apply CDP platform override if UA indicates a different OS."""
     platform_data = _detect_platform_from_ua(user_agent)
@@ -266,6 +280,11 @@ class BrowserSession:
 
             launch_args = list(self.settings.browser.launch_args)
 
+            geo_tz: str | None = None
+            geo_locale: str | None = None
+            if self.settings.browser.geoip:
+                geo_tz, geo_locale = _resolve_geoip(proxy_server["server"] if proxy_server else None)
+
             if not ua and is_headless and self.settings.browser.engine == "patchright":
                 ua = self._headful_user_agent()
 
@@ -292,6 +311,8 @@ class BrowserSession:
                     stealth_args=True,
                     extra_args=launch_args,
                     headless=is_headless,
+                    timezone=geo_tz,
+                    locale=geo_locale,
                 )
 
                 if profile:
@@ -367,6 +388,10 @@ class BrowserSession:
                     }
                     if ua:
                         ctx_kwargs["user_agent"] = ua
+                    if geo_tz:
+                        ctx_kwargs["timezone_id"] = geo_tz
+                    if geo_locale:
+                        ctx_kwargs["locale"] = geo_locale
                     if proxy_server:
                         ctx_kwargs["proxy"] = proxy_server
                     if is_mobile_ua:
@@ -390,6 +415,10 @@ class BrowserSession:
                     ctx_opts: dict[str, Any] = {"viewport": vp}
                     if ua:
                         ctx_opts["user_agent"] = ua
+                    if geo_tz:
+                        ctx_opts["timezone_id"] = geo_tz
+                    if geo_locale:
+                        ctx_opts["locale"] = geo_locale
                     if is_mobile_ua:
                         ctx_opts["is_mobile"] = True
                         ctx_opts["has_touch"] = True
