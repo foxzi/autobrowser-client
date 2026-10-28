@@ -144,6 +144,17 @@ autobrowser run-script --file examples/proxy.yaml --proxy socks5://user:pass@HOS
 
 Environment: `AUTOBROWSER_PROXY_ENABLED`, `AUTOBROWSER_PROXY_SCHEME`, `AUTOBROWSER_PROXY_HOST`, `AUTOBROWSER_PROXY_PORT`, `AUTOBROWSER_PROXY_USERNAME`, `AUTOBROWSER_PROXY_PASSWORD`. Verify the browser exit IP with `https://httpbin.org/ip` (`examples/proxy.yaml` does this).
 
+In a scenario the proxy goes to `session.proxy`; the `--proxy` flag overrides it:
+
+```yaml
+session:
+  proxy: "socks5://user:pass@HOST:1080"
+```
+
+**Timezone and language.** Without `AUTOBROWSER_GEOIP=true` the browser keeps the host timezone and language, which may not match the proxy country. See `browser.geoip` in [configuration.md](configuration.md).
+
+**Not every site works through a proxy.** Through a SOCKS5 proxy the speedtest.net browser test (`examples/speedtest.yaml`) ends with `LATENCY TEST ERROR`, both headless and headful, while without the proxy it passes and curl through the same proxy reaches the Ookla servers. The cause is not established. If a site works directly but not through the proxy, compare both runs before changing the engine or fingerprint.
+
 A different exit IP does not fix a plain 403 caused by the browser fingerprint (section 2).
 
 ### 7. Custom code: reading page globals in patchright
@@ -308,6 +319,17 @@ autobrowser run-script --file examples/proxy.yaml --proxy socks5://user:pass@HOS
 ```
 
 Переменные окружения: `AUTOBROWSER_PROXY_ENABLED`, `AUTOBROWSER_PROXY_SCHEME`, `AUTOBROWSER_PROXY_HOST`, `AUTOBROWSER_PROXY_PORT`, `AUTOBROWSER_PROXY_USERNAME`, `AUTOBROWSER_PROXY_PASSWORD`. Внешний IP браузера проверяйте через `https://httpbin.org/ip` (это делает `examples/proxy.yaml`).
+
+В сценарии прокси задаётся в `session.proxy`; флаг `--proxy` имеет приоритет:
+
+```yaml
+session:
+  proxy: "socks5://user:pass@HOST:1080"
+```
+
+**Часовой пояс и язык.** Без `AUTOBROWSER_GEOIP=true` у браузера остаются часовой пояс и язык хоста, которые могут не совпадать со страной прокси. См. `browser.geoip` в [configuration.md](configuration.md).
+
+**Не все сайты работают через прокси.** Через SOCKS5-прокси тест speedtest.net в браузере (`examples/speedtest.yaml`) завершается ошибкой `LATENCY TEST ERROR` и без окна, и с окном, а без прокси проходит; curl через тот же прокси до серверов Ookla доходит. Причина не установлена. Если сайт работает напрямую, но не через прокси, сравните оба запуска, прежде чем менять движок или отпечаток.
 
 Другой внешний IP не исправит обычный 403, вызванный отпечатком браузера (раздел 2).
 
