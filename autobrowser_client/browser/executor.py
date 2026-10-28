@@ -265,8 +265,10 @@ def execute_step(session: BrowserSession, step: ScriptStep, page_id: str | None 
             if not step.file:
                 raise AppError(ErrorCode.INVALID_ARGUMENT, "save action requires 'file'")
             out = _validate_output_path(step.file)
-            fmt = step.format or "html"
-            content = session.get_content(effective_page_id, fmt=fmt)
+            if step.value is not None:
+                content = step.value
+            else:
+                content = session.get_content(effective_page_id, fmt=step.format or "html")
             out.parent.mkdir(parents=True, exist_ok=True)
             out.write_text(content, encoding="utf-8")
             result.data = {"file": step.file, "bytes": len(content.encode("utf-8"))}

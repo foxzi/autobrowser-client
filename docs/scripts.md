@@ -171,7 +171,7 @@ Supported actions:
 | `get-content` | Get page content | — | `format` (`html` or `text`) |
 | `get-cookies` | Get cookies | — | — |
 | `get-headers` | Get HTTP headers | — | — |
-| `save` | Save content to file | `file` | `format` (`html` or `text`) |
+| `save` | Save page content, or `value` text, to a file | `file` | `format` (`html` or `text`), `value` (text to write instead of the page, e.g. `"${results.text}"`) |
 | `browse-tabs` | Bring each tab to front, wait, scroll | — | `deltaY` (scroll amount, default 400), `timeout` |
 | `solve-challenge` | Wait for a Cloudflare challenge to pass, clicking the Turnstile checkbox; fails on timeout or final HTTP >= 400 (error says `blocked without challenge` or `blocked after challenge`) | — | `timeout` (default 60000) |
 
@@ -675,7 +675,7 @@ fingerprint:
 | `get-content` | Получить содержимое страницы | — | `format` (`html` или `text`) |
 | `get-cookies` | Получить cookies | — | — |
 | `get-headers` | Получить HTTP-заголовки | — | — |
-| `save` | Сохранить содержимое в файл | `file` | `format` (`html` или `text`) |
+| `save` | Сохранить содержимое страницы или текст `value` в файл | `file` | `format` (`html` или `text`), `value` (текст вместо страницы, например `"${results.text}"`) |
 | `browse-tabs` | Переключить каждый таб, подождать, прокрутить | — | `deltaY` (величина прокрутки, по умолчанию 400), `timeout` |
 | `solve-challenge` | Дождаться прохождения Cloudflare challenge, кликая чекбокс Turnstile; ошибка по таймауту или при итоговом HTTP >= 400 (в тексте ошибки `blocked without challenge` или `blocked after challenge`) | — | `timeout` (по умолчанию 60000) |
 

@@ -186,3 +186,10 @@ def test_error_message_has_no_empty_api_prefix(session):
     loc.first.wait_for.side_effect = RuntimeError(": Timeout 300ms exceeded.")
     r = execute_step(session, _step({"extract": "h1"}))
     assert r.error == "Timeout 300ms exceeded."
+
+
+def test_save_value_writes_text(session, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    execute_step(session, _step({"action": "save", "file": "out/r.txt", "value": "line1\nline2"}))
+    assert (tmp_path / "out/r.txt").read_text(encoding="utf-8") == "line1\nline2"
+    session.get_content.assert_not_called()
