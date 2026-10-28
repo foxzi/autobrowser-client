@@ -60,6 +60,7 @@ async def test_mcp_browser_flow() -> None:
         res = await call("browser_click", target="#missing", by="css")
         assert res.is_error
         assert "Timeout" in res.content[0].text
+        assert ": :" not in res.content[0].text
 
         res = await call("browser_close")
         assert not res.is_error

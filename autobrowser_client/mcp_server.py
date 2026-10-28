@@ -75,7 +75,8 @@ def create_server(settings: Settings, profile: str | None = None) -> MCPServer:
         except AppError as exc:
             raise ToolError(f"{exc.code}: {exc.message}") from exc
         except Exception as exc:
-            raise ToolError(str(exc)[:2000]) from exc
+            # patchright prefixes messages with an empty API name: ": Timeout ..."
+            raise ToolError(str(exc).removeprefix(": ")[:2000]) from exc
 
     def page_id_of(s: BrowserSession, page_id: str | None) -> str:
         return page_id or next(iter(s.list_pages()))
