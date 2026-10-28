@@ -1,0 +1,68 @@
+# Google search in a saved profile (for example one logged in to Google).
+# The screenshot is taken in "finally", so it is saved even when the search fails.
+#
+# Run:
+#   autobrowser run-script --file examples/google-search.yaml -p youtube
+#   autobrowser run-script --file examples/google-search.yaml -p youtube \
+#     --proxy socks5://127.0.0.1:1080 --var "query=autobrowser github"
+#
+# Output:
+#   output/google-search.png - screenshot at the end of the scenario
+#   step "results" in the JSON result - logged-in state, captcha flag, top results
+
+session:
+  headless: true
+  viewport:
+    width: 1920
+    height: 1080
+
+vars:
+  query: playwright stealth browser
+
+steps:
+  - try:
+      - open: https://www.google.com/
+
+      # Cookie consent (EU IPs): "Accept all" if it is shown
+      - action: evaluate
+        script: |
+          async () => {
+            await new Promise(r => setTimeout(r, 1500));
+            const b = [...document.querySelectorAll('button')]
+              .find(x => /accept all|hyväksy kaikki|alle akzeptieren|принять все/i.test(x.innerText));
+            if (b) { b.click(); await new Promise(r => setTimeout(r, 1500)); }
+          }
+
+      - action: type
+        locator: "textarea[name='q'], input[name='q']"
+        value: "${query}"
+      - press: Enter
+
+      # Results or a captcha page ("/sorry/"); the next step reports which one
+      - action: wait
+        waitUntil: visible
+        locator: "#search a h3, #captcha-form, iframe[src*='recaptcha']"
+        index: 0
+        timeout: 20000
+        optional: true
+
+      - action: evaluate
+        as: results
+        script: |
+          async () => {
+            const t0 = Date.now();
+            const captcha = () => /\/sorry\//.test(location.href) || !!document.querySelector('#captcha-form, iframe[src*="recaptcha"]');
+            while (Date.now() - t0 < 20000 && !captcha() && !document.querySelector('#search a h3')) {
+              await new Promise(r => setTimeout(r, 500));
+            }
+            return {
+              url: location.href,
+              captcha: captcha(),
+              logged_in: !!document.querySelector('a[href*="SignOutOptions"], a[aria-label*="Google Account"], a[aria-label*="Аккаунт Google"]'),
+              items: [...document.querySelectorAll('#search a:has(h3)')].slice(0, 10)
+                .map(a => ({title: a.querySelector('h3').innerText, url: a.href})),
+            };
+          }
+    finally:
+      - action: screenshot
+        file: output/google-search.png

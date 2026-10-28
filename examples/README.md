@@ -25,6 +25,7 @@ YAML scenario examples for `autobrowser run-script`. Each file is a ready-to-run
 | `conditions.yaml` | `if` and `assert`: act on a banner only when it exists |
 | `try-catch.yaml` | `try` / `catch` / `finally` and `optional` steps |
 | `speedtest.yaml` | speedtest.net speed test: results from `evaluate`, screenshot in `finally` |
+| `google-search.yaml` | Google search in a saved profile: top results, login and captcha flags, screenshot |
 | `extract-loop.yaml` | `forEach` + `extract` + variables (quotes.toscrape.com) |
 
 ### Running scenarios
@@ -143,6 +144,7 @@ steps:
 | `conditions.yaml` | `if` и `assert`: действие с баннером только если он есть |
 | `try-catch.yaml` | `try` / `catch` / `finally` и `optional` шаги |
 | `speedtest.yaml` | Тест скорости speedtest.net: результат через `evaluate`, скриншот в `finally` |
+| `google-search.yaml` | Поиск в Google в сохранённом профиле: топ результатов, флаги входа и капчи, скриншот |
 | `extract-loop.yaml` | `forEach` + `extract` + переменные (quotes.toscrape.com) |
 
 ### Способы запуска
