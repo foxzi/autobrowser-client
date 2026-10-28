@@ -11,6 +11,8 @@ from pathlib import Path
 import pytest
 import yaml
 
+from autobrowser_client import __version__
+
 
 def run_cli(*args: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     cmd = [sys.executable, "-m", "autobrowser_client.main"] + list(args)
@@ -21,7 +23,7 @@ class TestVersion:
     def test_version_output(self):
         r = run_cli("version")
         assert r.returncode == 0
-        assert r.stdout.strip() == "0.1.0"
+        assert r.stdout.strip() == __version__
 
 
 class TestShowConfig:
