@@ -1,0 +1,69 @@
+# Internet speed test on speedtest.net, optionally through a proxy.
+# The screenshot is taken in "finally", so it is saved even when the test fails.
+#
+# Run:
+#   autobrowser run-script --file examples/speedtest.yaml
+#   autobrowser run-script --file examples/speedtest.yaml --proxy socks5://127.0.0.1:10800
+#
+# Output:
+#   output/speedtest.png - screenshot at the end of the scenario
+#   step "speed" in the JSON result - download/upload/ping or the error
+
+session:
+  headless: true
+  viewport:
+    width: 1920
+    height: 1080
+
+steps:
+  - try:
+      - open: https://www.speedtest.net/
+
+      # The OneTrust banner appears a few seconds after load and covers GO
+      - action: evaluate
+        script: |
+          async () => {
+            for (let i = 0; i < 10; i++) {
+              await new Promise(r => setTimeout(r, 1000));
+              const b = document.querySelector('#onetrust-accept-btn-handler');
+              if (b && b.offsetParent) { b.click(); break; }
+            }
+            await new Promise(r => setTimeout(r, 1000));
+            document.querySelector('#onetrust-consent-sdk')?.remove();
+          }
+
+      - click: "button[aria-label^='start speed test']"
+
+      # Wait until the result page opens (up to 120 s)
+      - action: evaluate
+        as: speed
+        script: |
+          async () => {
+            const t0 = Date.now();
+            const err = () => document.body.innerText.match(/[A-Z ]*TEST ERROR[^]*?later\./)?.[0];
+            while (Date.now() - t0 < 120000 && !/\/result\//.test(location.href) && !err()) {
+              await new Promise(r => setTimeout(r, 2000));
+            }
+            return {
+              done: /\/result\//.test(location.href),
+              error: err() || null,
+              seconds: Math.round((Date.now() - t0) / 1000),
+              url: location.href,
+              ...(await (async () => {
+                // Values are filled in with a delay after the redirect
+                const re = /DOWNLOAD Mbps\s+([\d.]+)\s+UPLOAD Mbps\s+([\d.]+)\s+Ping ms\s+(\d+)\s+(\d+)\s+(\d+)/;
+                let m;
+                for (let i = 0; i < 15 && !(m = document.body.innerText.match(re)); i++) {
+                  await new Promise(r => setTimeout(r, 1000));
+                }
+                if (!m) return {};
+                return {
+                  download_mbps: +m[1], upload_mbps: +m[2],
+                  ping_ms: {idle: +m[3], download: +m[4], upload: +m[5]},
+                };
+              })()),
+            };
+          }
+    finally:
+      - action: screenshot
+        file: output/speedtest.png

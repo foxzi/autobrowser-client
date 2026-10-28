@@ -24,6 +24,7 @@ YAML scenario examples for `autobrowser run-script`. Each file is a ready-to-run
 | `with-profile.yaml` | Persist cookies and session data across runs |
 | `conditions.yaml` | `if` and `assert`: act on a banner only when it exists |
 | `try-catch.yaml` | `try` / `catch` / `finally` and `optional` steps |
+| `speedtest.yaml` | speedtest.net speed test: results from `evaluate`, screenshot in `finally` |
 | `extract-loop.yaml` | `forEach` + `extract` + variables (quotes.toscrape.com) |
 
 ### Running scenarios
@@ -141,6 +142,7 @@ steps:
 | `with-profile.yaml` | Сохранение cookies и данных сессии между запусками |
 | `conditions.yaml` | `if` и `assert`: действие с баннером только если он есть |
 | `try-catch.yaml` | `try` / `catch` / `finally` и `optional` шаги |
+| `speedtest.yaml` | Тест скорости speedtest.net: результат через `evaluate`, скриншот в `finally` |
 | `extract-loop.yaml` | `forEach` + `extract` + переменные (quotes.toscrape.com) |
 
 ### Способы запуска
