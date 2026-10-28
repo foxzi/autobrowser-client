@@ -201,7 +201,7 @@ The value is inserted as raw text, **without escaping**:
 |------|--------|
 | `screenshot: out.png` (`fullPage: true` for the whole page) | PNG |
 | `save` with `file` | page HTML (`format: html`, default) or page text (`format: text`) |
-| `save` with `file` and `value` | the given text (after 0.5.2): `value: "${results.text}"` |
+| `save` with `file` and `value` | the given text (since 0.5.3): `value: "${results.text}"` |
 | `output.file` at the top level / `-o` | the whole JSON result |
 
 - Paths are **relative to the working directory** and must stay inside it: absolute paths and `..`
@@ -465,7 +465,7 @@ items.map((x, i) => (i + 1) + '. ' + x.title).join('\n')
 |-----|-----------|
 | `screenshot: out.png` (`fullPage: true` - вся страница) | PNG |
 | `save` с `file` | HTML страницы (`format: html`, по умолчанию) или текст страницы (`format: text`) |
-| `save` с `file` и `value` | заданный текст (после 0.5.2): `value: "${results.text}"` |
+| `save` с `file` и `value` | заданный текст (с 0.5.3): `value: "${results.text}"` |
 | `output.file` на верхнем уровне / `-o` | весь JSON-результат |
 
 - Пути **относительно рабочего каталога** и должны оставаться внутри него: абсолютные пути и `..`
