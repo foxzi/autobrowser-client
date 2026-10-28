@@ -10,7 +10,7 @@ from typing import Any
 
 from pathlib import Path
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from autobrowser_client.browser.actions import resolve_locator
 from autobrowser_client.browser.executor import StepResult, _validate_output_path, execute_step
@@ -33,7 +33,11 @@ _EXACT_RE = re.compile(r"\$\{([^}]+)\}")
 _TOKEN_RE = re.compile(r"\$\$\{|\$\{([^}]+)\}")
 
 
-class UndefinedVariable(Exception):
+class TemplateError(Exception):
+    """A ``${...}`` could not be substituted into a step; reported as a step error."""
+
+
+class UndefinedVariable(TemplateError):
     pass
 
 
@@ -95,7 +99,11 @@ def substitute(value: Any, variables: dict[str, Any]) -> Any:
 
 def _substitute_model(model: BaseModel, variables: dict[str, Any]) -> Any:
     data = substitute(model.model_dump(by_alias=True, exclude_unset=True), variables)
-    return type(model).model_validate(data)
+    try:
+        return type(model).model_validate(data)
+    except ValidationError as exc:
+        details = "; ".join(f"{'.'.join(map(str, e['loc']))}: {e['msg']}" for e in exc.errors())
+        raise TemplateError(f"invalid value after substitution: {details}") from exc
 
 
 def _sleep(ms: float) -> None:
@@ -207,7 +215,7 @@ def _attempt(step: ScriptStep, ctx: _Context) -> StepResult:
     """Substitute variables and run one step once."""
     try:
         concrete = _substitute_model(step, ctx.vars)
-    except UndefinedVariable as exc:
+    except TemplateError as exc:
         result = StepResult(step.action, success=False)
         result.error = str(exc)
         return result
@@ -288,7 +296,7 @@ def _substitute_block(
         if isinstance(value, BaseModel):
             return _substitute_model(value, ctx.vars)
         return substitute(value, ctx.vars)
-    except UndefinedVariable as exc:
+    except TemplateError as exc:
         raise _block_fail(node, kind, name, str(exc)) from exc
 
 

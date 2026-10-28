@@ -85,8 +85,9 @@ Two modes:
 Type pitfalls:
 
 - A dict or list put as a whole into a field that expects text (`value: "${obj}"` of `save`/`type`)
-  is rejected and currently **stops the whole run** with a `ValidationError`, not as a normal step error
-  (it cannot be caught with `try`). Numbers are fine (`value: "${n}"` writes `3`).
+  is a step error `invalid value after substitution: value: Input should be a valid string`.
+  Like any step error it can be caught with `try`, skipped with `optional: true`, and it respects
+  `stopOnError`. Numbers are fine (`value: "${n}"` writes `3`).
 - `--var n=3` gives the string `"3"`: `if: {var: n, equals: 3}` is false, `equals: "3"` is true.
   `repeat: "${n}"` accepts both.
 - `equals` compares with the YAML type: `equals: yes` is the boolean `true` (YAML 1.1), quote it: `"yes"`.
@@ -348,8 +349,9 @@ AUTOBROWSER_BROWSER_ENGINE=cloakbrowser autobrowser run-script -f s.yaml   # в�
 Подводные камни с типами:
 
 - Словарь или список целиком в поле, которое ждёт текст (`value: "${obj}"` у `save`/`type`),
-  отклоняется и сейчас **останавливает весь прогон** с `ValidationError`, а не как обычная ошибка шага
-  (через `try` не ловится). Числа подходят (`value: "${n}"` запишет `3`).
+  - ошибка шага `invalid value after substitution: value: Input should be a valid string`.
+  Как любая ошибка шага, она ловится через `try`, пропускается при `optional: true` и учитывает
+  `stopOnError`. Числа подходят (`value: "${n}"` запишет `3`).
 - `--var n=3` даёт строку `"3"`: `if: {var: n, equals: 3}` ложно, `equals: "3"` истинно.
   `repeat: "${n}"` принимает оба варианта.
 - `equals` сравнивает с типом из YAML: `equals: yes` - это булево `true` (YAML 1.1), пишите `"yes"`.

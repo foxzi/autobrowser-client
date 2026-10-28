@@ -485,3 +485,18 @@ def test_locator_shorthand_in_condition(session, calls):
     script = _script([{"assert": {"exists": "${sel}"}}], vars={"sel": "xpath=//a"})
     session.get_page.return_value.locator.return_value.count.return_value = 1
     assert run_script(session, script)["success"]
+
+
+def test_wrong_type_after_substitution_is_step_error(session, calls):
+    script = _script([
+        {"try": [{"action": "save", "file": "x.txt", "value": "${obj}"}],
+         "catch": [{"set": {"caught": "${error.message}"}}]},
+        {"action": "save", "file": "y.txt", "value": "${obj}", "optional": True},
+        {"if": {"var": "obj", "equals": "${obj}"}, "then": [{"set": {"same": True}}]},
+    ], vars={"obj": {"a": 1}})
+    out = run_script(session, script)
+    assert out["success"]
+    assert out["vars"]["caught"].startswith("invalid value after substitution: value:")
+    assert out["steps"][1]["optional"] is True
+    assert out["vars"]["same"] is True
+    assert calls == []
