@@ -12,6 +12,7 @@ import (
 	"github.com/foxzi/autobrowser-client/go/internal/fingerprint"
 	"github.com/foxzi/autobrowser-client/go/internal/omap"
 	"github.com/foxzi/autobrowser-client/go/internal/scenario"
+	"github.com/foxzi/autobrowser-client/go/internal/updater"
 )
 
 // skillFS holds a byte-identical copy of python/skills/autobrowser/SKILL.md
@@ -138,4 +139,34 @@ func expandUser(path string) string {
 		}
 	}
 	return path
+}
+
+func update(e *env) error {
+	fs := newFlags(e, "update")
+	check := fs.Bool("check", false, "Only report whether an update exists")
+	if err := parse(fs, e.args); err != nil {
+		return err
+	}
+	latest, err := updater.Latest()
+	if err != nil {
+		return err
+	}
+	newer, err := updater.IsNewer(Version, latest)
+	if err != nil {
+		return err
+	}
+	switch {
+	case !newer:
+		fmt.Fprintf(e.stdout, "Up to date: %s\n", Version)
+	case *check:
+		fmt.Fprintf(e.stdout, "Update available: %s -> %s\n", Version, latest)
+	default:
+		path, err := updater.Install(latest)
+		if err != nil {
+			fmt.Fprintln(e.stderr, err)
+			return &exitStatus{1}
+		}
+		fmt.Fprintf(e.stdout, "Updated %s: %s -> %s\n", path, Version, latest)
+	}
+	return nil
 }

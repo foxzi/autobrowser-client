@@ -64,6 +64,12 @@ func init() {
 			help: "Install the agent skill into DIR/autobrowser/SKILL.md.",
 			long: "autobrowser install-skill\nautobrowser install-skill --dir ~/.config/nemo/skills",
 			opts: []option{{"", "--dir", "<path>", "Skills directory of the agent client. [default: ~/.claude/skills]"}}},
+		{name: "update", group: groupSetup, run: update,
+			help: "Update the binary to the latest GitHub release.",
+			long: "The new binary is checked against its .sha256 and replaces the current one.\n" +
+				"Set AUTOBROWSER_NO_AUTO_UPDATE=1 to turn off the background check of mcp and serve.\n" +
+				"Not for builds from source.",
+			opts: []option{{"", "--check", "", "Only report whether an update exists"}}},
 		{name: "generate-fingerprint", group: groupSetup, run: generateFingerprint,
 			help: "Generate fingerprint.json for a browser profile.",
 			long: "autobrowser generate-fingerprint --profile profiles/work --platform linux",
