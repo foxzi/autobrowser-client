@@ -267,6 +267,13 @@ func (s *Session) run(step *scenario.Step, pageID string) (any, error) {
 		}
 		return omap.New("file", step.File, "bytes", len(content)), nil
 
+	case "solve-challenge":
+		ms := 60000
+		if step.Timeout != nil && *step.Timeout != 0 {
+			ms = *step.Timeout
+		}
+		return s.SolveChallenge(eff, ms)
+
 	case "evaluate":
 		v, err := t.evaluate(step.Script)
 		if err != nil {
