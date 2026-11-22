@@ -1,11 +1,74 @@
-# go-cdp experiment
+# autobrowser (Go)
+
+Go port of the Python `autobrowser` client (see `../python`). It supports only the
+cloakbrowser engine (plain CDP via go-rod, no Node, no patchright). Status: stage 1 of 5
+(core, scenarios, basic actions). Static binary, no runtime dependencies.
+
+## Build
+
+```bash
+cd go && CGO_ENABLED=0 go build -o autobrowser ./cmd/autobrowser
+```
+
+## Usage
+
+```bash
+autobrowser version
+autobrowser show-config -c config.yaml
+autobrowser run-script -f file.yaml [--var K=V] [-c config.yaml] [-p profile] \
+    [--proxy URL] [--viewport WxH] [-o result.json] [--preserve-session] [--artifacts DIR]
+```
+
+`--var` is repeatable. The result JSON goes to stdout or to the `-o` file.
+
+## Browser binary lookup
+
+The cloakbrowser Chromium is taken from `CLOAKBROWSER_BINARY_PATH`, otherwise from the newest
+`~/.cloakbrowser/chromium-*/chrome`. There is no automatic download yet: install the binary
+with the Python client or set the variable.
+
+## Parity with the Python client
+
+| Feature | Python | Go |
+|---|---|---|
+| Config file, env, defaults, show-config | done | done |
+| Scenario YAML, vars, `${}` templating, include | done | done |
+| if / try / forEach / repeat / while, retry, optional, stopOnError | done | done |
+| assert / set / fail, result JSON | done | done |
+| Profiles, lock, preserveSession (`tabs.json`) | done | done |
+| Actions: open, wait, find, find-all, click, dblclick, hover, focus, fill, clear, check, uncheck, type, press, scroll, screenshot, get-content, save, evaluate, history, wait-text, extract | done | done |
+| CLI: version, show-config, run-script | done | done |
+| Proxy | done (relay with auth) | partial (http/socks5 without credentials) |
+| Locators | done | partial (`text` approximates get_by_text, `ref` unsupported) |
+| Regex conditions | done | partial (RE2: no lookahead or backreferences) |
+| Headless, viewport, userAgent | done | partial (mobile emulation via UA override only) |
+| patchright engine | done | missing |
+| geoip | done | missing |
+| JS fingerprint injection | done | missing (`session.fingerprint` ignored with a warning) |
+| Actions: get-cookies, get-headers, solve-challenge, browse-tabs, submit, select, upload, read, mouse-move, mouse-scroll-to, mouse-random | done | missing |
+| Binary download | done | missing |
+| MCP server | done | missing |
+| HTTP API | done | missing |
+| Other CLI commands | done | missing |
+| Release binaries | done | missing |
+
+## Python vs Go live comparison
+
+The examples `conditions`, `try-catch`, `extract-loop`, `screenshot` and a custom form scenario
+gave identical results in both clients (ignoring `durationMs` and `sessionId`). `simple.yaml`
+differs because `get-headers` and `get-cookies` are missing in Go.
+
+## Prototype (go/cmd/cdpprobe)
+
+The original throwaway experiment now lives in `go/cmd/cdpprobe`. Paths below are relative to it.
 
 Throwaway prototype: a static Go binary (go-rod, plain CDP, no Node, no patchright)
 drives the cloakbrowser Chromium binary. Question: does it still pass bot checks?
 
-## Build and run
+### Build and run
 
 ```bash
+cd cmd/cdpprobe
 CGO_ENABLED=0 go build -ldflags="-s -w" -o go-cdp .
 ./run.sh out-win -platform windows          # all sites, one variant
 ./run.sh out-x -url https://example.com/    # single URL
@@ -21,7 +84,7 @@ Each site produces `<name>.png` (full page), `<name>.html`, `<name>.json`
 Launch flags: rod defaults minus `--enable-automation`, plus
 `--no-sandbox --fingerprint=<rand> --fingerprint-platform=<platform>`.
 
-## Results (2026-11-22, headless, inside Docker)
+### Results (2026-11-22, headless, inside Docker)
 
 | Site | windows | linux | windows + stealth | linux + stealth |
 |---|---|---|---|---|
@@ -45,7 +108,7 @@ Notes:
 - rod applies a default device (Mac, Chrome/114 UA) to every page. It must be disabled
   with `NoDefaultDevice()`, otherwise the UA contradicts the fingerprint.
 
-## Runtime.enable risk
+### Runtime.enable risk
 
 go-rod does not call `Runtime.enable` explicitly (it uses `Page.enable`, `DOM.enable`,
 `Runtime.evaluate`/`callFunctionOn`). browserscan's CDP check reported Normal.
@@ -53,7 +116,7 @@ The bundled probe (Error `stack` getter + `console.debug`) reported "not detecte
 even with `-runtime-enable`, so that probe does not work on Chrome 146 and proves nothing.
 The risk is therefore **not verified**, only "not detected by browserscan".
 
-## Size and startup
+### Size and startup
 
 | | go-cdp | PyInstaller `autobrowser` |
 |---|---|---|

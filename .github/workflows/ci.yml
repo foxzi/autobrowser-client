@@ -49,5 +49,9 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      - name: Test
+        # Tests that need the cloakbrowser binary skip themselves
+        run: go test ./...
+
       - name: Build
-        run: CGO_ENABLED=0 go build -o go-cdp .
+        run: CGO_ENABLED=0 go build ./...
