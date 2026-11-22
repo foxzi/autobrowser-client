@@ -129,7 +129,7 @@ func TestSessionSteps(t *testing.T) {
 	ok(run("history", "direction", "reload"))
 
 	res := run("click", "locator", loc("css", "#nope"), "timeout", 300)
-	want := "Locator.click: Timeout 300ms exceeded.\nCall log:\n  - waiting for locator(\"#nope\")"
+	want := "Locator.click: Timeout 300ms exceeded.\nCall log:\n  - waiting for locator(\"#nope\")\n"
 	if res.Success || res.Error != want {
 		t.Errorf("missing click: %v %q", res.Success, res.Error)
 	}

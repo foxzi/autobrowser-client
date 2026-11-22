@@ -127,7 +127,7 @@ func (l *loc) visible(el *rod.Element) bool {
 
 // timeoutErr is the Playwright text of an expired wait.
 func (l *loc) timeoutErr(api string, ms int, suffix string) error {
-	return fmt.Errorf("Locator.%s: Timeout %dms exceeded.\nCall log:\n  - waiting for %s%s", api, ms, l.repr, suffix)
+	return fmt.Errorf("Locator.%s: Timeout %dms exceeded.\nCall log:\n  - waiting for %s%s\n", api, ms, l.repr, suffix)
 }
 
 // poll runs fn every 100 ms until it reports done or the timeout expires.
