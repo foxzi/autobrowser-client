@@ -60,6 +60,7 @@ func init() {
 				{"", "--var", "<str>", "Scenario variable NAME=VALUE; repeat for more."},
 				{"", "--artifacts", "<path>", "Directory for screenshot and HTML of failed steps."},
 			}},
+		runCommand,
 		serveCommand,
 		{name: "install-skill", group: groupAgents, run: installSkill,
 			help: "Install the agent skill into DIR/autobrowser/SKILL.md.",
