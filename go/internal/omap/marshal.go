@@ -32,7 +32,8 @@ func FormatFloat(f float64) string {
 }
 
 // Marshal writes v like Python's json.dumps(v, ensure_ascii=False, indent=indent).
-// indent 0 gives the compact form with ", " and ": " separators.
+// indent 0 gives the compact form with ", " and ": " separators, -1 the
+// separators=(",", ":") form of Starlette's JSONResponse.
 func Marshal(v any, indent int) string {
 	var sb strings.Builder
 	encode(&sb, v, indent, 0)
@@ -149,7 +150,10 @@ func encodeObject(sb *strings.Builder, keys []string, get func(string) any, inde
 			newline(sb, indent, level+1)
 		}
 		sb.WriteString(quote(k))
-		sb.WriteString(": ")
+		sb.WriteByte(':')
+		if indent >= 0 {
+			sb.WriteByte(' ')
+		}
 		encode(sb, get(k), indent, level+1)
 	}
 	if indent > 0 {

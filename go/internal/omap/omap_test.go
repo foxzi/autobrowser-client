@@ -11,6 +11,9 @@ func TestMarshalPythonStyle(t *testing.T) {
 	if got := Marshal(New("a", 1, "b", []any{1, "x"}), 0); got != `{"a": 1, "b": [1, "x"]}` {
 		t.Fatal(got)
 	}
+	if got := Marshal(New("a", 1, "b", []any{1.5, New("c", "x")}), -1); got != `{"a":1,"b":[1.5,{"c":"x"}]}` {
+		t.Fatal(got)
+	}
 }
 
 func TestFormatFloat(t *testing.T) {
