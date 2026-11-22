@@ -1,11 +1,13 @@
 package browser
 
 import (
+	"context"
 	"log/slog"
 	"math"
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/go-rod/rod/lib/proto"
 
@@ -64,27 +66,47 @@ type network struct {
 	mu      sync.Mutex
 	headers []*headersEntry
 	pending map[proto.NetworkRequestID]*proto.NetworkRequestWillBeSent
+	logs    map[string][]any // console, network, dialogs: the last logLimit items each
 	// onNav gets the main-frame navigation responses while set (solve-challenge).
 	onNav func(headers *omap.Map, status int)
 }
 
-// listen enables the Network domain of the tab and records document responses
-// like _attach_listeners; the goroutine ends with the browser connection.
+// logLimit is the deque maxlen of the per-page logs.
+const logLimit = 500
+
+// listen enables the Network, Log and Page domains of the tab and records
+// responses, console entries and dialogs like _attach_listeners; the
+// goroutine ends with the browser connection.
 func (t *tab) listen() {
 	t.net.pending = map[proto.NetworkRequestID]*proto.NetworkRequestWillBeSent{}
-	if err := (proto.NetworkEnable{}).Call(t.page); err != nil {
-		slog.Warn("Failed to enable network events for " + t.id + ": " + err.Error())
-		return
+	t.net.logs = map[string][]any{"console": {}, "network": {}, "dialogs": {}}
+	for _, c := range []interface{ Call(proto.Client) error }{proto.NetworkEnable{}, proto.LogEnable{}, proto.PageEnable{}} {
+		if err := c.Call(t.page); err != nil {
+			slog.Warn("Failed to enable events for " + t.id + ": " + err.Error())
+			return
+		}
 	}
 	events := t.page.Event()
 	go func() {
 		for msg := range events {
 			var req proto.NetworkRequestWillBeSent
 			var resp proto.NetworkResponseReceived
-			if msg.Load(&req) {
+			var failed proto.NetworkLoadingFailed
+			var entry proto.LogEntryAdded
+			var dialog proto.PageJavascriptDialogOpening
+			switch {
+			case msg.Load(&req):
 				t.onRequest(&req)
-			} else if msg.Load(&resp) {
+			case msg.Load(&resp):
 				t.onResponse(&resp)
+			case msg.Load(&failed):
+				t.onFailed(&failed)
+			case msg.Load(&entry):
+				if entry.Entry.Source != proto.LogLogEntrySourceWorker {
+					t.log("console", omap.New("type", string(entry.Entry.Level), "text", entry.Entry.Text, "time", now()))
+				}
+			case msg.Load(&dialog):
+				t.onDialog(&dialog)
 			}
 		}
 	}()
@@ -92,7 +114,7 @@ func (t *tab) listen() {
 
 // Playwright ignores data: URLs; a redirect is the response of the previous request.
 func (t *tab) onRequest(e *proto.NetworkRequestWillBeSent) {
-	if e.Type != proto.NetworkResourceTypeDocument || strings.HasPrefix(e.Request.URL, "data:") {
+	if strings.HasPrefix(e.Request.URL, "data:") {
 		return
 	}
 	t.net.mu.Lock()
@@ -100,22 +122,79 @@ func (t *tab) onRequest(e *proto.NetworkRequestWillBeSent) {
 	t.net.pending[e.RequestID] = e
 	t.net.mu.Unlock()
 	if prev != nil && e.RedirectResponse != nil {
-		t.record(prev, e.RedirectResponse)
+		t.respond(prev, e.RedirectResponse)
 	}
 }
 
 func (t *tab) onResponse(e *proto.NetworkResponseReceived) {
-	if e.Type != proto.NetworkResourceTypeDocument {
-		return
-	}
 	t.net.mu.Lock()
 	req := t.net.pending[e.RequestID]
 	delete(t.net.pending, e.RequestID)
 	t.net.mu.Unlock()
 	if req != nil {
-		t.record(req, e.Response)
+		t.respond(req, e.Response)
 	}
 }
+
+func (t *tab) onFailed(e *proto.NetworkLoadingFailed) {
+	t.net.mu.Lock()
+	req := t.net.pending[e.RequestID]
+	delete(t.net.pending, e.RequestID)
+	t.net.mu.Unlock()
+	if req != nil {
+		t.log("network", omap.New("method", req.Request.Method, "url", req.Request.URL,
+			"resourceType", resourceType(req), "status", nil, "failure", e.ErrorText))
+	}
+}
+
+// respond is the "response" event: the network log, and the headers of documents.
+func (t *tab) respond(req *proto.NetworkRequestWillBeSent, resp *proto.NetworkResponse) {
+	if req.Type == proto.NetworkResourceTypeDocument {
+		t.record(req, resp)
+	}
+	t.log("network", omap.New("method", req.Request.Method, "url", req.Request.URL,
+		"resourceType", resourceType(req), "status", resp.Status, "failure", nil))
+}
+
+// resourceType is request.resource_type of Playwright: the lower-case CDP type.
+func resourceType(req *proto.NetworkRequestWillBeSent) string {
+	if req.Type == "" {
+		return "other"
+	}
+	return strings.ToLower(string(req.Type))
+}
+
+// onDialog answers a JS dialog by the dialog policy of the session and logs it.
+func (t *tab) onDialog(e *proto.PageJavascriptDialogOpening) {
+	accept, promptText := t.s.dialogPolicy()
+	t.log("dialogs", omap.New("type", string(e.Type), "message", e.Message, "accepted", accept, "time", now()))
+	// a map, as rod omits an empty promptText and a prompt is answered with ""
+	params := map[string]any{"accept": accept}
+	if accept && e.Type == proto.PageDialogTypePrompt {
+		params["promptText"] = ""
+		if promptText != nil {
+			params["promptText"] = *promptText
+		}
+	}
+	go func() {
+		if _, err := t.page.Call(context.Background(), string(t.page.SessionID), "Page.handleJavaScriptDialog", params); err != nil {
+			slog.Debug("Failed to answer a dialog: " + err.Error())
+		}
+	}()
+}
+
+func (t *tab) log(kind string, item *omap.Map) {
+	t.net.mu.Lock()
+	defer t.net.mu.Unlock()
+	items := append(t.net.logs[kind], item)
+	if len(items) > logLimit {
+		items = items[len(items)-logLimit:]
+	}
+	t.net.logs[kind] = items
+}
+
+// now is time.time(): seconds since the epoch.
+func now() float64 { return float64(time.Now().UnixNano()) / 1e9 }
 
 func (t *tab) record(req *proto.NetworkRequestWillBeSent, resp *proto.NetworkResponse) {
 	entry := &headersEntry{url: req.Request.URL, req: lowerHeaders(req.Request.Headers),

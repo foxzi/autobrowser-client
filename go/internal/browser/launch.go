@@ -29,6 +29,8 @@ import (
 
 // Options of Start (the arguments of BrowserSession._start).
 type Options struct {
+	// URLs are opened as the first tabs instead of saved or blank ones.
+	URLs      []string
 	Profile   string
 	UserAgent string
 	// Headless overrides settings.browser.headless when not nil.
@@ -43,6 +45,18 @@ type Options struct {
 
 // Session is a running browser: the Go BrowserSession for the cloakbrowser engine.
 type Session struct {
+	id string
+	// stMu guards the state fields: state, err, stoppedAt, lastActivity, dialog.
+	stMu         sync.Mutex
+	state        State
+	err          string
+	startedAt    time.Time
+	stoppedAt    time.Time
+	lastActivity time.Time
+	dialog       dialogPolicy
+	// callMu runs the calls of the session one at a time (the session thread of Python).
+	callMu sync.Mutex
+
 	settings *config.Settings
 	cmd      *exec.Cmd
 	exited   chan struct{}
@@ -134,21 +148,39 @@ func startFailed(format string, a ...any) error {
 }
 
 // Start launches the browser (BrowserSession._start, cloakbrowser branch).
-func Start(settings *config.Settings, opts Options) (s *Session, err error) {
-	if err := settings.Validate(); err != nil {
+func Start(settings *config.Settings, opts Options) (*Session, error) {
+	s := newSession("", settings)
+	if err := s.start(opts); err != nil {
 		return nil, err
 	}
-	s = &Session{settings: settings, known: map[proto.TargetTargetID]bool{},
+	return s, nil
+}
+
+func newSession(id string, settings *config.Settings) *Session {
+	now := time.Now()
+	return &Session{id: id, state: StateStarting, startedAt: now, lastActivity: now,
+		settings: settings, known: map[proto.TargetTargetID]bool{},
 		settingsT: settings.Timeouts, output: settings.Output}
+}
+
+func (s *Session) start(opts Options) (err error) {
+	settings := s.settings
+	if err := settings.Validate(); err != nil {
+		return err
+	}
 	defer func() {
-		if err != nil {
-			slog.Error(fmt.Sprintf("Session failed to start: %s", err))
-			s.cleanup()
-			var ae *apperr.Error
-			if !errors.As(err, &ae) || ae.Code != apperr.BrowserStartFailed {
-				err = apperr.New(apperr.BrowserStartFailed, err.Error())
-			}
-			s = nil
+		s.stMu.Lock()
+		defer s.stMu.Unlock()
+		if err == nil {
+			s.state = StateRunning
+			return
+		}
+		s.state, s.err, s.stoppedAt = StateFailed, err.Error(), time.Now()
+		slog.Error(fmt.Sprintf("Session failed to start: %s", err))
+		s.cleanup()
+		var ae *apperr.Error
+		if !errors.As(err, &ae) || ae.Code != apperr.BrowserStartFailed {
+			err = apperr.New(apperr.BrowserStartFailed, err.Error())
 		}
 	}()
 
@@ -156,7 +188,7 @@ func Start(settings *config.Settings, opts Options) (s *Session, err error) {
 	if settings.Proxy.Enabled {
 		s.relay = proxy.NewRelay(settings.Proxy)
 		if err := s.relay.Start(); err != nil {
-			return s, err
+			return err
 		}
 		proxyURL = s.relay.HTTPProxyURL()
 		slog.Info("Using proxy relay: " + proxyURL)
@@ -177,7 +209,7 @@ func Start(settings *config.Settings, opts Options) (s *Session, err error) {
 	var geoTZ, geoLocale string
 	if settings.Browser.Geoip {
 		if geoTZ, geoLocale, err = cloak.ResolveGeoIP(proxyURL); err != nil {
-			return s, err
+			return err
 		}
 	}
 	s.spoof = detectPlatformFromUA(s.ua)
@@ -185,7 +217,7 @@ func Start(settings *config.Settings, opts Options) (s *Session, err error) {
 
 	bin, err := findBinary()
 	if err != nil {
-		return s, err
+		return err
 	}
 	if fp := settings.Browser.FingerprintPlatform; fp != nil && *fp != "" {
 		launchArgs = append(launchArgs, "--fingerprint-platform="+*fp)
@@ -196,11 +228,11 @@ func Start(settings *config.Settings, opts Options) (s *Session, err error) {
 	if opts.Profile != "" {
 		s.profileDir = filepath.Join(settings.Profiles.Dir, opts.Profile)
 		if err := os.MkdirAll(s.profileDir, 0o755); err != nil {
-			return s, err
+			return err
 		}
 		s.lock = profiles.NewLock(s.profileDir)
 		if err := s.lock.Acquire(); err != nil {
-			return s, err
+			return err
 		}
 		// Python appends --restore-last-session to launch_args after the
 		// cloakbrowser args were built, so Chromium never gets it; same here.
@@ -208,7 +240,7 @@ func Start(settings *config.Settings, opts Options) (s *Session, err error) {
 		userDataDir = s.profileDir
 	} else {
 		if s.tmpDir, err = os.MkdirTemp("", "autobrowser_chromium_profile-"); err != nil {
-			return s, err
+			return err
 		}
 		userDataDir = s.tmpDir
 	}
@@ -216,39 +248,39 @@ func Start(settings *config.Settings, opts Options) (s *Session, err error) {
 	args := chromeCommandLine(chromeArgs, headless, proxyURL, userDataDir, opts.Profile != "")
 	wsURL, err := s.launch(bin, args)
 	if err != nil {
-		return s, err
+		return err
 	}
 	s.ws = &cdp.WebSocket{}
 	if err := s.ws.Connect(context.Background(), wsURL, nil); err != nil {
-		return s, err
+		return err
 	}
 	s.root = rod.New().Client(cdp.New().Start(s.ws)).NoDefaultDevice()
 	if err := s.root.Connect(); err != nil {
-		return s, err
+		return err
 	}
 	if opts.Profile != "" {
 		s.ctx = s.root
 	} else if s.ctx, err = s.root.Incognito(); err != nil {
-		return s, err
+		return err
 	}
 
 	fp, err := fingerprint.Resolve(s.profileDir, opts.Fingerprint, fingerprintPlatform(s.ua, s.mobile))
 	if err != nil {
-		return s, err
+		return err
 	}
 	if fp != nil {
 		s.initScript = fingerprint.InitScript(fp)
 		slog.Info(fmt.Sprintf("Fingerprint spoofing enabled (seed=%d)", fp.Seed))
 	}
 	if err := s.autoAttach(); err != nil {
-		return s, err
+		return err
 	}
 
 	if err := s.openPages(opts); err != nil {
-		return s, err
+		return err
 	}
 	slog.Info("Session is running")
-	return s, nil
+	return nil
 }
 
 // fingerprintPlatform picks the GPU pool for the user agent like _start.
@@ -304,8 +336,8 @@ func (s *Session) launch(bin string, args []string) (string, error) {
 
 // openPages registers the first tabs: saved ones, existing ones, or a new blank tab.
 func (s *Session) openPages(opts Options) error {
-	var urls []string
-	if opts.PreserveSession && s.profileDir != "" {
+	urls := opts.URLs
+	if len(urls) == 0 && opts.PreserveSession && s.profileDir != "" {
 		urls = loadSavedTabs(s.profileDir)
 	}
 	existing, err := s.targets()
@@ -349,13 +381,26 @@ func (s *Session) openPages(opts Options) error {
 	return nil
 }
 
-// Close stops the session; preserve saves the open tabs of a profile first.
+// Close stops the session (BrowserSession.stop); preserve saves the open
+// tabs of a profile first. A stopped or failed session is left as is.
 func (s *Session) Close(preserve bool) {
+	s.callMu.Lock()
+	defer s.callMu.Unlock()
+	s.stMu.Lock()
+	if s.state == StateStopped || s.state == StateStopping || s.state == StateFailed {
+		s.stMu.Unlock()
+		return
+	}
+	s.state = StateStopping
+	s.stMu.Unlock()
 	slog.Info("Stopping session")
 	if preserve {
 		s.saveTabs()
 	}
 	s.cleanup()
+	s.stMu.Lock()
+	s.state, s.stoppedAt = StateStopped, time.Now()
+	s.stMu.Unlock()
 	slog.Info("Session stopped")
 }
 
