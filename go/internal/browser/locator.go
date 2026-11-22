@@ -2,12 +2,12 @@ package browser
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/go-rod/rod"
 
-	"github.com/foxzi/autobrowser-client/go/internal/apperr"
 	"github.com/foxzi/autobrowser-client/go/internal/omap"
 	"github.com/foxzi/autobrowser-client/go/internal/scenario"
 )
@@ -56,7 +56,7 @@ func selector(loc scenario.Locator) (kind, value, repr string, err error) {
 	case "text":
 		return "text", loc.Value, fmt.Sprintf("get_by_text(%q)", loc.Value), nil
 	case "ref":
-		return "", "", "", apperr.New(apperr.NotImplemented, "locator type 'ref' needs browser_snapshot, which the Go version does not have")
+		return "ref", loc.Value, fmt.Sprintf("locator(%q)", "aria-ref="+loc.Value), nil
 	}
 	css := loc.Value
 	switch loc.Type {
@@ -94,7 +94,13 @@ func (t *tab) locator(l scenario.Locator, index *int) (*loc, error) {
 
 // all returns the current matches.
 func (l *loc) all() (rod.Elements, error) {
-	els, err := l.t.page.ElementsByJS(rod.Eval(locatorJS, l.kind, l.value))
+	var els rod.Elements
+	var err error
+	if l.kind == "ref" {
+		els, err = l.t.resolveRef(l.value, l.index)
+	} else {
+		els, err = l.t.page.ElementsByJS(rod.Eval(locatorJS, l.kind, l.value))
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -153,6 +159,10 @@ func (l *loc) waitFor(api, state string, ms int) (*rod.Element, error) {
 	var found *rod.Element
 	ok, err := poll(ms, func() (bool, error) {
 		el, err := l.first()
+		var bad invalidSelector
+		if errors.As(err, &bad) {
+			return false, fmt.Errorf("Locator.%s: %s\nCall log:\n  - waiting for %s\n", api, bad, l.repr)
+		}
 		if err != nil {
 			return false, err
 		}

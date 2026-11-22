@@ -88,6 +88,7 @@ type tab struct {
 	page   *rod.Page
 	target proto.TargetTargetID
 	net    network
+	aria   *ariaTab
 }
 
 // emulate applies viewport, touch, focus and user agent like the Playwright
@@ -149,7 +150,7 @@ func (s *Session) register(id proto.TargetTargetID) (*tab, error) {
 	if err := s.emulate(p); err != nil {
 		return nil, err
 	}
-	t := &tab{s: s, id: fmt.Sprintf("page_%d", s.nextPage), page: p, target: id}
+	t := &tab{s: s, id: fmt.Sprintf("page_%d", s.nextPage), page: p, target: id, aria: newAria(p)}
 	s.nextPage++
 	s.known[id] = true
 	s.pages = append(s.pages, t)
@@ -168,7 +169,7 @@ func (s *Session) newTab() (*tab, error) {
 	if err := s.emulate(p); err != nil {
 		return nil, err
 	}
-	t := &tab{s: s, id: fmt.Sprintf("page_%d", s.nextPage), page: p, target: p.TargetID}
+	t := &tab{s: s, id: fmt.Sprintf("page_%d", s.nextPage), page: p, target: p.TargetID, aria: newAria(p)}
 	s.nextPage++
 	s.known[p.TargetID] = true
 	s.pages = append(s.pages, t)

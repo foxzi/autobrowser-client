@@ -39,7 +39,8 @@ with the Python client or set the variable.
 | Actions: open, wait, find, find-all, click, dblclick, hover, focus, fill, clear, check, uncheck, type, press, scroll, screenshot, get-content, save, evaluate, history, wait-text, extract | done | done |
 | CLI: version, show-config, run-script | done | done |
 | Proxy | done (relay with auth) | partial (http/socks5 without credentials) |
-| Locators | done | partial (`text` approximates get_by_text, `ref` unsupported) |
+| Locators | done | partial (`text` approximates get_by_text) |
+| Accessibility snapshot with refs (`page_snapshot`, locator `ref`) | done | done (Playwright injected script vendored in `internal/browser/injected`, regenerate with its `extract.sh`) |
 | Regex conditions | done | partial (RE2: no lookahead or backreferences) |
 | Headless, viewport, userAgent | done | partial (mobile emulation via UA override only) |
 | patchright engine | done | missing |
