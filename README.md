@@ -74,11 +74,19 @@ Install autobrowser by following https://github.com/foxzi/autobrowser-client/blo
 - Self-update: `mcp` and `serve` check for a new release once a day; `autobrowser update` updates right away, `AUTOBROWSER_NO_AUTO_UPDATE=1` turns it off.
 - Docker images for the CLI and the API; also installable as a Python package.
 
+## Repository layout
+
+- `python/` - the main Python client (production): CLI, HTTP API, MCP server, tests, Docker, binary build.
+- `go/` - experimental Go version (go-rod + cloakbrowser over CDP), see [go/README.md](go/README.md).
+- Shared between versions: `docs/`, `examples/`, `scenario.schema.json`.
+
+CI builds both versions until the Go version reaches parity.
+
 ## Documentation
 
 - Technical specification: [`tz.md`](tz.md)
 - MCP server for AI agents: [`docs/mcp.md`](docs/mcp.md)
-- Agent skill: [`skills/autobrowser/SKILL.md`](skills/autobrowser/SKILL.md)
+- Agent skill: [`python/skills/autobrowser/SKILL.md`](python/skills/autobrowser/SKILL.md)
 - Install via an AI agent: [`docs/install-agent.md`](docs/install-agent.md)
 - HTTP API: [`docs/api.md`](docs/api.md)
 - Configuration: [`docs/configuration.md`](docs/configuration.md)
@@ -153,28 +161,30 @@ autobrowser run-script --file examples/simple.yaml
 ### Docker (recommended for servers)
 
 ```bash
-docker compose build cli
-docker compose run --rm cli version
-docker compose run --rm cli show-config
-docker compose run --rm cli run-script --file examples/simple.yaml
+docker compose -f python/compose.yaml build cli
+docker compose -f python/compose.yaml run --rm cli version
+docker compose -f python/compose.yaml run --rm cli show-config
+docker compose -f python/compose.yaml run --rm cli run-script --file examples/simple.yaml
 ```
 
 ### Local venv (dev mode)
 
 ```bash
+cd python
 python3 -m venv .venv
 .venv/bin/pip install -e .
 .venv/bin/autobrowser version
 .venv/bin/autobrowser show-config
-.venv/bin/autobrowser run-script --file examples/simple.yaml
+.venv/bin/autobrowser run-script --file ../examples/simple.yaml
 ```
 
 ### HTTP API server
 
 ```bash
+# from python/
 .venv/bin/autobrowser serve --host 0.0.0.0 --port 8080
 # or via Docker
-docker compose up api
+docker compose -f python/compose.yaml up api
 ```
 
 ### MCP server

@@ -50,7 +50,7 @@ docker run --rm \
 **3. Docker Compose**
 
 ```bash
-docker compose run --rm \
+docker compose -f python/compose.yaml run --rm \
   -v $(pwd)/examples:/scenarios \
   -v $(pwd)/output:/app/output \
   cli run-script --file /scenarios/simple.yaml
@@ -59,7 +59,7 @@ docker compose run --rm \
 Build the image first if needed:
 
 ```bash
-docker compose build
+docker compose -f python/compose.yaml build
 ```
 
 ### Environment variables
@@ -169,7 +169,7 @@ docker run --rm \
 **3. Docker Compose**
 
 ```bash
-docker compose run --rm \
+docker compose -f python/compose.yaml run --rm \
   -v $(pwd)/examples:/scenarios \
   -v $(pwd)/output:/app/output \
   cli run-script --file /scenarios/simple.yaml
@@ -178,7 +178,7 @@ docker compose run --rm \
 Сборка образа перед первым запуском:
 
 ```bash
-docker compose build
+docker compose -f python/compose.yaml build
 ```
 
 ### Переменные окружения

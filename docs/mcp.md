@@ -17,7 +17,7 @@ claude mcp add autobrowser -e AUTOBROWSER_BROWSER_ENGINE=cloakbrowser -- ~/.loca
 
 Step-by-step guide for an agent: [install-agent.md](install-agent.md). The binary unpacks itself into a temporary directory on every start, so the first response takes a few seconds.
 
-To build it yourself: `./scripts/build-binary.sh` (needs Python 3.11+, result in `dist/autobrowser`).
+To build it yourself: `python/scripts/build-binary.sh` (needs Python 3.11+, result in `python/dist/autobrowser`).
 
 ### Install: uv
 
@@ -30,7 +30,7 @@ Claude Code:
 ```bash
 claude mcp add autobrowser \
   -e AUTOBROWSER_BROWSER_ENGINE=cloakbrowser \
-  -- uvx --from "autobrowser-client[cloak] @ git+https://github.com/foxzi/autobrowser-client" autobrowser mcp
+  -- uvx --from "autobrowser-client[cloak] @ git+https://github.com/foxzi/autobrowser-client#subdirectory=python" autobrowser mcp
 ```
 
 Any client with a JSON config (`mcpServers`):
@@ -41,7 +41,7 @@ Any client with a JSON config (`mcpServers`):
     "autobrowser": {
       "command": "uvx",
       "args": [
-        "--from", "autobrowser-client[cloak] @ git+https://github.com/foxzi/autobrowser-client",
+        "--from", "autobrowser-client[cloak] @ git+https://github.com/foxzi/autobrowser-client#subdirectory=python",
         "autobrowser", "mcp"
       ],
       "env": {"AUTOBROWSER_BROWSER_ENGINE": "cloakbrowser"}
@@ -50,7 +50,7 @@ Any client with a JSON config (`mcpServers`):
 }
 ```
 
-To pin a release, add the tag to the URL: `git+https://github.com/foxzi/autobrowser-client@v0.1.0`. See [releases.md](releases.md).
+To pin a release, add the tag to the URL: `git+https://github.com/foxzi/autobrowser-client@v0.1.0#subdirectory=python`. See [releases.md](releases.md).
 
 The first start downloads dependencies and the browser, which takes about a minute. To do it in advance, run the same `uvx --from ... autobrowser install` command with the same environment.
 
@@ -107,15 +107,15 @@ The scenario `session` block is ignored: the run uses the current MCP session. `
 
 ### Skill
 
-[`skills/autobrowser/SKILL.md`](../skills/autobrowser/SKILL.md) teaches the agent how to use the tools: the snapshot/ref loop, waits, Cloudflare handling, tabs, dialogs and safety rules. It is built into the binary and the package: `autobrowser install-skill` writes it to `~/.claude/skills/autobrowser/SKILL.md`, `--dir <path>` picks another skills directory. Without autobrowser installed, for Claude Code:
+[`python/skills/autobrowser/SKILL.md`](../python/skills/autobrowser/SKILL.md) teaches the agent how to use the tools: the snapshot/ref loop, waits, Cloudflare handling, tabs, dialogs and safety rules. It is built into the binary and the package: `autobrowser install-skill` writes it to `~/.claude/skills/autobrowser/SKILL.md`, `--dir <path>` picks another skills directory. Without autobrowser installed, for Claude Code:
 
 ```bash
 mkdir -p ~/.claude/skills/autobrowser
-curl -fsSL https://raw.githubusercontent.com/foxzi/autobrowser-client/main/skills/autobrowser/SKILL.md \
+curl -fsSL https://raw.githubusercontent.com/foxzi/autobrowser-client/main/python/skills/autobrowser/SKILL.md \
   -o ~/.claude/skills/autobrowser/SKILL.md
 ```
 
-or copy the `skills/autobrowser` folder to `.claude/skills/` of a project. Other agents can take the file as a system prompt or rules file.
+or copy the `python/skills/autobrowser` folder to `.claude/skills/` of a project. Other agents can take the file as a system prompt or rules file.
 
 ### Updates
 
@@ -142,7 +142,7 @@ claude mcp add autobrowser -e AUTOBROWSER_BROWSER_ENGINE=cloakbrowser -- ~/.loca
 
 Пошаговая инструкция для агента: [install-agent.md](install-agent.md). Бинарь при каждом запуске распаковывается во временный каталог, поэтому первый ответ занимает несколько секунд.
 
-Собрать самому: `./scripts/build-binary.sh` (нужен Python 3.11+, результат в `dist/autobrowser`).
+Собрать самому: `python/scripts/build-binary.sh` (нужен Python 3.11+, результат в `python/dist/autobrowser`).
 
 ### Установка: uv
 
@@ -155,7 +155,7 @@ Claude Code:
 ```bash
 claude mcp add autobrowser \
   -e AUTOBROWSER_BROWSER_ENGINE=cloakbrowser \
-  -- uvx --from "autobrowser-client[cloak] @ git+https://github.com/foxzi/autobrowser-client" autobrowser mcp
+  -- uvx --from "autobrowser-client[cloak] @ git+https://github.com/foxzi/autobrowser-client#subdirectory=python" autobrowser mcp
 ```
 
 Любой клиент с JSON-конфигом (`mcpServers`):
@@ -166,7 +166,7 @@ claude mcp add autobrowser \
     "autobrowser": {
       "command": "uvx",
       "args": [
-        "--from", "autobrowser-client[cloak] @ git+https://github.com/foxzi/autobrowser-client",
+        "--from", "autobrowser-client[cloak] @ git+https://github.com/foxzi/autobrowser-client#subdirectory=python",
         "autobrowser", "mcp"
       ],
       "env": {"AUTOBROWSER_BROWSER_ENGINE": "cloakbrowser"}
@@ -175,7 +175,7 @@ claude mcp add autobrowser \
 }
 ```
 
-Чтобы зафиксировать релиз, добавьте тег к URL: `git+https://github.com/foxzi/autobrowser-client@v0.1.0`. Подробнее в [releases.md](releases.md).
+Чтобы зафиксировать релиз, добавьте тег к URL: `git+https://github.com/foxzi/autobrowser-client@v0.1.0#subdirectory=python`. Подробнее в [releases.md](releases.md).
 
 Первый запуск скачивает зависимости и браузер, это занимает около минуты. Чтобы сделать это заранее, выполните ту же команду `uvx --from ... autobrowser install` с теми же переменными окружения.
 
@@ -232,15 +232,15 @@ autobrowser mcp [--headless/--headed] [--profile NAME] [--proxy socks5://user:pa
 
 ### Skill
 
-[`skills/autobrowser/SKILL.md`](../skills/autobrowser/SKILL.md) объясняет агенту, как пользоваться инструментами: цикл snapshot/ref, ожидания, Cloudflare, вкладки, диалоги и правила безопасности. Он встроен в бинарь и пакет: `autobrowser install-skill` записывает его в `~/.claude/skills/autobrowser/SKILL.md`, `--dir <путь>` задаёт другую папку skills. Без установленного autobrowser, для Claude Code:
+[`python/skills/autobrowser/SKILL.md`](../python/skills/autobrowser/SKILL.md) объясняет агенту, как пользоваться инструментами: цикл snapshot/ref, ожидания, Cloudflare, вкладки, диалоги и правила безопасности. Он встроен в бинарь и пакет: `autobrowser install-skill` записывает его в `~/.claude/skills/autobrowser/SKILL.md`, `--dir <путь>` задаёт другую папку skills. Без установленного autobrowser, для Claude Code:
 
 ```bash
 mkdir -p ~/.claude/skills/autobrowser
-curl -fsSL https://raw.githubusercontent.com/foxzi/autobrowser-client/main/skills/autobrowser/SKILL.md \
+curl -fsSL https://raw.githubusercontent.com/foxzi/autobrowser-client/main/python/skills/autobrowser/SKILL.md \
   -o ~/.claude/skills/autobrowser/SKILL.md
 ```
 
-или скопируйте папку `skills/autobrowser` в `.claude/skills/` проекта. Другим агентам файл можно подключить как системный промпт или файл правил.
+или скопируйте папку `python/skills/autobrowser` в `.claude/skills/` проекта. Другим агентам файл можно подключить как системный промпт или файл правил.
 
 ### Обновления
 
