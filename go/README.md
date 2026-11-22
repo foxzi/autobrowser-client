@@ -49,7 +49,7 @@ The cloakbrowser Chromium is found and, when missing, downloaded like cloakbrows
 | Actions: get-cookies, get-headers, solve-challenge, browse-tabs, submit, select, upload, read, mouse-move, mouse-scroll-to, mouse-random | done | missing |
 | Binary download | done | done |
 | Session manager (sessions, tabs, dialog policy, console/network/dialog logs, idle reap) | done | done (`internal/browser/manager.go`, `session.go`) |
-| MCP server | done | missing |
+| MCP server (`autobrowser mcp`) | done | done (`internal/mcp`, official go-sdk) |
 | HTTP API (`autobrowser serve`) | done | done (`internal/api`, net/http) |
 | Other CLI commands | done | missing |
 | Release binaries | done | missing |

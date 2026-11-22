@@ -62,6 +62,7 @@ func init() {
 			}},
 		runCommand,
 		serveCommand,
+		mcpCommand,
 		{name: "install-skill", group: groupAgents, run: installSkill,
 			help: "Install the agent skill into DIR/autobrowser/SKILL.md.",
 			long: "autobrowser install-skill\nautobrowser install-skill --dir ~/.config/nemo/skills",
