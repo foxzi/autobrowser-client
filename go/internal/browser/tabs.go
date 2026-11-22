@@ -1,14 +1,18 @@
 package browser
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync/atomic"
 
 	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/cdp"
 	"github.com/go-rod/rod/lib/proto"
 
 	"github.com/foxzi/autobrowser-client/go/internal/apperr"
@@ -91,36 +95,104 @@ type tab struct {
 	aria   *ariaTab
 }
 
-// emulate applies viewport, touch, focus and user agent like the Playwright
-// context options do for every page of the context.
-func (s *Session) emulate(p *rod.Page) error {
+// emulation is the viewport, touch, focus and user agent setup that the
+// Playwright context options apply to every page of the context.
+func (s *Session) emulation() []proto.Request {
 	vp := s.viewport
-	if err := (proto.EmulationSetDeviceMetricsOverride{
-		Width: vp.Width, Height: vp.Height, DeviceScaleFactor: 1, Mobile: s.mobile,
-		ScreenWidth: &vp.Width, ScreenHeight: &vp.Height,
-	}).Call(p); err != nil {
-		return err
+	orientation := &proto.EmulationScreenOrientation{Type: proto.EmulationScreenOrientationTypeLandscapePrimary}
+	if s.mobile && vp.Width <= vp.Height {
+		orientation = &proto.EmulationScreenOrientation{Type: proto.EmulationScreenOrientationTypePortraitPrimary}
+	} else if s.mobile {
+		orientation.Angle = 90
 	}
+	cmds := []proto.Request{proto.EmulationSetDeviceMetricsOverride{
+		Width: vp.Width, Height: vp.Height, DeviceScaleFactor: 1, Mobile: s.mobile,
+		ScreenWidth: &vp.Width, ScreenHeight: &vp.Height, ScreenOrientation: orientation,
+	}}
 	if s.mobile {
-		if err := (proto.EmulationSetTouchEmulationEnabled{Enabled: true, MaxTouchPoints: ptr(1)}).Call(p); err != nil {
+		cmds = append(cmds, proto.EmulationSetTouchEmulationEnabled{Enabled: true})
+	}
+	cmds = append(cmds, proto.EmulationSetFocusEmulationEnabled{Enabled: true})
+	if s.ua != "" {
+		override := proto.EmulationSetUserAgentOverride{UserAgent: s.ua}
+		if s.spoof != nil {
+			override.Platform = s.spoof.platform
+			override.UserAgentMetadata = s.spoof.meta
+		}
+		cmds = append(cmds, override)
+	}
+	return cmds
+}
+
+// emulate applies the emulation to a running page.
+func (s *Session) emulate(p *rod.Page) error {
+	for _, c := range s.emulation() {
+		if _, err := p.Call(context.Background(), string(p.SessionID), c.ProtoReq(), c); err != nil {
 			return err
 		}
 	}
-	if err := (proto.EmulationSetFocusEmulationEnabled{Enabled: true}).Call(p); err != nil {
-		return err
-	}
-	if s.ua == "" {
-		return nil
-	}
-	override := proto.EmulationSetUserAgentOverride{UserAgent: s.ua}
-	if s.spoof != nil {
-		override.Platform = s.spoof.platform
-		override.UserAgentMetadata = s.spoof.meta
-	}
-	return override.Call(p)
+	return nil
 }
 
 func ptr[T any](v T) *T { return &v }
+
+// autoAttach makes Chromium pause every new target until it is set up, like
+// Playwright does for its context: pages of the session context get the
+// emulation and the fingerprint init script before their first document, so
+// new tabs and popups are covered too. The attach sessions stay open: CDP
+// drops their overrides and scripts on detach.
+func (s *Session) autoAttach() error {
+	events := s.root.Event()
+	go func() {
+		for msg := range events {
+			var e proto.TargetAttachedToTarget
+			if msg.Load(&e) && e.WaitingForDebugger {
+				s.setupTarget(&e)
+			}
+		}
+	}()
+	return proto.TargetSetAutoAttach{AutoAttach: true, WaitForDebuggerOnStart: true, Flatten: true}.Call(s.root)
+}
+
+// setupTarget prepares a paused target and resumes it. A paused popup
+// answers nothing until it is resumed, so the setup commands are written
+// without waiting for replies, followed by the resume, like Playwright does:
+// Chromium applies them in order before the first document.
+func (s *Session) setupTarget(e *proto.TargetAttachedToTarget) {
+	info := e.TargetInfo
+	var cmds []proto.Request
+	if info.Type == "page" && (s.ctx == s.root || info.BrowserContextID == s.ctx.BrowserContextID) {
+		cmds = s.emulation()
+		if s.initScript != "" {
+			cmds = append(cmds, proto.PageEnable{}, proto.PageAddScriptToEvaluateOnNewDocument{Source: s.initScript})
+		}
+	}
+	cmds = append(cmds, proto.RuntimeRunIfWaitingForDebugger{})
+	if err := s.send(e.SessionID, cmds); err != nil {
+		slog.Debug("setup of a new target failed: " + err.Error())
+	}
+}
+
+// sendID numbers the commands of send far above the ids of rod, whose
+// replies rod ignores.
+var sendID atomic.Int64
+
+// send writes CDP commands to a target session in order without waiting for
+// their replies.
+func (s *Session) send(session proto.TargetSessionID, cmds []proto.Request) error {
+	for _, c := range cmds {
+		data, err := json.Marshal(cdp.Request{
+			ID: int(1<<30 + sendID.Add(1)), SessionID: string(session), Method: c.ProtoReq(), Params: c,
+		})
+		if err != nil {
+			return err
+		}
+		if err := s.ws.Send(data); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 // targets lists the page targets of the session context, oldest first.
 func (s *Session) targets() ([]proto.TargetTargetID, error) {
