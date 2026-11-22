@@ -48,6 +48,7 @@ The cloakbrowser Chromium is found and, when missing, downloaded like cloakbrows
 | JS fingerprint injection | done | done |
 | Actions: get-cookies, get-headers, solve-challenge, browse-tabs, submit, select, upload, read, mouse-move, mouse-scroll-to, mouse-random | done | missing |
 | Binary download | done | done |
+| Session manager (sessions, tabs, dialog policy, console/network/dialog logs, idle reap) | done | done (`internal/browser/manager.go`, `session.go`) |
 | MCP server | done | missing |
 | HTTP API | done | missing |
 | Other CLI commands | done | missing |
