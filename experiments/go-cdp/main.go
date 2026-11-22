@@ -44,6 +44,8 @@ var defaultSites = []site{
 	{"criptonoticias", "https://www.criptonoticias.com/", 0},
 }
 
+var runtimeEnable bool
+
 type summary struct {
 	Name       string  `json:"name"`
 	URL        string  `json:"url"`
@@ -63,6 +65,7 @@ func main() {
 	useStealth := flag.Bool("stealth", false, "inject go-rod/stealth script")
 	out := flag.String("out", "out", "output dir")
 	url := flag.String("url", "", "visit only this URL")
+	flag.BoolVar(&runtimeEnable, "runtime-enable", false, "call Runtime.enable on each page (to validate the CDP probe)")
 	flag.Parse()
 
 	if err := os.MkdirAll(*out, 0o755); err != nil {
@@ -118,6 +121,9 @@ func visit(browser *rod.Browser, s site, useStealth bool, out string) (sum summa
 	}
 	defer page.Close()
 	page.MustSetViewport(1366, 900, 1, false)
+	if runtimeEnable {
+		proto.RuntimeEnable{}.Call(page)
+	}
 
 	p := page.Timeout(45 * time.Second)
 	if err := p.Navigate(s.url); err != nil {
@@ -163,8 +169,10 @@ func waitCloudflare(page *rod.Page) string {
 			return "passed"
 		}
 		if !clicked {
-			if el, err := page.Timeout(time.Second).Element(`iframe[src*="challenges.cloudflare.com"]`); err == nil {
-				if box, err := el.Shape(); err == nil && len(box.Quads) > 0 {
+			// the iframe lives in a closed shadow root, so target the widget
+			// container: the parent of the hidden turnstile response input
+			if el, err := widget(page); err == nil {
+				if box, err := el.Shape(); err == nil && len(box.Quads) > 0 && box.Box().Height > 0 {
 					b := box.Box()
 					// the checkbox sits near the left edge of the widget
 					page.Mouse.MustMoveTo(b.X+30, b.Y+b.Height/2)
@@ -180,4 +188,12 @@ func waitCloudflare(page *rod.Page) string {
 		return "blocked (turnstile clicked)"
 	}
 	return "blocked"
+}
+
+func widget(page *rod.Page) (*rod.Element, error) {
+	input, err := page.Timeout(time.Second).Element(`input[name="cf-turnstile-response"]`)
+	if err != nil {
+		return nil, err
+	}
+	return input.Parent()
 }
