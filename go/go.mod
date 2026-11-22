@@ -1,4 +1,4 @@
-module go-cdp
+module github.com/foxzi/autobrowser-client/go
 
 go 1.25.14
 
