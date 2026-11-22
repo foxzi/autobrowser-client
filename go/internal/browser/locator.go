@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/cdp"
 
 	"github.com/foxzi/autobrowser-client/go/internal/omap"
 	"github.com/foxzi/autobrowser-client/go/internal/scenario"
@@ -136,11 +137,23 @@ func (l *loc) timeoutErr(api string, ms int, suffix string) error {
 	return fmt.Errorf("Locator.%s: Timeout %dms exceeded.\nCall log:\n  - waiting for %s%s\n", api, ms, l.repr, suffix)
 }
 
+// contextLost reports errors of a document that went away during a call
+// (navigation); Playwright retries its waits on them.
+func contextLost(err error) bool {
+	var gone *rod.ObjectNotFoundError
+	return errors.Is(err, cdp.ErrCtxNotFound) || errors.Is(err, cdp.ErrCtxDestroyed) ||
+		errors.Is(err, cdp.ErrObjNotFound) || errors.As(err, &gone)
+}
+
 // poll runs fn every 100 ms until it reports done or the timeout expires.
+// Errors caused by a navigation during fn mean "not yet" and are retried.
 func poll(ms int, fn func() (bool, error)) (bool, error) {
 	deadline := time.Now().Add(time.Duration(ms) * time.Millisecond)
 	for {
 		done, err := fn()
+		if err != nil && contextLost(err) {
+			done, err = false, nil
+		}
 		if err != nil {
 			return false, err
 		}
@@ -198,7 +211,15 @@ func (l *loc) actionable(api string, ms int) (*rod.Element, error) {
 		return nil, err
 	}
 	left := max(ms-int(time.Since(start).Milliseconds()), 1)
-	ok, err := poll(left, func() (bool, error) { return l.visible(el), nil })
+	ok, err := poll(left, func() (bool, error) {
+		// re-resolve: a navigation may have replaced the element
+		cur, err := l.first()
+		if err != nil || cur == nil {
+			return false, err
+		}
+		el = cur
+		return l.visible(el), nil
+	})
 	if err != nil {
 		return nil, err
 	}
