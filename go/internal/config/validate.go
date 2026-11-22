@@ -2,10 +2,11 @@ package config
 
 import (
 	"fmt"
-	"math"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/foxzi/autobrowser-client/go/internal/lax"
 )
 
 // decoder converts a merged config map into typed values with pydantic-like
@@ -55,58 +56,17 @@ func (d *decoder) extra(loc []string, m map[string]any, allowed ...string) {
 	}
 }
 
-func asBool(v any) (bool, bool) {
-	switch t := v.(type) {
-	case bool:
-		return t, true
-	case int:
-		if t == 0 || t == 1 {
-			return t == 1, true
-		}
-	case float64:
-		if t == 0 || t == 1 {
-			return t == 1, true
-		}
-	case string:
-		switch strings.ToLower(strings.TrimSpace(t)) {
-		case "0", "off", "f", "false", "n", "no":
-			return false, true
-		case "1", "on", "t", "true", "y", "yes":
-			return true, true
-		}
-	}
-	return false, false
-}
-
 func (d *decoder) boolean(loc []string, m map[string]any, key string, def bool) bool {
 	v, ok := m[key]
 	if !ok {
 		return def
 	}
-	b, ok := asBool(v)
+	b, ok := lax.Bool(v)
 	if !ok {
 		d.fail(sub(loc, key), "Input should be a valid boolean, unable to interpret input")
 		return def
 	}
 	return b
-}
-
-func asInt(v any) (int, string) {
-	switch t := v.(type) {
-	case int:
-		return t, ""
-	case float64:
-		if t == math.Trunc(t) && !math.IsInf(t, 0) {
-			return int(t), ""
-		}
-		return 0, "Input should be a valid integer, got a number with a fractional part"
-	case string:
-		if i, err := strconv.Atoi(strings.TrimSpace(t)); err == nil {
-			return i, ""
-		}
-		return 0, "Input should be a valid integer, unable to parse string as an integer"
-	}
-	return 0, "Input should be a valid integer"
 }
 
 // intBounds are inclusive limits; gt0 means strictly greater than zero.
@@ -120,7 +80,7 @@ func (d *decoder) integer(loc []string, m map[string]any, key string, def int, b
 	if !ok {
 		return def
 	}
-	i, msg := asInt(v)
+	i, msg := lax.Int(v)
 	if msg == "" {
 		msg = b.check(i)
 	}

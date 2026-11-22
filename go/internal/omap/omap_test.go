@@ -32,3 +32,13 @@ func TestParseKeepsOrder(t *testing.T) {
 		}
 	}
 }
+
+func TestRepr(t *testing.T) {
+	v := New("a", []any{1, "x", nil, true, 1.5}, "q", "it's")
+	if got := Repr(v); got != `{'a': [1, 'x', None, True, 1.5], 'q': "it's"}` {
+		t.Fatal(got)
+	}
+	if Str("s") != "s" || Str(5) != "5" || Str(false) != "False" {
+		t.Fatal("Str")
+	}
+}
