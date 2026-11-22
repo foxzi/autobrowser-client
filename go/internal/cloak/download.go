@@ -154,31 +154,43 @@ func downloadAndExtract(version string) error {
 	return extractArchive(tmp.Name(), dir, binaryPath(version))
 }
 
-// downloadFile is _download_file: it logs progress every 10% and gives up
-// when no data arrives for 60 s.
+// downloadFile is _download_file: it logs progress every 10%.
 func downloadFile(url, dest string) error {
 	info("Downloading from %s", url)
+	n, err := fetchToFile(url, dest, 60*time.Second, func(pct, done, total int64) {
+		info("Download progress: %d%% (%d/%d MB)", pct, done>>20, total>>20)
+	})
+	if err != nil {
+		return err
+	}
+	info("Download complete: %d MB", n>>20)
+	return nil
+}
+
+// fetchToFile streams url into dest. It gives up when no data arrives for idle,
+// and calls progress every 10% when the size is known. It returns the byte count.
+func fetchToFile(url, dest string, idle time.Duration, progress func(pct, done, total int64)) (int64, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	idle := time.AfterFunc(60*time.Second, cancel)
-	defer idle.Stop()
+	timer := time.AfterFunc(idle, cancel)
+	defer timer.Stop()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	resp, err := httpClient(0).Do(req)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
-		return fmt.Errorf("HTTP %d from %s", resp.StatusCode, url)
+		return 0, fmt.Errorf("HTTP %d from %s", resp.StatusCode, url)
 	}
 
 	f, err := os.Create(dest)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer f.Close()
 	total := max(resp.ContentLength, 0)
@@ -188,28 +200,26 @@ func downloadFile(url, dest string) error {
 	for {
 		n, rerr := resp.Body.Read(buf)
 		if n > 0 {
-			idle.Reset(60 * time.Second)
+			timer.Reset(idle)
 			if _, err := f.Write(buf[:n]); err != nil {
 				slog.Error("Failed to write downloaded file: " + dest)
-				return err
+				return downloaded, err
 			}
 			downloaded += int64(n)
 			if total > 0 {
 				if pct := downloaded * 100 / total; pct >= lastPct+10 {
 					lastPct = pct
-					info("Download progress: %d%% (%d/%d MB)", pct, downloaded>>20, total>>20)
+					progress(pct, downloaded, total)
 				}
 			}
 		}
 		if rerr == io.EOF {
-			break
+			return downloaded, nil
 		}
 		if rerr != nil {
-			return rerr
+			return downloaded, rerr
 		}
 	}
-	info("Download complete: %d MB", downloaded>>20)
-	return nil
 }
 
 // verifyDownloadChecksum is _verify_download_checksum: the official origins
