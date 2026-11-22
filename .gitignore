@@ -11,3 +11,6 @@ build/
 output/
 /python/work*/
 autobrowser.spec
+.claude/
+.nemo/
+CLAUDE.md
