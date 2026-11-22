@@ -81,6 +81,7 @@ func init() {
 				{"", "--seed", "<int>", "Fixed seed value"},
 				{"", "--force", "", "Overwrite existing fingerprint.json"},
 			}},
+		installCommand,
 		{name: "help", group: groupInfo, run: helpCmd, usage: "[OPTIONS] [command]...",
 			help: "Show help for autobrowser or one of its commands.",
 			long: "autobrowser help\nautobrowser help run-script",

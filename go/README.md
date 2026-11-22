@@ -37,7 +37,7 @@ The cloakbrowser Chromium is found and, when missing, downloaded like cloakbrows
 | assert / set / fail, result JSON | done | done |
 | Profiles, lock, preserveSession (`tabs.json`) | done | done |
 | Actions: open, wait, find, find-all, click, dblclick, hover, focus, fill, clear, check, uncheck, type, press, scroll, screenshot, get-content, save, evaluate, history, wait-text, extract | done | done |
-| CLI: version, show-config, run-script, run | done | done |
+| CLI: version, show-config, run-script, run, install | done | done |
 | Proxy | done (relay with auth) | done |
 | Locators | done | partial (`text` approximates get_by_text) |
 | Accessibility snapshot with refs (`page_snapshot`, locator `ref`) | done | done (Playwright injected script vendored in `internal/browser/injected`, regenerate with its `extract.sh`) |
