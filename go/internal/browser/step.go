@@ -274,6 +274,69 @@ func (s *Session) run(step *scenario.Step, pageID string) (any, error) {
 		}
 		return s.SolveChallenge(eff, ms)
 
+	case "browse-tabs":
+		dy := 400
+		if step.DeltaY != nil && *step.DeltaY != 0 {
+			dy = *step.DeltaY
+		}
+		return s.browseTabs(dy, timeout), nil
+
+	case "submit", "select", "upload", "read", "mouse-scroll-to":
+		l, err := t.firstLoc(step)
+		if err != nil {
+			return nil, err
+		}
+		switch step.Action {
+		case "submit":
+			return nil, l.submit(timeout)
+		case "select":
+			options := step.Options
+			if len(options) == 0 && step.Value != nil {
+				options = []string{*step.Value}
+			}
+			selected, err := l.selectOption(options, timeout)
+			if err != nil {
+				return nil, err
+			}
+			return omap.New("selected", selected), nil
+		case "upload":
+			return l.upload(step.Files, timeout)
+		case "read":
+			return l.read(timeout)
+		}
+		_, err = l.actionable("scroll_into_view_if_needed", timeout)
+		return nil, err
+
+	case "mouse-move":
+		if step.X == nil || step.Y == nil {
+			return nil, need(step, "x' and 'y")
+		}
+		steps := 1
+		if step.MoveSteps != nil && *step.MoveSteps != 0 {
+			steps = *step.MoveSteps
+		}
+		return nil, t.page.Mouse.MoveLinear(proto.Point{X: *step.X, Y: *step.Y}, steps)
+
+	case "mouse-random":
+		if step.EndX == nil || step.EndY == nil {
+			return nil, need(step, "endX' and 'endY")
+		}
+		steps, duration, jitter := 25, 300, 3.0
+		if step.MoveSteps != nil && *step.MoveSteps != 0 {
+			steps = *step.MoveSteps
+		}
+		if step.DurationMs != nil {
+			duration = *step.DurationMs
+		}
+		if step.Jitter != nil {
+			jitter = *step.Jitter
+		}
+		n, err := t.mouseRandom(step.StartX, step.StartY, *step.EndX, *step.EndY, steps, duration, jitter, step.Seed)
+		if err != nil {
+			return nil, err
+		}
+		return omap.New("points", n), nil
+
 	case "evaluate":
 		v, err := t.evaluate(step.Script)
 		if err != nil {
