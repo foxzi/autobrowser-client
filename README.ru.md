@@ -84,7 +84,6 @@ CI собирает обе версии, пока Go-версия не дост�
 
 ## Документация
 
-- Техническое задание: [`tz.md`](tz.md)
 - MCP-сервер для AI-агентов: [`docs/mcp.md`](docs/mcp.md)
 - Skill для агента: [`python/skills/autobrowser/SKILL.md`](python/skills/autobrowser/SKILL.md)
 - Установка через AI-агента: [`docs/install-agent.md`](docs/install-agent.md)

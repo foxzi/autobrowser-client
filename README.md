@@ -84,7 +84,6 @@ CI builds both versions until the Go version reaches parity.
 
 ## Documentation
 
-- Technical specification: [`tz.md`](tz.md)
 - MCP server for AI agents: [`docs/mcp.md`](docs/mcp.md)
 - Agent skill: [`python/skills/autobrowser/SKILL.md`](python/skills/autobrowser/SKILL.md)
 - Install via an AI agent: [`docs/install-agent.md`](docs/install-agent.md)
