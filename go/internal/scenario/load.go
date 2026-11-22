@@ -9,6 +9,7 @@ import (
 
 	"github.com/foxzi/autobrowser-client/go/internal/apperr"
 	"github.com/foxzi/autobrowser-client/go/internal/omap"
+	"github.com/foxzi/autobrowser-client/go/internal/pathutil"
 )
 
 func intOf(f float64) (int, string) {
@@ -49,27 +50,6 @@ func readData(path string) (*omap.Map, error) {
 	return m, nil
 }
 
-// resolve is Path.resolve(): absolute, symlinks followed as far as the path exists.
-func resolve(path string) string {
-	abs, err := filepath.Abs(path)
-	if err != nil {
-		return filepath.Clean(path)
-	}
-	rest := ""
-	cur := abs
-	for {
-		if real, err := filepath.EvalSymlinks(cur); err == nil {
-			return filepath.Join(real, rest)
-		}
-		parent := filepath.Dir(cur)
-		if parent == cur {
-			return abs
-		}
-		rest = filepath.Join(filepath.Base(cur), rest)
-		cur = parent
-	}
-}
-
 func loadInclude(item *omap.Map, baseDir string, stack []string, vars *omap.Map) ([]any, error) {
 	target, _ := item.Get("include")
 	if item.Len() != 1 {
@@ -82,8 +62,8 @@ func loadInclude(item *omap.Map, baseDir string, stack []string, vars *omap.Map)
 	if filepath.IsAbs(name) {
 		return nil, apperr.ScriptValidation("Absolute include paths are not allowed: " + name)
 	}
-	path := resolve(filepath.Join(baseDir, name))
-	if rel, err := filepath.Rel(resolve(baseDir), path); err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+	path := pathutil.Resolve(filepath.Join(baseDir, name))
+	if rel, err := filepath.Rel(pathutil.Resolve(baseDir), path); err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return nil, apperr.ScriptValidation("Include path escapes the scenario directory: " + name)
 	}
 	for _, s := range stack {
@@ -188,6 +168,6 @@ func Load(path string) (*Script, error) {
 	if err != nil {
 		return nil, err
 	}
-	resolved := resolve(path)
+	resolved := pathutil.Resolve(path)
 	return build(data, filepath.Dir(resolved), []string{resolved})
 }
