@@ -54,12 +54,13 @@ func (t *tab) InnerText() (string, error) {
 
 func (t *tab) URL() (string, error) { return t.url() }
 
+// Title is document.title, like Playwright (the target title falls back to the URL).
 func (t *tab) Title() (string, error) {
-	info, err := t.page.Info()
+	res, err := t.page.Eval(`() => document.title`)
 	if err != nil {
 		return "", err
 	}
-	return info.Title, nil
+	return res.Value.Str(), nil
 }
 
 func (t *tab) Content() (string, error) { return t.page.HTML() }
