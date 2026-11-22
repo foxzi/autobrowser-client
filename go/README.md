@@ -23,9 +23,9 @@ autobrowser run-script -f file.yaml [--var K=V] [-c config.yaml] [-p profile] \
 
 ## Browser binary lookup
 
-The cloakbrowser Chromium is taken from `CLOAKBROWSER_BINARY_PATH`, otherwise from the newest
-`~/.cloakbrowser/chromium-*/chrome`. There is no automatic download yet: install the binary
-with the Python client or set the variable.
+The cloakbrowser Chromium is found and, when missing, downloaded like cloakbrowser
+`ensure_binary` does (`internal/cloak`): `CLOAKBROWSER_BINARY_PATH`, `CLOAKBROWSER_VERSION`,
+`CLOAKBROWSER_CACHE_DIR` (default `~/.cloakbrowser`) work the same.
 
 ## Parity with the Python client
 
@@ -38,16 +38,16 @@ with the Python client or set the variable.
 | Profiles, lock, preserveSession (`tabs.json`) | done | done |
 | Actions: open, wait, find, find-all, click, dblclick, hover, focus, fill, clear, check, uncheck, type, press, scroll, screenshot, get-content, save, evaluate, history, wait-text, extract | done | done |
 | CLI: version, show-config, run-script | done | done |
-| Proxy | done (relay with auth) | partial (http/socks5 without credentials) |
+| Proxy | done (relay with auth) | done |
 | Locators | done | partial (`text` approximates get_by_text) |
 | Accessibility snapshot with refs (`page_snapshot`, locator `ref`) | done | done (Playwright injected script vendored in `internal/browser/injected`, regenerate with its `extract.sh`) |
 | Regex conditions | done | partial (RE2: no lookahead or backreferences) |
-| Headless, viewport, userAgent | done | partial (mobile emulation via UA override only) |
+| Headless, viewport, userAgent, mobile emulation | done | done |
 | patchright engine | done | missing |
-| geoip | done | missing |
-| JS fingerprint injection | done | missing (`session.fingerprint` ignored with a warning) |
+| geoip | done | done |
+| JS fingerprint injection | done | done |
 | Actions: get-cookies, get-headers, solve-challenge, browse-tabs, submit, select, upload, read, mouse-move, mouse-scroll-to, mouse-random | done | missing |
-| Binary download | done | missing |
+| Binary download | done | done |
 | MCP server | done | missing |
 | HTTP API | done | missing |
 | Other CLI commands | done | missing |
