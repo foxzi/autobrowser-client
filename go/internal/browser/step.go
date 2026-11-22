@@ -229,6 +229,16 @@ func (s *Session) run(step *scenario.Step, pageID string) (any, error) {
 		}
 		return omap.New("format", format, "length", utf8.RuneCountInString(content), "content", content), nil
 
+	case "get-cookies":
+		cookies, err := s.Cookies()
+		if err != nil {
+			return nil, err
+		}
+		return omap.New("cookies", cookies), nil
+
+	case "get-headers":
+		return omap.New("headers", s.Headers(eff)), nil
+
 	case "save":
 		if step.File == "" {
 			return nil, need(step, "file")

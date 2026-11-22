@@ -87,6 +87,7 @@ type tab struct {
 	id     string
 	page   *rod.Page
 	target proto.TargetTargetID
+	net    network
 }
 
 // emulate applies viewport, touch, focus and user agent like the Playwright
@@ -152,6 +153,7 @@ func (s *Session) register(id proto.TargetTargetID) (*tab, error) {
 	s.nextPage++
 	s.known[id] = true
 	s.pages = append(s.pages, t)
+	t.listen()
 	slog.Info("Registered new tab " + t.id)
 	return t, nil
 }
@@ -170,6 +172,7 @@ func (s *Session) newTab() (*tab, error) {
 	s.nextPage++
 	s.known[p.TargetID] = true
 	s.pages = append(s.pages, t)
+	t.listen()
 	slog.Info("Registered new tab " + t.id)
 	return t, nil
 }
