@@ -6,6 +6,7 @@
 ## Сборка и запуск
 
 ```bash
+cd cmd/cdpprobe
 CGO_ENABLED=0 go build -ldflags="-s -w" -o go-cdp .
 ./run.sh out-win -platform windows          # все сайты, один вариант
 ./run.sh out-x -url https://example.com/    # один URL

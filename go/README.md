@@ -6,6 +6,7 @@ drives the cloakbrowser Chromium binary. Question: does it still pass bot checks
 ## Build and run
 
 ```bash
+cd cmd/cdpprobe
 CGO_ENABLED=0 go build -ldflags="-s -w" -o go-cdp .
 ./run.sh out-win -platform windows          # all sites, one variant
 ./run.sh out-x -url https://example.com/    # single URL
