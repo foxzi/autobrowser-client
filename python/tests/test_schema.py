@@ -10,7 +10,7 @@ import yaml
 
 jsonschema = pytest.importorskip("jsonschema")
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 SCHEMA = json.loads((ROOT / "scenario.schema.json").read_text())
 EXAMPLES = sorted((ROOT / "examples").glob("*.yaml"))
 

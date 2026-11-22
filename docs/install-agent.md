@@ -11,7 +11,7 @@ You are installing autobrowser: an MCP server that gives you a stealth browser a
 Placeholders used below:
 
 - `RELEASE` = `https://github.com/foxzi/autobrowser-client/releases/latest/download`
-- `SKILL_URL` = `https://raw.githubusercontent.com/foxzi/autobrowser-client/main/skills/autobrowser/SKILL.md`
+- `SKILL_URL` = `https://raw.githubusercontent.com/foxzi/autobrowser-client/main/python/skills/autobrowser/SKILL.md`
 - `BIN` = the full path of the installed binary from step 1
 
 ### Step 1. Download the binary
@@ -133,7 +133,7 @@ Report to the user: what was installed, where the binary and the config are, and
 Обозначения:
 
 - `RELEASE` = `https://github.com/foxzi/autobrowser-client/releases/latest/download`
-- `SKILL_URL` = `https://raw.githubusercontent.com/foxzi/autobrowser-client/main/skills/autobrowser/SKILL.md`
+- `SKILL_URL` = `https://raw.githubusercontent.com/foxzi/autobrowser-client/main/python/skills/autobrowser/SKILL.md`
 - `BIN` = полный путь к установленному файлу из шага 1
 
 ### Шаг 1. Скачать бинарь

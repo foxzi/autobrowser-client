@@ -21,7 +21,7 @@ Commands:
 Examples:
   $(basename "$0") setup
   $(basename "$0") run version
-  $(basename "$0") run run-script --file examples/simple.yaml
+  $(basename "$0") run run-script --file ../examples/simple.yaml
   $(basename "$0") run serve --port 8080
   $(basename "$0") test
   $(basename "$0") test tests/test_config.py -v

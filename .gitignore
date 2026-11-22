@@ -7,7 +7,7 @@ build/
 .pytest_cache/
 .mypy_cache/
 .profiles/
-/profiles/
+/python/profiles/
 output/
-/work*/
-/autobrowser.spec
+/python/work*/
+autobrowser.spec
