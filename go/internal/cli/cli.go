@@ -32,6 +32,7 @@ var commands []command
 
 func init() {
 	commands = []command{
+		{"run-script", "Run a YAML/JSON scenario and print the step results as JSON.", runScript},
 		{"show-config", "Print the effective configuration as JSON (secrets masked).", showConfig},
 		{"version", "Show the version.", versionCmd},
 		{"help", "Show help for autobrowser or one of its commands.", helpCmd},
@@ -71,9 +72,12 @@ func Main(args []string, stdout, stderr io.Writer) int {
 func exitCode(err error, stderr io.Writer) int {
 	var ae *apperr.Error
 	var ue *usageError
+	var es *exitStatus
 	switch {
 	case err == nil, errors.Is(err, flag.ErrHelp):
 		return 0
+	case errors.As(err, &es):
+		return es.code
 	case errors.As(err, &ue):
 		fmt.Fprintln(stderr, "Error: "+ue.msg)
 		return 2
