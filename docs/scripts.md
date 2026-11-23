@@ -160,7 +160,7 @@ Supported actions:
 | Action | Description | Required fields | Optional fields |
 |--------|-------------|-----------------|-----------------|
 | `open` | Navigate to URL | `url` | `waitUntil`, `timeout` |
-| `wait` | Wait for event or timeout | `waitUntil` or `timeout` | `locator` (for `visible`/`hidden`) |
+| `wait` | Wait for event or timeout | `waitUntil` or `timeout`, or `any` | `locator` (for `visible`/`hidden`), `as` (with `any`) |
 | `find` | Find element(s) | `locator` | `index`, `timeout` |
 | `click` | Click element | `locator` | `index`, `timeout` |
 | `fill` | Instantly fill a field | `locator`, `value` | `index`, `timeout` |
@@ -257,6 +257,7 @@ Instead of the full `{action: …, field: value}` dict form you can write the ac
 | `- open: <url>` | `{action: open, url: <url>}` |
 | `- wait: <ms>` (integer) | `{action: wait, timeout: <ms>}` |
 | `- wait: load\|domcontentloaded\|networkidle` | `{action: wait, waitUntil: <state>}` |
+| `- wait: {any: [<condition>, ...]}` | `{action: wait, any: [<condition>, ...]}` |
 | `- click: <locator-str>` | `{action: click, locator: <locator-str>}` |
 | `- find: <locator-str>` | `{action: find, locator: <locator-str>}` |
 | `- fill: [<locator>, <value>]` | `{action: fill, locator: <loc>, value: <val>}` |
@@ -315,6 +316,7 @@ The `<locator-str>` value uses the same string parsing rules described in "Short
 | `- open: <url>` | `{action: open, url: <url>}` |
 | `- wait: <мс>` (целое число) | `{action: wait, timeout: <мс>}` |
 | `- wait: load\|domcontentloaded\|networkidle` | `{action: wait, waitUntil: <state>}` |
+| `- wait: {any: [<condition>, ...]}` | `{action: wait, any: [<condition>, ...]}` |
 | `- click: <локатор>` | `{action: click, locator: <локатор>}` |
 | `- find: <локатор>` | `{action: find, locator: <локатор>}` |
 | `- fill: [<локатор>, <значение>]` | `{action: fill, locator: …, value: …}` |
@@ -337,7 +339,7 @@ The `<locator-str>` value uses the same string parsing rules described in "Short
 | `hover`, `dblclick`, `focus`, `clear`, `check`, `uncheck`, `submit` | Act on an element | `locator` | - |
 | `select` | Choose in a `<select>` | `locator`, `value` (one) or `options` (list) | `{selected}` |
 | `upload` | Attach files to a file input | `locator`, `files` (list of paths) | `{files}` |
-| `evaluate` | Run JS (expression or function source) | `script` | `{result}` |
+| `evaluate` | Run JS (expression or function source) | `script`; optional `args` | `{result}` |
 | `history` | Navigate history | `direction`: `back`, `forward`, `reload` | `{url}` |
 | `wait-text` | Wait for text in the page | `text`, `gone` (wait until it disappears, default false) | - |
 | `extract` | Read text or an attribute | `locator`, `attribute` (default: inner text), `all` (list of all matches) | `{value}` |
@@ -352,6 +354,47 @@ The `<locator-str>` value uses the same string parsing rules described in "Short
 `press` takes an optional `locator`: then the key is pressed on that element. `type` waits a random delay in `[delay*0.5, delay*1.5]` between characters. `wait` with `waitUntil: visible|hidden` requires a `locator`.
 
 Shorthand forms: `hover`/`dblclick`/`focus`/`clear`/`check`/`uncheck`/`submit`/`extract`/`find-all`/`read`/`mouse-scroll-to: <locator>`; `mouse-move: ~` and `mouse-random: ~` with their fields next to the key; `select: [<locator>, <option or list>]`; `upload: [<locator>, <file or list>]`; `evaluate: <script>`; `history: <direction>`; `wait-text: <text>`; `set: {name: value}`; `assert: <condition>`; `fail: <message>`.
+
+#### `evaluate` with `args`
+
+`args` (any YAML value) is passed to the script as its single argument, like `page.evaluate(script, arg)` in Playwright:
+
+- with `args`, `script` must be a function source, e.g. `(a) => a.n + 1` or `({sel, n}) => ...`; the function is called with `args`;
+- a plain expression (`document.title`) ignores `args`; without `args` nothing changes;
+- `${...}` is substituted in every string inside `args` (nested maps and lists too); an exact `"${x}"` keeps the type of `x` (number, list, map);
+- `args` is allowed only on `evaluate` (`'args' is not supported by '<action>'` otherwise); `evaluate: "(a) => ..."` shorthand takes a sibling `args:` key.
+
+```yaml
+vars: {sel: h1}
+steps:
+  - open: https://example.com
+  - evaluate: "({sel, n}) => document.querySelector(sel).innerText.length + n"
+    args: {sel: "${sel}", n: 10}
+    as: size
+```
+
+#### `wait` with `any`
+
+`wait` with `any` polls until one of several conditions is true and tells which one:
+
+- each alternative is a regular condition (same keys as `if` / `assert`: `exists`, `visible`, `text`, `url`, `urlMatches`, `title`, `var`, `not`, `all`, `any`);
+- alternatives are checked in order, a pass every 250 ms; the first true one wins (at least one pass is always made);
+- the limit is the step `timeout`, or the action timeout (`session.timeout`) if it is not set; an alternative must not have its own `timeout`;
+- result `data` is `{matched: i}` (0-based index); `as: name` stores `i` in a variable, so `if: {var: name, equals: 1}` can branch on it;
+- on timeout the step fails: `wait any timed out after <ms>ms: none of [<alternatives as JSON>]`;
+- validation: `any` needs at least one condition, cannot be combined with `waitUntil`, is allowed only on `wait`, and `as` on `wait` requires `any`.
+
+```yaml
+- wait:
+    any:
+      - visible: "#results"
+      - text: "unusual traffic"
+  timeout: 15000
+  as: gate
+- if: {var: gate, equals: 1}
+  then:
+    - fail: blocked by captcha
+```
 
 ### Variables
 
@@ -667,7 +710,7 @@ fingerprint:
 | Действие | Описание | Обязательные поля | Необязательные поля |
 |----------|----------|-------------------|---------------------|
 | `open` | Открыть URL | `url` | `waitUntil`, `timeout` |
-| `wait` | Ждать событие или таймаут | `waitUntil` или `timeout` | `locator` (для `visible`/`hidden`) |
+| `wait` | Ждать событие или таймаут | `waitUntil` или `timeout`, либо `any` | `locator` (для `visible`/`hidden`), `as` (с `any`) |
 | `find` | Найти элемент(ы) | `locator` | `index`, `timeout` |
 | `click` | Кликнуть по элементу | `locator` | `index`, `timeout` |
 | `fill` | Мгновенно заполнить поле | `locator`, `value` | `index`, `timeout` |
@@ -714,7 +757,7 @@ locator:
 | `hover`, `dblclick`, `focus`, `clear`, `check`, `uncheck`, `submit` | Действие с элементом | `locator` | - |
 | `select` | Выбор в `<select>` | `locator`, `value` (один) или `options` (список) | `{selected}` |
 | `upload` | Прикрепить файлы к file input | `locator`, `files` (список путей) | `{files}` |
-| `evaluate` | Выполнить JS (выражение или код функции) | `script` | `{result}` |
+| `evaluate` | Выполнить JS (выражение или код функции) | `script`; необязательно `args` | `{result}` |
 | `history` | Навигация по истории | `direction`: `back`, `forward`, `reload` | `{url}` |
 | `wait-text` | Дождаться текста на странице | `text`, `gone` (ждать исчезновения, по умолчанию false) | - |
 | `extract` | Прочитать текст или атрибут | `locator`, `attribute` (по умолчанию: текст), `all` (список всех совпадений) | `{value}` |
@@ -729,6 +772,47 @@ locator:
 У `press` есть необязательный `locator`: тогда клавиша нажимается на этом элементе. `type` ждёт случайную паузу в диапазоне `[delay*0.5, delay*1.5]` между символами. `wait` с `waitUntil: visible|hidden` требует `locator`.
 
 Сокращённая запись: `hover`/`dblclick`/`focus`/`clear`/`check`/`uncheck`/`submit`/`extract`/`find-all`/`read`/`mouse-scroll-to: <локатор>`; `mouse-move: ~` и `mouse-random: ~` с полями рядом с ключом; `select: [<локатор>, <значение или список>]`; `upload: [<локатор>, <файл или список>]`; `evaluate: <скрипт>`; `history: <направление>`; `wait-text: <текст>`; `set: {имя: значение}`; `assert: <условие>`; `fail: <сообщение>`.
+
+#### `evaluate` с `args`
+
+`args` (любое значение YAML) передаётся в скрипт единственным аргументом, как `page.evaluate(script, arg)` в Playwright:
+
+- с `args` `script` должен быть кодом функции, например `(a) => a.n + 1` или `({sel, n}) => ...`; функция вызывается с `args`;
+- обычное выражение (`document.title`) игнорирует `args`; без `args` ничего не меняется;
+- `${...}` подставляется во всех строках внутри `args` (во вложенных словарях и списках тоже); строка ровно `"${x}"` сохраняет тип `x` (число, список, словарь);
+- `args` разрешён только у `evaluate` (иначе `'args' is not supported by '<action>'`); сокращение `evaluate: "(a) => ..."` принимает соседний ключ `args:`.
+
+```yaml
+vars: {sel: h1}
+steps:
+  - open: https://example.com
+  - evaluate: "({sel, n}) => document.querySelector(sel).innerText.length + n"
+    args: {sel: "${sel}", n: 10}
+    as: size
+```
+
+#### `wait` с `any`
+
+`wait` с `any` опрашивает, пока не выполнится одно из нескольких условий, и сообщает, какое именно:
+
+- каждая альтернатива - обычное условие (те же ключи, что у `if` / `assert`: `exists`, `visible`, `text`, `url`, `urlMatches`, `title`, `var`, `not`, `all`, `any`);
+- альтернативы проверяются по порядку, проход каждые 250 мс; побеждает первая истинная (минимум один проход делается всегда);
+- лимит - `timeout` шага, а если он не задан - таймаут действий (`session.timeout`); у альтернативы собственного `timeout` быть не должно;
+- `data` результата - `{matched: i}` (индекс с 0); `as: name` сохраняет `i` в переменную, и `if: {var: name, equals: 1}` ветвится по нему;
+- по таймауту шаг падает: `wait any timed out after <мс>ms: none of [<альтернативы в JSON>]`;
+- валидация: в `any` нужно хотя бы одно условие, нельзя сочетать с `waitUntil`, разрешён только у `wait`, а `as` у `wait` требует `any`.
+
+```yaml
+- wait:
+    any:
+      - visible: "#results"
+      - text: "unusual traffic"
+  timeout: 15000
+  as: gate
+- if: {var: gate, equals: 1}
+  then:
+    - fail: blocked by captcha
+```
 
 ### Переменные
 
