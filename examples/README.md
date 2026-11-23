@@ -62,6 +62,12 @@ Build the image first if needed:
 docker compose -f python/compose.yaml build
 ```
 
+The Go binary (`autobrowser-go-<os>-<arch>`, see [go/README.md](../go/README.md)) runs the same scenarios, cloakbrowser engine only:
+
+```bash
+AUTOBROWSER_BROWSER_ENGINE=cloakbrowser autobrowser-go-linux-amd64 run-script --file examples/simple.yaml
+```
+
 ### Environment variables
 
 | Variable | Description | Example |
@@ -179,6 +185,12 @@ docker compose -f python/compose.yaml run --rm \
 
 ```bash
 docker compose -f python/compose.yaml build
+```
+
+Go-бинарник (`autobrowser-go-<os>-<arch>`, см. [go/README.ru.md](../go/README.ru.md)) запускает те же сценарии, только с движком cloakbrowser:
+
+```bash
+AUTOBROWSER_BROWSER_ENGINE=cloakbrowser autobrowser-go-linux-amd64 run-script --file examples/simple.yaml
 ```
 
 ### Переменные окружения
