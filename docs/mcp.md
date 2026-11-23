@@ -19,7 +19,7 @@ Step-by-step guide for an agent: [install-agent.md](install-agent.md). The binar
 
 To build it yourself: `python/scripts/build-binary.sh` (needs Python 3.11+, result in `python/dist/autobrowser`).
 
-The same release also has a Go build, `autobrowser-go-<os>-<arch>[.exe]` (`linux-amd64`, `linux-arm64`, `darwin-arm64`, `windows-amd64`, each with a `.sha256`). It has the same commands (`mcp`, `install`, `install-skill`, `update`) and the same tools, but runs only the `cloakbrowser` engine: set `AUTOBROWSER_BROWSER_ENGINE=cloakbrowser` (the default `patchright` fails at launch). `autobrowser install` downloads the cloakbrowser Chromium into `~/.cloakbrowser`. See [go/README.md](../go/README.md).
+The same release also has a Go build, `autobrowser-go-<os>-<arch>[.exe]` (`linux-amd64`, `linux-arm64`, `darwin-arm64`, `windows-amd64`, each with a `.sha256`). It has the same commands (`mcp`, `install`, `install-skill`, `update`) and the same tools, but runs only the `cloakbrowser` engine: set `AUTOBROWSER_BROWSER_ENGINE=cloakbrowser` (the default `patchright` fails at launch). `autobrowser install` downloads the cloakbrowser Chromium into `~/.cloakbrowser`. Small behaviour differences are listed in [go/README.md](../go/README.md#known-differences).
 
 ### Install: uv
 
@@ -146,7 +146,7 @@ claude mcp add autobrowser -e AUTOBROWSER_BROWSER_ENGINE=cloakbrowser -- ~/.loca
 
 Собрать самому: `python/scripts/build-binary.sh` (нужен Python 3.11+, результат в `python/dist/autobrowser`).
 
-В том же релизе есть и Go-сборка `autobrowser-go-<os>-<arch>[.exe]` (`linux-amd64`, `linux-arm64`, `darwin-arm64`, `windows-amd64`, к каждой `.sha256`). Команды те же (`mcp`, `install`, `install-skill`, `update`), инструменты те же, но запускается только движок `cloakbrowser`: задайте `AUTOBROWSER_BROWSER_ENGINE=cloakbrowser` (движок по умолчанию `patchright` при запуске даёт ошибку). `autobrowser install` скачивает Chromium cloakbrowser в `~/.cloakbrowser`. См. [go/README.ru.md](../go/README.ru.md).
+В том же релизе есть и Go-сборка `autobrowser-go-<os>-<arch>[.exe]` (`linux-amd64`, `linux-arm64`, `darwin-arm64`, `windows-amd64`, к каждой `.sha256`). Команды те же (`mcp`, `install`, `install-skill`, `update`), инструменты те же, но запускается только движок `cloakbrowser`: задайте `AUTOBROWSER_BROWSER_ENGINE=cloakbrowser` (движок по умолчанию `patchright` при запуске даёт ошибку). `autobrowser install` скачивает Chromium cloakbrowser в `~/.cloakbrowser`. Небольшие отличия в поведении перечислены в [go/README.ru.md](../go/README.ru.md#известные-отличия).
 
 ### Установка: uv
 
