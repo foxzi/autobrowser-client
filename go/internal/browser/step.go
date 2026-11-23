@@ -185,6 +185,7 @@ func (s *Session) run(step *scenario.Step, pageID string) (any, error) {
 			if err := el.Focus(); err != nil {
 				return nil, err
 			}
+			return nil, l.navWait("press", timeout, time.Now(), func() error { return t.press(step.Key) })
 		}
 		return nil, t.press(step.Key)
 
@@ -426,15 +427,71 @@ func (l *loc) pointer(api string, ms int) error {
 		return err
 	}
 	left := max(ms-int(time.Since(start).Milliseconds()), 1)
-	return l.withTimeout(api, left, el, func(e *rod.Element) error {
-		switch api {
-		case "hover":
-			return e.Hover()
-		case "dblclick":
+	switch api {
+	case "hover":
+		return l.withTimeout(api, left, el, func(e *rod.Element) error { return e.Hover() })
+	case "dblclick":
+		return l.withTimeout(api, left, el, func(e *rod.Element) error {
 			return e.Click(proto.InputMouseButtonLeft, 2)
-		}
-		return e.Click(proto.InputMouseButtonLeft, 1)
+		})
+	}
+	return l.navWait(api, ms, start, func() error {
+		return l.withTimeout(api, left, el, func(e *rod.Element) error {
+			return e.Click(proto.InputMouseButtonLeft, 1)
+		})
 	})
+}
+
+// navWait runs a click or an element press like Playwright's
+// waitForSignalsCreatedBy: a main frame navigation the action requested is
+// waited for until it commits (or stops loading), within the step timeout.
+func (l *loc) navWait(api string, ms int, start time.Time, action func() error) error {
+	t := l.t
+	main := proto.PageFrameID(t.target)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	requested := make(chan struct{})
+	done := make(chan struct{})
+	isRequested := false
+	settle := func(id proto.PageFrameID) bool {
+		if id == main && isRequested {
+			close(done)
+			return true
+		}
+		return false
+	}
+	// the handlers run one at a time on the wait goroutine
+	wait := t.page.Context(ctx).EachEvent(func(e *proto.PageFrameRequestedNavigation) {
+		if !isRequested && e.FrameID == main && e.Disposition == proto.PageClientNavigationDispositionCurrentTab {
+			isRequested = true
+			close(requested)
+		}
+	}, func(e *proto.PageFrameNavigated) bool {
+		return settle(e.Frame.ID)
+	}, func(e *proto.PageNavigatedWithinDocument) bool {
+		return settle(e.FrameID)
+	}, func(e *proto.PageFrameStoppedLoading) bool {
+		return settle(e.FrameID)
+	})
+	go wait()
+	if err := action(); err != nil {
+		return err
+	}
+	// a round trip, so that the events of the action have arrived; the short
+	// grace covers their hand-over to the wait goroutine
+	_ = proto.PageEnable{}.Call(t.page)
+	select {
+	case <-requested:
+	case <-time.After(20 * time.Millisecond):
+		return nil
+	}
+	left := time.Duration(ms)*time.Millisecond - time.Since(start)
+	select {
+	case <-done:
+		return nil
+	case <-time.After(left):
+		return l.timeoutErr(api, ms, "")
+	}
 }
 
 // fill selects the field content and replaces it.
