@@ -87,7 +87,10 @@ func (t *tab) locator(l scenario.Locator, index *int) (*loc, error) {
 	if err != nil {
 		return nil, err
 	}
-	if index != nil {
+	if index != nil && *index == 0 {
+		// Playwright renders nth=0 as .first
+		repr += ".first"
+	} else if index != nil {
 		repr += fmt.Sprintf(".nth(%d)", *index)
 	}
 	return &loc{t: t, kind: kind, value: value, repr: repr, index: index}, nil

@@ -257,6 +257,7 @@ func TestActionChain(t *testing.T) {
 		omap.Marshal(jsonGet(t, body, "results", 2, "data"), -1) != `{"selected":["b"]}` ||
 		omap.Marshal(jsonGet(t, body, "results", 7, "data"), -1) != `{"points":4}` ||
 		jsonGet(t, body, "results", 8, "error") != "Unknown action: bogus" ||
+		jsonGet(t, body, "results", 9, "error") != "Locator.click: Timeout 300ms exceeded.\nCall log:\n  - waiting for locator(\"#missing\").first\n" ||
 		jsonGet(t, body, "results", 0, "durationMs") == nil {
 		t.Fatalf("chain data: %s", body)
 	}

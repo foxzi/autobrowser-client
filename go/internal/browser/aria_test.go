@@ -67,7 +67,7 @@ func TestAriaSnapshot(t *testing.T) {
 		t.Errorf("missing ref: %q", res.Error)
 	}
 	res = s.ExecuteStep(step(t, "click", "locator", ref("f9e1"), "index", 0), "")
-	if want := "Locator.click: Invalid frame in aria-ref selector \"aria-ref=f9e1 >> nth=0\"\nCall log:\n  - waiting for locator(\"aria-ref=f9e1\").nth(0)\n"; res.Error != want {
+	if want := "Locator.click: Invalid frame in aria-ref selector \"aria-ref=f9e1 >> nth=0\"\nCall log:\n  - waiting for locator(\"aria-ref=f9e1\").first\n"; res.Error != want {
 		t.Errorf("bad frame: %q", res.Error)
 	}
 }
