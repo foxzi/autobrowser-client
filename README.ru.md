@@ -65,22 +65,23 @@ Install autobrowser by following https://github.com/foxzi/autobrowser-client/blo
 - Bearer-токен (`AUTOBROWSER_API_TOKEN`), лимит сессий, проверки health и ready.
 
 ### MCP-сервер для AI-агентов
-- `autobrowser mcp` (stdio) даёт агенту 18 инструментов: navigate, history, snapshot, screenshot, click, hover, type, press key, select, file upload, evaluate, wait for text, get text, tabs, logs, dialogs, solve challenge, close.
+- `autobrowser mcp` (stdio) даёт агенту 19 инструментов: navigate, history, snapshot, screenshot, click, hover, type, press key, select, file upload, evaluate, wait for text, get text, tabs, logs, dialogs, solve challenge, run script, close.
 - Снапшот возвращает `ref` элементов, и агент кликает по ссылке, а не подбирает селекторы.
 - `autobrowser install-skill` ставит skill, который учит агента циклу snapshot/ref, ожиданиям, работе с Cloudflare и правилам безопасности.
 
 ### Поставка
 - Один бинарь без Python; релизы для Linux amd64/arm64, macOS arm64 и Windows amd64 с контрольными суммами sha256.
 - Самообновление: `mcp` и `serve` раз в сутки проверяют новый релиз; `autobrowser update` обновляет сразу, `AUTOBROWSER_NO_AUTO_UPDATE=1` отключает.
+- Альтернативный Go-бинарь `autobrowser-go-<os>-<arch>[.exe]` (Linux amd64/arm64, macOS arm64 как `darwin`, Windows amd64, с `.sha256`): те же команды, API и MCP-инструменты, только движок cloakbrowser. `autobrowser update` у Go-бинаря берёт Go-ассеты. См. [go/README.ru.md](go/README.ru.md).
 - Docker-образы для CLI и API; также ставится как Python-пакет.
 
 ## Структура репозитория
 
 - `python/` - основной Python-клиент (production): CLI, HTTP API, MCP-сервер, тесты, Docker, сборка бинарников.
-- `go/` - экспериментальная Go-версия (go-rod + cloakbrowser через CDP), см. [go/README.md](go/README.md).
+- `go/` - Go-версия (go-rod + cloakbrowser через CDP, только движок cloakbrowser): тот же CLI, HTTP API и MCP-сервер, с несколькими [известными отличиями](go/README.ru.md#известные-отличия); см. [go/README.ru.md](go/README.ru.md).
 - Общее для обеих версий: `docs/`, `examples/`, `scenario.schema.json`.
 
-CI собирает обе версии, пока Go-версия не достигнет паритета.
+CI собирает обе версии; релиз публикует Python-бинари (`autobrowser-<os>-<arch>`) и Go-бинари (`autobrowser-go-<os>-<arch>`).
 
 ## Документация
 
@@ -112,7 +113,7 @@ CI собирает обе версии, пока Go-версия не дост�
 | `autobrowser update [--check]` | Обновить бинарь до последнего релиза |
 | `autobrowser generate-fingerprint --profile DIR` | Создать fingerprint.json для профиля |
 
-Общие флаги: `--config`, `--profile`, `--proxy`, `--viewport`, `--output`, `--headless/--headful`, `--timeout`, `--preserve-session`.
+Основные флаги: `run` и `run-script` принимают `--config`, `--profile`, `--proxy`, `--viewport`, `--output`; `run` ещё `--url`, `--headless/--headful`, `--timeout`, `--format`; `run-script` ещё `--var`, `--artifacts`, `--preserve-session`; `mcp` принимает `--config`, `--profile`, `--proxy`, `--headless/--headed`; `serve` - `--config`, `--host`, `--port`.
 
 Справка: `autobrowser -h`, `autobrowser help <command>` или `autobrowser <command> -h` (с примерами и переменными окружения). `autobrowser -V` выводит версию.
 
@@ -128,9 +129,8 @@ CI собирает обе версии, пока Go-версия не дост�
 Переключение на cloakbrowser:
 
 ```bash
-# Install optional dependency
-pip install "autobrowser-client[cloak]"
-# or: pip install cloakbrowser
+# Релизные бинари уже содержат cloakbrowser. Из исходников (в python/):
+pip install -e ".[cloak]"
 
 # Via env var
 AUTOBROWSER_BROWSER_ENGINE=cloakbrowser autobrowser run --url https://example.com
@@ -145,6 +145,8 @@ browser:
 
 Оба движка поддерживают профили, прокси, внедрение отпечатков, viewport, user_agent, все команды CLI и все эндпоинты API.
 
+Go-бинарь запускает только `cloakbrowser` (встроен, Python не нужен): задайте `AUTOBROWSER_BROWSER_ENGINE=cloakbrowser`, затем `autobrowser install` скачает Chromium в `~/.cloakbrowser`.
+
 ## Быстрый старт
 
 ### Бинарь
@@ -156,6 +158,8 @@ autobrowser install                               # download the browser
 autobrowser run --url https://example.com --format text
 autobrowser run-script --file examples/simple.yaml
 ```
+
+Go-бинарь (`autobrowser-go-<os>-<arch>` из того же релиза) используется так же; он запускает только движок `cloakbrowser`, поэтому перед `install` и остальными командами задайте `AUTOBROWSER_BROWSER_ENGINE=cloakbrowser`.
 
 ### Docker (рекомендуется для серверов)
 

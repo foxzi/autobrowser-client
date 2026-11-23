@@ -1,0 +1,9 @@
+<!doctype html>
+<html><head><title>Aria frames</title></head>
+<body>
+<h1>Outer</h1>
+<iframe title="same" srcdoc="<button>Inner button</button><input aria-label='Inner input'><iframe srcdoc='<a href=#n>Nested link</a>'></iframe>"></iframe>
+<iframe id="cross" title="cross"></iframe>
+<script>document.getElementById('cross').src = location.protocol + '//localhost:' + location.port + '/child.html';</script>
+<button>Outer button</button>
+</body></html>

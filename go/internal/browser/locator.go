@@ -2,12 +2,13 @@ package browser
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/cdp"
 
-	"github.com/foxzi/autobrowser-client/go/internal/apperr"
 	"github.com/foxzi/autobrowser-client/go/internal/omap"
 	"github.com/foxzi/autobrowser-client/go/internal/scenario"
 )
@@ -38,7 +39,76 @@ const locatorJS = `(kind, value) => {
 		walk(document);
 		return out;
 	}
-	return Array.from(document.querySelectorAll(value));
+	if (!value.includes(':has-text(')) return Array.from(document.querySelectorAll(value));
+	// Playwright's :has-text("x"): the element text contains x (case-insensitive,
+	// whitespace-normalised). The selector is split into compounds joined by
+	// combinators and matched right to left.
+	const norm = s => s.replace(/\s+/g, ' ').trim().toLowerCase();
+	const split = (s, seps) => {
+		const parts = [], ops = [];
+		let cur = '', depth = 0, q = '';
+		for (let i = 0; i < s.length; i++) {
+			const c = s[i];
+			if (q) { cur += c; if (c === '\\') cur += s[++i] || ''; else if (c === q) q = ''; continue; }
+			if (c === '"' || c === "'") { q = c; cur += c; continue; }
+			if (c === '(' || c === '[') depth++;
+			if (c === ')' || c === ']') depth--;
+			if (depth === 0 && seps.includes(c)) {
+				let op = c === ' ' ? '' : c;
+				while (i + 1 < s.length && seps.includes(s[i + 1])) { i++; if (s[i] !== ' ') op = s[i]; }
+				if (cur.trim()) { parts.push(cur.trim()); ops.push(op || ' '); } else if (op && ops.length) ops[ops.length - 1] = op;
+				cur = '';
+				continue;
+			}
+			cur += c;
+		}
+		if (cur.trim()) parts.push(cur.trim());
+		return { parts, ops: ops.slice(0, parts.length - 1) };
+	};
+	const compound = s => {
+		const texts = [];
+		let css = '', i = 0;
+		while (i < s.length) {
+			if (s.startsWith(':has-text(', i)) {
+				let j = i + 10, depth = 1, q = '', arg = '';
+				for (; j < s.length && depth; j++) {
+					const c = s[j];
+					if (q) { if (c === '\\') { arg += s[++j]; continue; } if (c === q) { q = ''; continue; } arg += c; continue; }
+					if (c === '"' || c === "'") { q = c; continue; }
+					if (c === '(') depth++;
+					if (c === ')' && --depth === 0) break;
+					arg += c;
+				}
+				texts.push(norm(arg));
+				i = j + 1;
+				continue;
+			}
+			css += s[i++];
+		}
+		return { css: css.trim() || '*', texts };
+	};
+	const matches = (el, c) => el.matches(c.css) && c.texts.every(t => norm(el.textContent || '').includes(t));
+	const out = new Set();
+	for (const complex of split(value, ',').parts) {
+		const { parts, ops } = split(complex, ' >+~');
+		const cs = parts.map(compound);
+		const at = (el, i) => {
+			if (!el || el.nodeType !== 1 || !matches(el, cs[i])) return false;
+			if (i === 0) return true;
+			const op = ops[i - 1];
+			if (op === '>') return at(el.parentElement, i - 1);
+			if (op === '+') return at(el.previousElementSibling, i - 1);
+			for (let n = op === '~' ? el.previousElementSibling : el.parentElement; n;
+				n = op === '~' ? n.previousElementSibling : n.parentElement) {
+				if (at(n, i - 1)) return true;
+			}
+			return false;
+		};
+		for (const el of document.querySelectorAll(cs[cs.length - 1].css)) {
+			if (at(el, cs.length - 1)) out.add(el);
+		}
+	}
+	return [...out].sort((a, b) => a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1);
 }`
 
 // visibleJS is Playwright's visibility: a non-empty box and not visibility:hidden.
@@ -56,7 +126,7 @@ func selector(loc scenario.Locator) (kind, value, repr string, err error) {
 	case "text":
 		return "text", loc.Value, fmt.Sprintf("get_by_text(%q)", loc.Value), nil
 	case "ref":
-		return "", "", "", apperr.New(apperr.NotImplemented, "locator type 'ref' needs browser_snapshot, which the Go version does not have")
+		return "ref", loc.Value, fmt.Sprintf("locator(%q)", "aria-ref="+loc.Value), nil
 	}
 	css := loc.Value
 	switch loc.Type {
@@ -86,7 +156,10 @@ func (t *tab) locator(l scenario.Locator, index *int) (*loc, error) {
 	if err != nil {
 		return nil, err
 	}
-	if index != nil {
+	if index != nil && *index == 0 {
+		// Playwright renders nth=0 as .first
+		repr += ".first"
+	} else if index != nil {
 		repr += fmt.Sprintf(".nth(%d)", *index)
 	}
 	return &loc{t: t, kind: kind, value: value, repr: repr, index: index}, nil
@@ -94,7 +167,13 @@ func (t *tab) locator(l scenario.Locator, index *int) (*loc, error) {
 
 // all returns the current matches.
 func (l *loc) all() (rod.Elements, error) {
-	els, err := l.t.page.ElementsByJS(rod.Eval(locatorJS, l.kind, l.value))
+	var els rod.Elements
+	var err error
+	if l.kind == "ref" {
+		els, err = l.t.resolveRef(l.value, l.index)
+	} else {
+		els, err = l.t.page.ElementsByJS(rod.Eval(locatorJS, l.kind, l.value))
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -130,11 +209,28 @@ func (l *loc) timeoutErr(api string, ms int, suffix string) error {
 	return fmt.Errorf("Locator.%s: Timeout %dms exceeded.\nCall log:\n  - waiting for %s%s\n", api, ms, l.repr, suffix)
 }
 
+// errTargetNavigated is what Chrome returns for a call caught mid-navigation.
+// A really closed tab fails with "Session not found" instead.
+var errTargetNavigated = &cdp.Error{Code: -32000, Message: "Inspected target navigated or closed"}
+
+// contextLost reports errors of a document that went away during a call
+// (navigation); Playwright retries its waits on them.
+func contextLost(err error) bool {
+	var gone *rod.ObjectNotFoundError
+	return errors.Is(err, cdp.ErrCtxNotFound) || errors.Is(err, cdp.ErrCtxDestroyed) ||
+		errors.Is(err, cdp.ErrObjNotFound) || errors.Is(err, errTargetNavigated) ||
+		errors.As(err, &gone)
+}
+
 // poll runs fn every 100 ms until it reports done or the timeout expires.
+// Errors caused by a navigation during fn mean "not yet" and are retried.
 func poll(ms int, fn func() (bool, error)) (bool, error) {
 	deadline := time.Now().Add(time.Duration(ms) * time.Millisecond)
 	for {
 		done, err := fn()
+		if err != nil && contextLost(err) {
+			done, err = false, nil
+		}
 		if err != nil {
 			return false, err
 		}
@@ -153,6 +249,10 @@ func (l *loc) waitFor(api, state string, ms int) (*rod.Element, error) {
 	var found *rod.Element
 	ok, err := poll(ms, func() (bool, error) {
 		el, err := l.first()
+		var bad invalidSelector
+		if errors.As(err, &bad) {
+			return false, fmt.Errorf("Locator.%s: %s\nCall log:\n  - waiting for %s\n", api, bad, l.repr)
+		}
 		if err != nil {
 			return false, err
 		}
@@ -188,7 +288,15 @@ func (l *loc) actionable(api string, ms int) (*rod.Element, error) {
 		return nil, err
 	}
 	left := max(ms-int(time.Since(start).Milliseconds()), 1)
-	ok, err := poll(left, func() (bool, error) { return l.visible(el), nil })
+	ok, err := poll(left, func() (bool, error) {
+		// re-resolve: a navigation may have replaced the element
+		cur, err := l.first()
+		if err != nil || cur == nil {
+			return false, err
+		}
+		el = cur
+		return l.visible(el), nil
+	})
 	if err != nil {
 		return nil, err
 	}

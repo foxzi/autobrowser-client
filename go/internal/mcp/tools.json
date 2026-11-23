@@ -1,0 +1,992 @@
+[
+ {
+  "name": "browser_navigate",
+  "description": "Open a URL in the tab; starts the browser on first use.",
+  "inputSchema": {
+   "properties": {
+    "url": {
+     "title": "Url",
+     "type": "string"
+    },
+    "page_id": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Tab id from browser_tabs; first tab by default",
+     "title": "Page Id"
+    }
+   },
+   "required": [
+    "url"
+   ],
+   "type": "object",
+   "title": "browser_navigateArguments"
+  },
+  "outputSchema": {
+   "properties": {
+    "result": {
+     "title": "Result",
+     "type": "string"
+    }
+   },
+   "required": [
+    "result"
+   ],
+   "type": "object",
+   "title": "browser_navigateOutput"
+  }
+ },
+ {
+  "name": "browser_history",
+  "description": "Go back, forward, or reload the tab.",
+  "inputSchema": {
+   "properties": {
+    "direction": {
+     "enum": [
+      "back",
+      "forward",
+      "reload"
+     ],
+     "title": "Direction",
+     "type": "string"
+    },
+    "page_id": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Tab id from browser_tabs; first tab by default",
+     "title": "Page Id"
+    }
+   },
+   "required": [
+    "direction"
+   ],
+   "type": "object",
+   "title": "browser_historyArguments"
+  },
+  "outputSchema": {
+   "properties": {
+    "result": {
+     "title": "Result",
+     "type": "string"
+    }
+   },
+   "required": [
+    "result"
+   ],
+   "type": "object",
+   "title": "browser_historyOutput"
+  }
+ },
+ {
+  "name": "browser_snapshot",
+  "description": "Accessibility tree of the page with [ref=eN] marks to target elements.",
+  "inputSchema": {
+   "properties": {
+    "page_id": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Tab id from browser_tabs; first tab by default",
+     "title": "Page Id"
+    }
+   },
+   "type": "object",
+   "title": "browser_snapshotArguments"
+  },
+  "outputSchema": {
+   "properties": {
+    "result": {
+     "title": "Result",
+     "type": "string"
+    }
+   },
+   "required": [
+    "result"
+   ],
+   "type": "object",
+   "title": "browser_snapshotOutput"
+  }
+ },
+ {
+  "name": "browser_screenshot",
+  "description": "PNG screenshot of the viewport, the full page, or one element.",
+  "inputSchema": {
+   "properties": {
+    "full_page": {
+     "default": false,
+     "title": "Full Page",
+     "type": "boolean"
+    },
+    "target": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Element ref or locator; whole viewport if empty",
+     "title": "Target"
+    },
+    "by": {
+     "default": "ref",
+     "description": "Locator type of target; ref by default",
+     "enum": [
+      "css",
+      "xpath",
+      "id",
+      "name",
+      "class",
+      "text",
+      "attribute",
+      "ref"
+     ],
+     "title": "By",
+     "type": "string"
+    },
+    "page_id": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Tab id from browser_tabs; first tab by default",
+     "title": "Page Id"
+    }
+   },
+   "type": "object",
+   "title": "browser_screenshotArguments"
+  }
+ },
+ {
+  "name": "browser_click",
+  "description": "Click an element.",
+  "inputSchema": {
+   "properties": {
+    "target": {
+     "description": "Element ref from browser_snapshot (e.g. e12), or a locator value for `by`",
+     "title": "Target",
+     "type": "string"
+    },
+    "by": {
+     "default": "ref",
+     "description": "Locator type of target; ref by default",
+     "enum": [
+      "css",
+      "xpath",
+      "id",
+      "name",
+      "class",
+      "text",
+      "attribute",
+      "ref"
+     ],
+     "title": "By",
+     "type": "string"
+    },
+    "double": {
+     "default": false,
+     "title": "Double",
+     "type": "boolean"
+    },
+    "page_id": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Tab id from browser_tabs; first tab by default",
+     "title": "Page Id"
+    }
+   },
+   "required": [
+    "target"
+   ],
+   "type": "object",
+   "title": "browser_clickArguments"
+  },
+  "outputSchema": {
+   "properties": {
+    "result": {
+     "title": "Result",
+     "type": "string"
+    }
+   },
+   "required": [
+    "result"
+   ],
+   "type": "object",
+   "title": "browser_clickOutput"
+  }
+ },
+ {
+  "name": "browser_hover",
+  "description": "Move the mouse over an element.",
+  "inputSchema": {
+   "properties": {
+    "target": {
+     "description": "Element ref from browser_snapshot (e.g. e12), or a locator value for `by`",
+     "title": "Target",
+     "type": "string"
+    },
+    "by": {
+     "default": "ref",
+     "description": "Locator type of target; ref by default",
+     "enum": [
+      "css",
+      "xpath",
+      "id",
+      "name",
+      "class",
+      "text",
+      "attribute",
+      "ref"
+     ],
+     "title": "By",
+     "type": "string"
+    },
+    "page_id": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Tab id from browser_tabs; first tab by default",
+     "title": "Page Id"
+    }
+   },
+   "required": [
+    "target"
+   ],
+   "type": "object",
+   "title": "browser_hoverArguments"
+  },
+  "outputSchema": {
+   "properties": {
+    "result": {
+     "title": "Result",
+     "type": "string"
+    }
+   },
+   "required": [
+    "result"
+   ],
+   "type": "object",
+   "title": "browser_hoverOutput"
+  }
+ },
+ {
+  "name": "browser_type",
+  "description": "Replace the value of an input or textarea with text.",
+  "inputSchema": {
+   "properties": {
+    "target": {
+     "description": "Element ref from browser_snapshot (e.g. e12), or a locator value for `by`",
+     "title": "Target",
+     "type": "string"
+    },
+    "text": {
+     "title": "Text",
+     "type": "string"
+    },
+    "by": {
+     "default": "ref",
+     "description": "Locator type of target; ref by default",
+     "enum": [
+      "css",
+      "xpath",
+      "id",
+      "name",
+      "class",
+      "text",
+      "attribute",
+      "ref"
+     ],
+     "title": "By",
+     "type": "string"
+    },
+    "submit": {
+     "default": false,
+     "description": "Press Enter after typing",
+     "title": "Submit",
+     "type": "boolean"
+    },
+    "page_id": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Tab id from browser_tabs; first tab by default",
+     "title": "Page Id"
+    }
+   },
+   "required": [
+    "target",
+    "text"
+   ],
+   "type": "object",
+   "title": "browser_typeArguments"
+  },
+  "outputSchema": {
+   "properties": {
+    "result": {
+     "title": "Result",
+     "type": "string"
+    }
+   },
+   "required": [
+    "result"
+   ],
+   "type": "object",
+   "title": "browser_typeOutput"
+  }
+ },
+ {
+  "name": "browser_press_key",
+  "description": "Press a key on the focused element.",
+  "inputSchema": {
+   "properties": {
+    "key": {
+     "description": "Key name, e.g. Enter, Escape, ArrowDown, Control+a",
+     "title": "Key",
+     "type": "string"
+    },
+    "page_id": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Tab id from browser_tabs; first tab by default",
+     "title": "Page Id"
+    }
+   },
+   "required": [
+    "key"
+   ],
+   "type": "object",
+   "title": "browser_press_keyArguments"
+  },
+  "outputSchema": {
+   "properties": {
+    "result": {
+     "title": "Result",
+     "type": "string"
+    }
+   },
+   "required": [
+    "result"
+   ],
+   "type": "object",
+   "title": "browser_press_keyOutput"
+  }
+ },
+ {
+  "name": "browser_select_option",
+  "description": "Select options of a <select> by value or label.",
+  "inputSchema": {
+   "properties": {
+    "target": {
+     "description": "Element ref from browser_snapshot (e.g. e12), or a locator value for `by`",
+     "title": "Target",
+     "type": "string"
+    },
+    "values": {
+     "items": {
+      "type": "string"
+     },
+     "title": "Values",
+     "type": "array"
+    },
+    "by": {
+     "default": "ref",
+     "description": "Locator type of target; ref by default",
+     "enum": [
+      "css",
+      "xpath",
+      "id",
+      "name",
+      "class",
+      "text",
+      "attribute",
+      "ref"
+     ],
+     "title": "By",
+     "type": "string"
+    },
+    "page_id": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Tab id from browser_tabs; first tab by default",
+     "title": "Page Id"
+    }
+   },
+   "required": [
+    "target",
+    "values"
+   ],
+   "type": "object",
+   "title": "browser_select_optionArguments"
+  },
+  "outputSchema": {
+   "properties": {
+    "result": {
+     "title": "Result",
+     "type": "string"
+    }
+   },
+   "required": [
+    "result"
+   ],
+   "type": "object",
+   "title": "browser_select_optionOutput"
+  }
+ },
+ {
+  "name": "browser_file_upload",
+  "description": "Attach local files to a file input or to the chooser opened by clicking target.",
+  "inputSchema": {
+   "properties": {
+    "target": {
+     "description": "Element ref from browser_snapshot (e.g. e12), or a locator value for `by`",
+     "title": "Target",
+     "type": "string"
+    },
+    "paths": {
+     "description": "Absolute paths of local files",
+     "items": {
+      "type": "string"
+     },
+     "title": "Paths",
+     "type": "array"
+    },
+    "by": {
+     "default": "ref",
+     "description": "Locator type of target; ref by default",
+     "enum": [
+      "css",
+      "xpath",
+      "id",
+      "name",
+      "class",
+      "text",
+      "attribute",
+      "ref"
+     ],
+     "title": "By",
+     "type": "string"
+    },
+    "page_id": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Tab id from browser_tabs; first tab by default",
+     "title": "Page Id"
+    }
+   },
+   "required": [
+    "target",
+    "paths"
+   ],
+   "type": "object",
+   "title": "browser_file_uploadArguments"
+  },
+  "outputSchema": {
+   "properties": {
+    "result": {
+     "title": "Result",
+     "type": "string"
+    }
+   },
+   "required": [
+    "result"
+   ],
+   "type": "object",
+   "title": "browser_file_uploadOutput"
+  }
+ },
+ {
+  "name": "browser_evaluate",
+  "description": "Run JavaScript in the page and return the JSON result.",
+  "inputSchema": {
+   "properties": {
+    "expression": {
+     "description": "JS expression or function source, e.g. () => document.title",
+     "title": "Expression",
+     "type": "string"
+    },
+    "page_id": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Tab id from browser_tabs; first tab by default",
+     "title": "Page Id"
+    }
+   },
+   "required": [
+    "expression"
+   ],
+   "type": "object",
+   "title": "browser_evaluateArguments"
+  },
+  "outputSchema": {
+   "properties": {
+    "result": {
+     "title": "Result",
+     "type": "string"
+    }
+   },
+   "required": [
+    "result"
+   ],
+   "type": "object",
+   "title": "browser_evaluateOutput"
+  }
+ },
+ {
+  "name": "browser_wait_for",
+  "description": "Wait until text appears (or disappears) on the page.",
+  "inputSchema": {
+   "properties": {
+    "text": {
+     "title": "Text",
+     "type": "string"
+    },
+    "gone": {
+     "default": false,
+     "description": "Wait for the text to disappear instead",
+     "title": "Gone",
+     "type": "boolean"
+    },
+    "timeout_ms": {
+     "default": 10000,
+     "title": "Timeout Ms",
+     "type": "integer"
+    },
+    "page_id": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Tab id from browser_tabs; first tab by default",
+     "title": "Page Id"
+    }
+   },
+   "required": [
+    "text"
+   ],
+   "type": "object",
+   "title": "browser_wait_forArguments"
+  },
+  "outputSchema": {
+   "properties": {
+    "result": {
+     "title": "Result",
+     "type": "string"
+    }
+   },
+   "required": [
+    "result"
+   ],
+   "type": "object",
+   "title": "browser_wait_forOutput"
+  }
+ },
+ {
+  "name": "browser_get_text",
+  "description": "Visible text of the page body.",
+  "inputSchema": {
+   "properties": {
+    "page_id": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Tab id from browser_tabs; first tab by default",
+     "title": "Page Id"
+    }
+   },
+   "type": "object",
+   "title": "browser_get_textArguments"
+  },
+  "outputSchema": {
+   "properties": {
+    "result": {
+     "title": "Result",
+     "type": "string"
+    }
+   },
+   "required": [
+    "result"
+   ],
+   "type": "object",
+   "title": "browser_get_textOutput"
+  }
+ },
+ {
+  "name": "browser_tabs",
+  "description": "List, open, or close tabs. Popups opened by the page show up here.",
+  "inputSchema": {
+   "properties": {
+    "action": {
+     "default": "list",
+     "enum": [
+      "list",
+      "new",
+      "close"
+     ],
+     "title": "Action",
+     "type": "string"
+    },
+    "url": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "URL for a new tab",
+     "title": "Url"
+    },
+    "page_id": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Tab to close",
+     "title": "Page Id"
+    }
+   },
+   "type": "object",
+   "title": "browser_tabsArguments"
+  },
+  "outputSchema": {
+   "properties": {
+    "result": {
+     "title": "Result",
+     "type": "string"
+    }
+   },
+   "required": [
+    "result"
+   ],
+   "type": "object",
+   "title": "browser_tabsOutput"
+  }
+ },
+ {
+  "name": "browser_logs",
+  "description": "Recent console messages, network responses/failures, or JS dialogs of the tab.\n\n        Console has only browser-level messages (failed resources, security warnings):\n        page console.log and uncaught errors are not delivered, to stay undetectable.\n        ",
+  "inputSchema": {
+   "properties": {
+    "kind": {
+     "enum": [
+      "console",
+      "network",
+      "dialogs"
+     ],
+     "title": "Kind",
+     "type": "string"
+    },
+    "clear": {
+     "default": false,
+     "title": "Clear",
+     "type": "boolean"
+    },
+    "page_id": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Tab id from browser_tabs; first tab by default",
+     "title": "Page Id"
+    }
+   },
+   "required": [
+    "kind"
+   ],
+   "type": "object",
+   "title": "browser_logsArguments"
+  },
+  "outputSchema": {
+   "properties": {
+    "result": {
+     "title": "Result",
+     "type": "string"
+    }
+   },
+   "required": [
+    "result"
+   ],
+   "type": "object",
+   "title": "browser_logsOutput"
+  }
+ },
+ {
+  "name": "browser_handle_dialogs",
+  "description": "Set how future alert/confirm/prompt dialogs are answered (dismissed by default).",
+  "inputSchema": {
+   "properties": {
+    "accept": {
+     "title": "Accept",
+     "type": "boolean"
+    },
+    "prompt_text": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Prompt Text"
+    }
+   },
+   "required": [
+    "accept"
+   ],
+   "type": "object",
+   "title": "browser_handle_dialogsArguments"
+  },
+  "outputSchema": {
+   "properties": {
+    "result": {
+     "title": "Result",
+     "type": "string"
+    }
+   },
+   "required": [
+    "result"
+   ],
+   "type": "object",
+   "title": "browser_handle_dialogsOutput"
+  }
+ },
+ {
+  "name": "browser_solve_challenge",
+  "description": "Wait for a Cloudflare challenge to pass, clicking Turnstile when shown.",
+  "inputSchema": {
+   "properties": {
+    "timeout_ms": {
+     "default": 60000,
+     "title": "Timeout Ms",
+     "type": "integer"
+    },
+    "page_id": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Tab id from browser_tabs; first tab by default",
+     "title": "Page Id"
+    }
+   },
+   "type": "object",
+   "title": "browser_solve_challengeArguments"
+  },
+  "outputSchema": {
+   "properties": {
+    "result": {
+     "title": "Result",
+     "type": "string"
+    }
+   },
+   "required": [
+    "result"
+   ],
+   "type": "object",
+   "title": "browser_solve_challengeOutput"
+  }
+ },
+ {
+  "name": "browser_run_script",
+  "description": "Run a multi-step scenario (YAML) in one call: variables, if/try/forEach/while, retries.\n\n        Pass exactly one of script or file. Runs on the current browser session: the\n        scenario `session` block is ignored. `include` paths are relative to the file's\n        directory, or to the working directory for inline script text.\n        Returns JSON {success, steps, vars}.\n        ",
+  "inputSchema": {
+   "properties": {
+    "script": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Scenario as YAML text (JSON also works)",
+     "title": "Script"
+    },
+    "file": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Path of a scenario file",
+     "title": "File"
+    },
+    "vars": {
+     "anyOf": [
+      {
+       "additionalProperties": {
+        "type": "string"
+       },
+       "type": "object"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Variables, override the scenario vars",
+     "title": "Vars"
+    },
+    "page_id": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Tab id from browser_tabs; first tab by default",
+     "title": "Page Id"
+    }
+   },
+   "type": "object",
+   "title": "browser_run_scriptArguments"
+  },
+  "outputSchema": {
+   "properties": {
+    "result": {
+     "title": "Result",
+     "type": "string"
+    }
+   },
+   "required": [
+    "result"
+   ],
+   "type": "object",
+   "title": "browser_run_scriptOutput"
+  }
+ },
+ {
+  "name": "browser_close",
+  "description": "Close the browser; the next tool call starts a fresh one.",
+  "inputSchema": {
+   "properties": {},
+   "type": "object",
+   "title": "browser_closeArguments"
+  },
+  "outputSchema": {
+   "properties": {
+    "result": {
+     "title": "Result",
+     "type": "string"
+    }
+   },
+   "required": [
+    "result"
+   ],
+   "type": "object",
+   "title": "browser_closeOutput"
+  }
+ }
+]

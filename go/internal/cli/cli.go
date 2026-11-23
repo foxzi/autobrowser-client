@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/foxzi/autobrowser-client/go/internal/apperr"
 	"github.com/foxzi/autobrowser-client/go/internal/config"
@@ -13,8 +14,9 @@ import (
 	"github.com/foxzi/autobrowser-client/go/internal/omap"
 )
 
-// Version is the version of the Python package this port follows.
-const Version = "0.5.4"
+// Version is the version of the Python package this port follows; release
+// builds set it with -ldflags "-X .../internal/cli.Version=X.Y.Z".
+var Version = "0.5.4"
 
 // env is what a command may use: output streams and the arguments after its name.
 type env struct {
@@ -23,19 +25,73 @@ type env struct {
 }
 
 type command struct {
-	name, help string
-	run        func(*env) error
+	name, group string
+	help, long  string   // one-line summary; description and examples
+	usage       string   // text after the command name in "Usage:", default "[OPTIONS]"
+	args, opts  []option // for help
+	run         func(*env) error
 }
 
-// commands is in help order; new commands (run-script, ...) are added here.
+// commands is in help order; new commands are added here.
 var commands []command
 
 func init() {
+	configOpt := option{"-c", "--config", "<file>", "YAML/JSON config file."}
 	commands = []command{
-		{"run-script", "Run a YAML/JSON scenario and print the step results as JSON.", runScript},
-		{"show-config", "Print the effective configuration as JSON (secrets masked).", showConfig},
-		{"version", "Show the version.", versionCmd},
-		{"help", "Show help for autobrowser or one of its commands.", helpCmd},
+		{name: "validate-script", group: groupScenarios, run: validateScript,
+			help: "Check a YAML/JSON scenario without starting a browser.",
+			long: "autobrowser validate-script -f examples/login.yaml",
+			opts: []option{{"-f", "--file", "<file>", "Scenario file. [required]"}}},
+		{name: "run-script", group: groupScenarios, run: runScript,
+			help: "Run a YAML/JSON scenario and print the step results as JSON.",
+			long: "Command-line options override the session block of the scenario.\n" +
+				"Exit code is 0 when all steps succeed, 1 otherwise.\n\n" +
+				"autobrowser run-script -f examples/simple.yaml\n" +
+				"autobrowser run-script -f login.yaml -p work --proxy socks5://127.0.0.1:1080\n" +
+				"autobrowser run-script -f login.yaml --var user=me --var password=secret",
+			opts: []option{
+				{"-f", "--file", "<file>", "Scenario file. [required]"},
+				configOpt,
+				{"-p", "--profile", "<str>", "Persistent profile name."},
+				{"", "--proxy", "<str>", "Proxy URL: socks5://user:pass@host:port."},
+				{"", "--viewport", "<str>", "Viewport size WIDTHxHEIGHT, e.g. 1920x1080."},
+				{"-o", "--output", "<path>", "Save the JSON result to a file."},
+				{"", "--preserve-session", "", "Save open tabs for the next session."},
+				{"", "--var", "<str>", "Scenario variable NAME=VALUE; repeat for more."},
+				{"", "--artifacts", "<path>", "Directory for screenshot and HTML of failed steps."},
+			}},
+		runCommand,
+		serveCommand,
+		mcpCommand,
+		{name: "install-skill", group: groupAgents, run: installSkill,
+			help: "Install the agent skill into DIR/autobrowser/SKILL.md.",
+			long: "autobrowser install-skill\nautobrowser install-skill --dir ~/.config/nemo/skills",
+			opts: []option{{"", "--dir", "<path>", "Skills directory of the agent client. [default: ~/.claude/skills]"}}},
+		{name: "update", group: groupSetup, run: update,
+			help: "Update the binary to the latest GitHub release.",
+			long: "The new binary is checked against its .sha256 and replaces the current one.\n" +
+				"Set AUTOBROWSER_NO_AUTO_UPDATE=1 to turn off the background check of mcp and serve.\n" +
+				"Not for builds from source.",
+			opts: []option{{"", "--check", "", "Only report whether an update exists"}}},
+		{name: "generate-fingerprint", group: groupSetup, run: generateFingerprint,
+			help: "Generate fingerprint.json for a browser profile.",
+			long: "autobrowser generate-fingerprint --profile profiles/work --platform linux",
+			opts: []option{
+				{"", "--profile", "<str>", "Profile directory path [required]"},
+				{"", "--platform", "<str>", "Target platform: windows, linux, android [default: windows]"},
+				{"", "--seed", "<int>", "Fixed seed value"},
+				{"", "--force", "", "Overwrite existing fingerprint.json"},
+			}},
+		installCommand,
+		{name: "help", group: groupInfo, run: helpCmd, usage: "[OPTIONS] [command]...",
+			help: "Show help for autobrowser or one of its commands.",
+			long: "autobrowser help\nautobrowser help run-script",
+			args: []option{{"", "command", "<str>", "Command to describe, e.g. run-script."}}},
+		{name: "version", group: groupInfo, run: versionCmd, help: "Show the version."},
+		{name: "show-config", group: groupInfo, run: showConfig,
+			help: "Print the effective configuration as JSON (secrets masked).",
+			long: "Defaults, then the --config file, then AUTOBROWSER_* variables.",
+			opts: []option{configOpt}},
 	}
 }
 
@@ -46,10 +102,9 @@ func (e *usageError) Error() string { return e.msg }
 
 // Main runs the CLI and returns the process exit code.
 func Main(args []string, stdout, stderr io.Writer) int {
-	e := &env{stdout: stdout, stderr: stderr}
 	if len(args) == 0 {
 		printUsage(stdout)
-		return 0
+		return 2
 	}
 	switch args[0] {
 	case "--version", "-V":
@@ -59,26 +114,31 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		printUsage(stdout)
 		return 0
 	}
-	for _, c := range commands {
-		if c.name == args[0] {
-			e.args = args[1:]
-			return exitCode(c.run(e), stderr)
-		}
+	c := findCommand(args[0])
+	if c == nil {
+		fmt.Fprintf(stderr, "Usage: autobrowser [OPTIONS] COMMAND [ARGS]...\nTry 'autobrowser -h' for help.\n\nError: No such command '%s'.\n", args[0])
+		return 2
 	}
-	fmt.Fprintf(stderr, "Error: No such command '%s'.\n", args[0])
-	return 2
+	if wantsHelp(args[1:]) {
+		printCommandHelp(stdout, c)
+		return 0
+	}
+	// without a configured logger Python shows only warnings
+	_ = logging.Configure("WARNING", "")
+	return exitCode(c.run(&env{stdout: stdout, stderr: stderr, args: args[1:]}), c, stderr)
 }
 
-func exitCode(err error, stderr io.Writer) int {
+func exitCode(err error, c *command, stderr io.Writer) int {
 	var ae *apperr.Error
 	var ue *usageError
 	var es *exitStatus
 	switch {
-	case err == nil, errors.Is(err, flag.ErrHelp):
+	case err == nil:
 		return 0
 	case errors.As(err, &es):
 		return es.code
 	case errors.As(err, &ue):
+		fmt.Fprint(stderr, hint(c))
 		fmt.Fprintln(stderr, "Error: "+ue.msg)
 		return 2
 	case errors.As(err, &ae):
@@ -90,30 +150,34 @@ func exitCode(err error, stderr io.Writer) int {
 	return 1
 }
 
-func printUsage(w io.Writer) {
-	fmt.Fprintln(w, "autobrowser: a stealth browser for scripts and AI agents.")
-	fmt.Fprintln(w, "\nUsage: autobrowser [--version|-V] COMMAND [OPTIONS]\n\nCommands:")
-	for _, c := range commands {
-		fmt.Fprintf(w, "  %-14s %s\n", c.name, c.help)
-	}
-}
-
-// newFlags makes a flag set for a command; a parse error is a usage error.
+// newFlags makes a flag set for a command; errors are reported by the caller.
 func newFlags(e *env, name string) *flag.FlagSet {
 	fs := flag.NewFlagSet("autobrowser "+name, flag.ContinueOnError)
-	fs.SetOutput(e.stderr)
+	fs.SetOutput(io.Discard)
 	return fs
 }
 
+// flagName is a flag name as typed: -c or --config.
+func flagName(name string) string {
+	if len(name) == 1 {
+		return "-" + name
+	}
+	return "--" + name
+}
+
+// parse parses the options; a parse error is a usage error worded like Click.
 func parse(fs *flag.FlagSet, args []string) error {
 	if err := fs.Parse(args); err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-			return err
+		msg := err.Error()
+		if name, ok := strings.CutPrefix(msg, "flag provided but not defined: -"); ok {
+			msg = "No such option: " + flagName(name)
+		} else if name, ok := strings.CutPrefix(msg, "flag needs an argument: -"); ok {
+			msg = "Option '" + flagName(name) + "' requires an argument."
 		}
-		return &usageError{err.Error()}
+		return &usageError{msg}
 	}
 	if fs.NArg() > 0 {
-		return &usageError{"Got unexpected extra argument (" + fs.Arg(0) + ")"}
+		return &usageError{"Got unexpected extra argument(s) (" + strings.Join(fs.Args(), " ") + ")"}
 	}
 	return nil
 }
@@ -163,18 +227,4 @@ func versionCmd(e *env) error {
 	}
 	fmt.Fprintln(e.stdout, Version)
 	return nil
-}
-
-func helpCmd(e *env) error {
-	if len(e.args) == 0 {
-		printUsage(e.stdout)
-		return nil
-	}
-	for _, c := range commands {
-		if c.name == e.args[0] {
-			c.run(&env{stdout: e.stdout, stderr: e.stderr, args: []string{"-h"}})
-			return nil
-		}
-	}
-	return &usageError{"Invalid value for COMMAND: No such command: " + e.args[0]}
 }

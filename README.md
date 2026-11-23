@@ -65,22 +65,23 @@ Install autobrowser by following https://github.com/foxzi/autobrowser-client/blo
 - Bearer token (`AUTOBROWSER_API_TOKEN`), session limit, health and readiness checks.
 
 ### MCP server for AI agents
-- `autobrowser mcp` (stdio) gives the agent 18 tools: navigate, history, snapshot, screenshot, click, hover, type, press key, select, file upload, evaluate, wait for text, get text, tabs, logs, dialogs, solve challenge, close.
+- `autobrowser mcp` (stdio) gives the agent 19 tools: navigate, history, snapshot, screenshot, click, hover, type, press key, select, file upload, evaluate, wait for text, get text, tabs, logs, dialogs, solve challenge, run script, close.
 - The snapshot returns `ref` ids for elements, so the agent clicks by reference instead of guessing selectors.
 - `autobrowser install-skill` installs a skill that teaches the agent the snapshot/ref loop, waits, Cloudflare handling and safety rules.
 
 ### Delivery
 - Single binary with no Python required; releases for Linux amd64/arm64, macOS arm64 and Windows amd64 with sha256 checksums.
 - Self-update: `mcp` and `serve` check for a new release once a day; `autobrowser update` updates right away, `AUTOBROWSER_NO_AUTO_UPDATE=1` turns it off.
+- Alternative Go binary `autobrowser-go-<os>-<arch>[.exe]` (Linux amd64/arm64, macOS arm64 as `darwin`, Windows amd64, with `.sha256`): the same commands, API and MCP tools, cloakbrowser engine only. `autobrowser update` of a Go binary picks the Go assets. See [go/README.md](go/README.md).
 - Docker images for the CLI and the API; also installable as a Python package.
 
 ## Repository layout
 
 - `python/` - the main Python client (production): CLI, HTTP API, MCP server, tests, Docker, binary build.
-- `go/` - experimental Go version (go-rod + cloakbrowser over CDP), see [go/README.md](go/README.md).
+- `go/` - Go version (go-rod + cloakbrowser over CDP, cloakbrowser engine only): same CLI, HTTP API and MCP server, with a few [known differences](go/README.md#known-differences); see [go/README.md](go/README.md).
 - Shared between versions: `docs/`, `examples/`, `scenario.schema.json`.
 
-CI builds both versions until the Go version reaches parity.
+CI builds both versions; a release publishes the Python binaries (`autobrowser-<os>-<arch>`) and the Go binaries (`autobrowser-go-<os>-<arch>`).
 
 ## Documentation
 
@@ -112,7 +113,7 @@ CI builds both versions until the Go version reaches parity.
 | `autobrowser update [--check]` | Update the binary to the latest release |
 | `autobrowser generate-fingerprint --profile DIR` | Generate fingerprint.json for a profile |
 
-Common flags: `--config`, `--profile`, `--proxy`, `--viewport`, `--output`, `--headless/--headful`, `--timeout`, `--preserve-session`.
+Main flags: `run` and `run-script` take `--config`, `--profile`, `--proxy`, `--viewport`, `--output`; `run` also `--url`, `--headless/--headful`, `--timeout`, `--format`; `run-script` also `--var`, `--artifacts`, `--preserve-session`; `mcp` takes `--config`, `--profile`, `--proxy`, `--headless/--headed`; `serve` takes `--config`, `--host`, `--port`.
 
 Help: `autobrowser -h`, `autobrowser help <command>` or `autobrowser <command> -h` (examples and environment variables included). `autobrowser -V` prints the version.
 
@@ -128,9 +129,8 @@ Two stealth engines are supported. Default is `patchright`.
 Switch to cloakbrowser:
 
 ```bash
-# Install optional dependency
-pip install "autobrowser-client[cloak]"
-# or: pip install cloakbrowser
+# Release binaries already include cloakbrowser. From source (in python/):
+pip install -e ".[cloak]"
 
 # Via env var
 AUTOBROWSER_BROWSER_ENGINE=cloakbrowser autobrowser run --url https://example.com
@@ -145,6 +145,8 @@ browser:
 
 Both engines support profiles, proxy, fingerprint injection, viewport, user_agent, all CLI commands, and all API endpoints.
 
+The Go binary runs only `cloakbrowser` (built in, no Python needed): set `AUTOBROWSER_BROWSER_ENGINE=cloakbrowser`, then `autobrowser install` downloads Chromium to `~/.cloakbrowser`.
+
 ## Quick start
 
 ### Binary
@@ -156,6 +158,8 @@ autobrowser install                               # download the browser
 autobrowser run --url https://example.com --format text
 autobrowser run-script --file examples/simple.yaml
 ```
+
+The Go binary (`autobrowser-go-<os>-<arch>` from the same release) is used the same way; it runs only the `cloakbrowser` engine, so set `AUTOBROWSER_BROWSER_ENGINE=cloakbrowser` before `install` and the other commands.
 
 ### Docker (recommended for servers)
 

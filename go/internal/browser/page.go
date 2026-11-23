@@ -1,12 +1,13 @@
 package browser
 
 import (
+	"errors"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/cdp"
 	"github.com/go-rod/rod/lib/proto"
 
 	"github.com/foxzi/autobrowser-client/go/internal/engine"
@@ -54,22 +55,38 @@ func (t *tab) InnerText() (string, error) {
 
 func (t *tab) URL() (string, error) { return t.url() }
 
+// Title is document.title, like Playwright (the target title falls back to the URL).
 func (t *tab) Title() (string, error) {
-	info, err := t.page.Info()
+	res, err := t.page.Eval(`() => document.title`)
 	if err != nil {
 		return "", err
 	}
-	return info.Title, nil
+	return res.Value.Str(), nil
 }
 
-func (t *tab) Content() (string, error) { return t.page.HTML() }
+// Content is Playwright's page.content(): the doctype plus the document HTML.
+func (t *tab) Content() (string, error) {
+	res, err := t.page.Eval(`() => {
+		let html = '';
+		if (document.doctype) html = new XMLSerializer().serializeToString(document.doctype);
+		if (document.documentElement) html += document.documentElement.outerHTML;
+		return html;
+	}`)
+	if err != nil {
+		return "", err
+	}
+	return res.Value.Str(), nil
+}
 
 func (t *tab) Screenshot(path string) error { return t.screenshot(path, false) }
 
 func (t *tab) screenshot(path string, fullPage bool) error {
 	png, err := t.page.Screenshot(fullPage, nil)
+	if ce := (*cdp.Error)(nil); errors.As(err, &ce) {
+		return fmt.Errorf("Page.screenshot: Protocol error (Page.captureScreenshot): %s", ce.Message)
+	}
 	if err != nil {
-		return err
+		return fmt.Errorf("Page.screenshot: %s", err)
 	}
 	return os.WriteFile(path, png, 0o644)
 }
@@ -131,12 +148,22 @@ func (t *tab) goto_(url string, ms int) error {
 
 // evaluate runs an expression or function source; a function is called.
 func (t *tab) evaluate(expr string) (any, error) {
-	res, err := t.page.Evaluate(rod.Eval(`(expr) => {
-		const v = (0, eval)(expr);
-		return typeof v === 'function' ? v() : v;
+	// Objects come back as JSON text: CDP values lose the key order.
+	res, err := t.page.Evaluate(rod.Eval(`async (expr) => {
+		let v = (0, eval)(expr);
+		v = await (typeof v === 'function' ? v() : v);
+		return v !== null && typeof v === 'object' ? [JSON.stringify(v)] : v;
 	}`, expr).ByPromise())
+	if ee := (*rod.EvalError)(nil); errors.As(err, &ee) {
+		return nil, fmt.Errorf("Page.evaluate: %s", exceptionMessage(ee.Exception))
+	}
 	if err != nil {
-		return nil, fmt.Errorf("Page.evaluate: %s", strings.TrimPrefix(err.Error(), "eval js error: "))
+		return nil, fmt.Errorf("Page.evaluate: %s", err)
+	}
+	if a, ok := res.Value.Val().([]any); ok && len(a) == 1 {
+		if j, ok := a[0].(string); ok {
+			return toValue([]byte(j))
+		}
 	}
 	return toValue([]byte(res.Value.JSON("", "")))
 }

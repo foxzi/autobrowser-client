@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/foxzi/autobrowser-client/go/internal/cloak"
 	"github.com/foxzi/autobrowser-client/go/internal/config"
 	"github.com/foxzi/autobrowser-client/go/internal/engine"
 	"github.com/foxzi/autobrowser-client/go/internal/omap"
@@ -24,11 +25,21 @@ const testPage = `<!doctype html><title>Test page</title>
 <a id="lnk" href="/next" data-x="42">next</a>
 <div id="hidden" style="display:none">secret</div>`
 
+// requireBrowser skips the test unless a cloakbrowser binary is already
+// there (tests must not download it).
+func requireBrowser(t *testing.T) {
+	t.Helper()
+	if os.Getenv(cloak.BinaryEnv) != "" {
+		return
+	}
+	if m, _ := filepath.Glob(filepath.Join(cloak.CacheDir(), "chromium-*")); len(m) == 0 {
+		t.Skip("cloakbrowser binary not available")
+	}
+}
+
 func startSession(t *testing.T) *Session {
 	t.Helper()
-	if _, err := FindBinary(); err != nil {
-		t.Skip("cloakbrowser binary not available: ", err)
-	}
+	requireBrowser(t)
 	st, err := config.LoadSettings("", nil, map[string]string{"AUTOBROWSER_BROWSER_ENGINE": "cloakbrowser"})
 	if err != nil {
 		t.Fatal(err)
@@ -105,8 +116,8 @@ func TestSessionSteps(t *testing.T) {
 	if got := omap.Marshal(r.Data, 0); got != `{"result": ""}` {
 		t.Errorf("evaluate after typing: %s", got)
 	}
-	r = ok(run("evaluate", "script", `({a: 1, b: [1, "x"]})`))
-	if got := omap.Marshal(r.Data, 0); got != `{"result": {"a": 1, "b": [1, "x"]}}` {
+	r = ok(run("evaluate", "script", `({b: [1, "x", {d: 1, c: 2}], a: 1})`))
+	if got := omap.Marshal(r.Data, 0); got != `{"result": {"b": [1, "x", {"d": 1, "c": 2}], "a": 1}}` {
 		t.Errorf("evaluate: %s", got)
 	}
 	ok(run("check", "locator", loc("id", "cb")))
@@ -156,9 +167,7 @@ func TestSessionSteps(t *testing.T) {
 }
 
 func TestProfileLockAndTabs(t *testing.T) {
-	if _, err := FindBinary(); err != nil {
-		t.Skip("cloakbrowser binary not available")
-	}
+	requireBrowser(t)
 	st, _ := config.LoadSettings("", nil, map[string]string{"AUTOBROWSER_BROWSER_ENGINE": "cloakbrowser"})
 	st.Browser.Headless = true
 	st.Profiles.Dir = t.TempDir()

@@ -1,0 +1,8 @@
+<!doctype html>
+<html><head><title>Aria dynamic</title></head>
+<body>
+<button onclick="document.getElementById('out').insertAdjacentHTML('beforeend', '<li><a href=#x>Added</a></li>'); this.textContent = 'Clicked'">Add</button>
+<input aria-label="Field" oninput="document.getElementById('echo').textContent = this.value">
+<p id="echo">empty</p>
+<ul id="out"><li>Start</li></ul>
+</body></html>

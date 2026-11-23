@@ -167,7 +167,20 @@ page.evaluate("() => typeof window._cf_chl_opt", isolated_context=False)
 
 DOM access (`document.title`, `querySelector`) works in both modes.
 
-### 8. Checklist
+### 8. Go binary
+
+The Go binary (`autobrowser-go-<os>-<arch>`, see [go/README.md](../go/README.md)) runs only cloakbrowser.
+
+- `CONFIG_ERROR "Go version supports only browser.engine=cloakbrowser (got \"patchright\")..."`: set
+  `AUTOBROWSER_BROWSER_ENGINE=cloakbrowser` or `browser.engine: cloakbrowser` in the config.
+  Sections 2 and 7 (patchright) do not apply; sections 3, 4 and 6 do.
+- The browser is downloaded to `~/.cloakbrowser` (`CLOAKBROWSER_CACHE_DIR`) on first launch or by
+  `autobrowser install`; `CLOAKBROWSER_BINARY_PATH` points to an existing binary.
+- Without `socks2http` the Go binary uses its own built-in relay (same log line
+  `Built-in proxy relay is ready`).
+- Other differences: [go/README.md](../go/README.md#known-differences).
+
+### 9. Checklist
 
 1. Find out what the site returns (section 1).
 2. Plain 403 without a challenge: check the UA through `httpbin.org/headers`; there must be no `HeadlessChrome`.
@@ -343,7 +356,20 @@ page.evaluate("() => typeof window._cf_chl_opt", isolated_context=False)
 
 Доступ к DOM (`document.title`, `querySelector`) работает в обоих режимах.
 
-### 8. Чек-лист
+### 8. Go-бинарник
+
+Go-бинарник (`autobrowser-go-<os>-<arch>`, см. [go/README.ru.md](../go/README.ru.md)) работает только с cloakbrowser.
+
+- `CONFIG_ERROR "Go version supports only browser.engine=cloakbrowser (got \"patchright\")..."`: задайте
+  `AUTOBROWSER_BROWSER_ENGINE=cloakbrowser` или `browser.engine: cloakbrowser` в конфиге.
+  Разделы 2 и 7 (patchright) к нему не относятся, разделы 3, 4 и 6 - относятся.
+- Браузер скачивается в `~/.cloakbrowser` (`CLOAKBROWSER_CACHE_DIR`) при первом запуске или командой
+  `autobrowser install`; `CLOAKBROWSER_BINARY_PATH` указывает на уже имеющийся бинарник.
+- Без `socks2http` Go-бинарник использует свой встроенный relay (та же строка в логе
+  `Built-in proxy relay is ready`).
+- Остальные отличия: [go/README.ru.md](../go/README.ru.md#известные-отличия).
+
+### 9. Чек-лист
 
 1. Выясните, что отдаёт сайт (раздел 1).
 2. Обычный 403 без проверки: проверьте UA через `httpbin.org/headers`, в нём не должно быть `HeadlessChrome`.

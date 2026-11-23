@@ -46,6 +46,13 @@ jobs:
         with:
           go-version-file: go/go.mod
 
+      - name: Embedded copies match Python files
+        # go:embed cannot reach ../python, so the Go tree keeps byte-identical copies
+        run: |
+          diff ../python/autobrowser_client/fingerprint/inject.js internal/fingerprint/inject.js
+          diff ../python/skills/autobrowser/SKILL.md internal/cli/skill/SKILL.md
+          diff ../python/openapi.json internal/api/openapi.json
+
       - name: Vet
         run: go vet ./...
 

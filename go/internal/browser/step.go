@@ -185,6 +185,7 @@ func (s *Session) run(step *scenario.Step, pageID string) (any, error) {
 			if err := el.Focus(); err != nil {
 				return nil, err
 			}
+			return nil, l.navWait("press", timeout, time.Now(), func() error { return t.press(step.Key) })
 		}
 		return nil, t.press(step.Key)
 
@@ -229,6 +230,16 @@ func (s *Session) run(step *scenario.Step, pageID string) (any, error) {
 		}
 		return omap.New("format", format, "length", utf8.RuneCountInString(content), "content", content), nil
 
+	case "get-cookies":
+		cookies, err := s.Cookies()
+		if err != nil {
+			return nil, err
+		}
+		return omap.New("cookies", cookies), nil
+
+	case "get-headers":
+		return omap.New("headers", s.Headers(eff)), nil
+
 	case "save":
 		if step.File == "" {
 			return nil, need(step, "file")
@@ -256,6 +267,76 @@ func (s *Session) run(step *scenario.Step, pageID string) (any, error) {
 			return nil, err
 		}
 		return omap.New("file", step.File, "bytes", len(content)), nil
+
+	case "solve-challenge":
+		ms := 60000
+		if step.Timeout != nil && *step.Timeout != 0 {
+			ms = *step.Timeout
+		}
+		return s.SolveChallenge(eff, ms)
+
+	case "browse-tabs":
+		dy := 400
+		if step.DeltaY != nil && *step.DeltaY != 0 {
+			dy = *step.DeltaY
+		}
+		return s.browseTabs(dy, timeout), nil
+
+	case "submit", "select", "upload", "read", "mouse-scroll-to":
+		l, err := t.firstLoc(step)
+		if err != nil {
+			return nil, err
+		}
+		switch step.Action {
+		case "submit":
+			return nil, l.submit(timeout)
+		case "select":
+			options := step.Options
+			if len(options) == 0 && step.Value != nil {
+				options = []string{*step.Value}
+			}
+			selected, err := l.selectOption(options, timeout)
+			if err != nil {
+				return nil, err
+			}
+			return omap.New("selected", selected), nil
+		case "upload":
+			return l.upload(step.Files, timeout)
+		case "read":
+			return l.read(timeout)
+		}
+		_, err = l.actionable("scroll_into_view_if_needed", timeout)
+		return nil, err
+
+	case "mouse-move":
+		if step.X == nil || step.Y == nil {
+			return nil, need(step, "x' and 'y")
+		}
+		steps := 1
+		if step.MoveSteps != nil && *step.MoveSteps != 0 {
+			steps = *step.MoveSteps
+		}
+		return nil, t.page.Mouse.MoveLinear(proto.Point{X: *step.X, Y: *step.Y}, steps)
+
+	case "mouse-random":
+		if step.EndX == nil || step.EndY == nil {
+			return nil, need(step, "endX' and 'endY")
+		}
+		steps, duration, jitter := 25, 300, 3.0
+		if step.MoveSteps != nil && *step.MoveSteps != 0 {
+			steps = *step.MoveSteps
+		}
+		if step.DurationMs != nil {
+			duration = *step.DurationMs
+		}
+		if step.Jitter != nil {
+			jitter = *step.Jitter
+		}
+		n, err := t.mouseRandom(step.StartX, step.StartY, *step.EndX, *step.EndY, steps, duration, jitter, step.Seed)
+		if err != nil {
+			return nil, err
+		}
+		return omap.New("points", n), nil
 
 	case "evaluate":
 		v, err := t.evaluate(step.Script)
@@ -346,15 +427,71 @@ func (l *loc) pointer(api string, ms int) error {
 		return err
 	}
 	left := max(ms-int(time.Since(start).Milliseconds()), 1)
-	return l.withTimeout(api, left, el, func(e *rod.Element) error {
-		switch api {
-		case "hover":
-			return e.Hover()
-		case "dblclick":
+	switch api {
+	case "hover":
+		return l.withTimeout(api, left, el, func(e *rod.Element) error { return e.Hover() })
+	case "dblclick":
+		return l.withTimeout(api, left, el, func(e *rod.Element) error {
 			return e.Click(proto.InputMouseButtonLeft, 2)
-		}
-		return e.Click(proto.InputMouseButtonLeft, 1)
+		})
+	}
+	return l.navWait(api, ms, start, func() error {
+		return l.withTimeout(api, left, el, func(e *rod.Element) error {
+			return e.Click(proto.InputMouseButtonLeft, 1)
+		})
 	})
+}
+
+// navWait runs a click or an element press like Playwright's
+// waitForSignalsCreatedBy: a main frame navigation the action requested is
+// waited for until it commits (or stops loading), within the step timeout.
+func (l *loc) navWait(api string, ms int, start time.Time, action func() error) error {
+	t := l.t
+	main := proto.PageFrameID(t.target)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	requested := make(chan struct{})
+	done := make(chan struct{})
+	isRequested := false
+	settle := func(id proto.PageFrameID) bool {
+		if id == main && isRequested {
+			close(done)
+			return true
+		}
+		return false
+	}
+	// the handlers run one at a time on the wait goroutine
+	wait := t.page.Context(ctx).EachEvent(func(e *proto.PageFrameRequestedNavigation) {
+		if !isRequested && e.FrameID == main && e.Disposition == proto.PageClientNavigationDispositionCurrentTab {
+			isRequested = true
+			close(requested)
+		}
+	}, func(e *proto.PageFrameNavigated) bool {
+		return settle(e.Frame.ID)
+	}, func(e *proto.PageNavigatedWithinDocument) bool {
+		return settle(e.FrameID)
+	}, func(e *proto.PageFrameStoppedLoading) bool {
+		return settle(e.FrameID)
+	})
+	go wait()
+	if err := action(); err != nil {
+		return err
+	}
+	// a round trip, so that the events of the action have arrived; the short
+	// grace covers their hand-over to the wait goroutine
+	_ = proto.PageEnable{}.Call(t.page)
+	select {
+	case <-requested:
+	case <-time.After(20 * time.Millisecond):
+		return nil
+	}
+	left := time.Duration(ms)*time.Millisecond - time.Since(start)
+	select {
+	case <-done:
+		return nil
+	case <-time.After(left):
+		return l.timeoutErr(api, ms, "")
+	}
 }
 
 // fill selects the field content and replaces it.
@@ -389,19 +526,36 @@ func (l *loc) setChecked(api string, want bool, ms int) error {
 	if err != nil {
 		return err
 	}
-	state := func() bool {
-		r, err := el.Eval(`function() { return !!this.checked }`)
-		return err == nil && r.Value.Bool()
+	// Playwright's checked state: a checkbox or radio input, or an ARIA checkable role
+	state := func() (bool, error) {
+		r, err := el.Eval(`function() {
+			if (this.nodeName === 'INPUT' && ['checkbox', 'radio'].includes(this.type)) return this.checked;
+			const roles = ['checkbox', 'menuitemcheckbox', 'option', 'radio', 'switch', 'menuitemradio', 'treeitem'];
+			if (roles.includes(this.getAttribute('role') || '')) {
+				const a = this.getAttribute('aria-checked');
+				return a === 'true' || a === 'mixed';
+			}
+			return 'error';
+		}`)
+		if err != nil {
+			return false, err
+		}
+		if r.Value.Str() == "error" {
+			return false, fmt.Errorf("Locator.%s: Error: Not a checkbox or radio button\nCall log:\n  - waiting for %s\n", api, l.repr)
+		}
+		return r.Value.Bool(), nil
 	}
-	if state() == want {
-		return nil
+	if cur, err := state(); err != nil || cur == want {
+		return err
 	}
 	if err := l.withTimeout(api, ms, el, func(e *rod.Element) error {
 		return e.Click(proto.InputMouseButtonLeft, 1)
 	}); err != nil {
 		return err
 	}
-	if state() != want {
+	if cur, err := state(); err != nil {
+		return err
+	} else if cur != want {
 		return fmt.Errorf("Locator.%s: Clicking the checkbox did not change its state", api)
 	}
 	return nil

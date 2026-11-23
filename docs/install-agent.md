@@ -25,6 +25,8 @@ Pick the file for the OS and CPU (`uname -sm` on Linux / macOS):
 | macOS Apple Silicon (arm64) | `autobrowser-macos-arm64` | `~/.local/bin/autobrowser` |
 | Windows x64 | `autobrowser-windows-amd64.exe` | `%LOCALAPPDATA%\autobrowser\autobrowser.exe` |
 
+Optional smaller alternative: the Go build of the same release, `autobrowser-go-linux-amd64`, `autobrowser-go-linux-arm64`, `autobrowser-go-darwin-arm64` or `autobrowser-go-windows-amd64.exe`. It supports only the cloakbrowser engine, which is what the steps below use. Use the Python binaries from the table unless the user asks for Go.
+
 For other platforms (for example macOS on Intel) there is no binary: stop and point the user to the uv install in https://github.com/foxzi/autobrowser-client/blob/main/docs/mcp.md.
 
 Linux / macOS (replace `FILE`):
@@ -121,7 +123,7 @@ The skill is built into the binary. `BIN install-skill` writes it to `~/.claude/
 
 Report to the user: what was installed, where the binary and the config are, and whether the check passed. Mention:
 
-- To update, download the binary again (step 1).
+- The binary updates itself: `mcp` and `serve` check GitHub releases once a day in the background, `BIN update` updates right away, `AUTOBROWSER_NO_AUTO_UPDATE=1` turns the background check off.
 - `--headed` after `mcp` shows the browser window; `--profile NAME` keeps cookies between runs.
 - Full docs: https://github.com/foxzi/autobrowser-client/blob/main/docs/mcp.md
 - Problems with Cloudflare, proxies or engines: https://github.com/foxzi/autobrowser-client/blob/main/docs/troubleshooting.md
@@ -146,6 +148,8 @@ Report to the user: what was installed, where the binary and the config are, and
 | Linux aarch64 | `autobrowser-linux-arm64` | `~/.local/bin/autobrowser` |
 | macOS Apple Silicon (arm64) | `autobrowser-macos-arm64` | `~/.local/bin/autobrowser` |
 | Windows x64 | `autobrowser-windows-amd64.exe` | `%LOCALAPPDATA%\autobrowser\autobrowser.exe` |
+
+Необязательная альтернатива: Go-сборка того же релиза - `autobrowser-go-linux-amd64`, `autobrowser-go-linux-arm64`, `autobrowser-go-darwin-arm64` или `autobrowser-go-windows-amd64.exe`. Она поддерживает только движок cloakbrowser, как раз его используют шаги ниже. Если пользователь не просил Go, берите Python-бинари из таблицы.
 
 Для других платформ (например, macOS на Intel) бинаря нет: остановиться и отправить пользователя к установке через uv в https://github.com/foxzi/autobrowser-client/blob/main/docs/mcp.md.
 
@@ -243,7 +247,7 @@ Skill встроен в бинарь. `BIN install-skill` записывает �
 
 Отчитаться пользователю: что установлено, где лежат бинарь и конфиг, прошла ли проверка. Упомянуть:
 
-- Для обновления — скачать бинарь заново (шаг 1).
+- Бинарь обновляется сам: `mcp` и `serve` раз в день проверяют GitHub-релизы в фоне, `BIN update` обновляет сразу, `AUTOBROWSER_NO_AUTO_UPDATE=1` отключает фоновую проверку.
 - `--headed` после `mcp` показывает окно браузера; `--profile NAME` сохраняет cookies между запусками.
 - Полная документация: https://github.com/foxzi/autobrowser-client/blob/main/docs/mcp.md
 - Проблемы с Cloudflare, прокси или движками: https://github.com/foxzi/autobrowser-client/blob/main/docs/troubleshooting.md

@@ -122,6 +122,8 @@ AUTOBROWSER_MAX_CONTENT_BYTES=1048576
 AUTOBROWSER_CONTENT_FORMAT=html
 ```
 
+`AUTOBROWSER_NO_AUTO_UPDATE=1` is not a config key: it turns off the background self-update of the release binaries (Python and Go).
+
 ### CLI override examples
 
 Examples of runtime override:
@@ -145,14 +147,16 @@ autobrowser run-script --file scenario.yaml --profile test1
 
 Both engines support profiles, proxy, fingerprint injection, viewport, userAgent, all CLI commands, and all API endpoints.
 
-To use cloakbrowser, install the optional dependency first:
+Release binaries and the Docker image already include cloakbrowser. From source, install the optional dependency first (the package is not on PyPI):
 
 ```bash
-pip install "autobrowser-client[cloak]"
-# or: pip install cloakbrowser
+cd python
+pip install -e ".[cloak]"
 ```
 
 Engine is a process-wide setting (config file or env var `AUTOBROWSER_BROWSER_ENGINE`). It cannot be changed per session or per API request.
+
+The Go binary (`autobrowser-go-<os>-<arch>`, see [go/README.md](../go/README.md)) supports only `cloakbrowser`: with the default `patchright` it fails at launch with `CONFIG_ERROR`, so set `AUTOBROWSER_BROWSER_ENGINE=cloakbrowser`. It needs neither pip nor the `cloak` extra: `autobrowser install` and the geoip lookup download what they need themselves.
 
 `browser.fingerprintPlatform` (env `AUTOBROWSER_FINGERPRINT_PLATFORM`) sets the OS that cloakbrowser presents (`--fingerprint-platform`): `windows`, `linux` or `macos`. Unset keeps the cloakbrowser default (Windows). If a Cloudflare challenge loops (checkbox passes, then the challenge reappears), set `linux`: on a desktop Linux host the Windows fingerprint looped on criptonoticias.com while `linux` passed (in the Docker image both passed). Ignored by patchright.
 
@@ -173,6 +177,8 @@ Supported platforms:
 - **Linux**: no spoofing needed (native OS)
 
 For mobile User-Agent strings (Android), the browser context is automatically configured with `is_mobile: true` and `has_touch: true`. This affects viewport behavior and enables touch event emulation.
+
+The examples below are the `session` block of a scenario; the same value works as `browser.userAgent` in the config file or `AUTOBROWSER_USER_AGENT`.
 
 Example — pretend to be a Windows machine:
 
@@ -229,16 +235,16 @@ Switch engines at runtime — no rebuild needed:
 
 ```bash
 # use cloakbrowser
-docker run --rm -e AUTOBROWSER_BROWSER_ENGINE=cloakbrowser autobrowser ...
+docker run --rm -e AUTOBROWSER_BROWSER_ENGINE=cloakbrowser autobrowser-client:dev ...
 
 # use patchright (default)
-docker run --rm autobrowser ...
+docker run --rm autobrowser-client:dev ...
 ```
 
 To build a slim image without cloakbrowser:
 
 ```bash
-docker build --build-arg INSTALL_CLOAKBROWSER=0 -t autobrowser-slim .
+docker build --build-arg INSTALL_CLOAKBROWSER=0 -t autobrowser-slim python/
 ```
 
 ## Русский
@@ -363,6 +369,8 @@ AUTOBROWSER_MAX_CONTENT_BYTES=1048576
 AUTOBROWSER_CONTENT_FORMAT=html
 ```
 
+`AUTOBROWSER_NO_AUTO_UPDATE=1` - не ключ конфига: она отключает фоновое самообновление release-бинарей (Python и Go).
+
 ### Примеры переопределения через CLI
 
 Примеры переопределения параметров во время запуска:
@@ -386,14 +394,16 @@ autobrowser run-script --file scenario.yaml --profile test1
 
 Оба движка поддерживают профили, прокси, инъекцию fingerprint, viewport, userAgent, все CLI-команды и все API-endpoints.
 
-Для использования cloakbrowser сначала установите опциональную зависимость:
+Release-бинари и Docker-образ уже содержат cloakbrowser. При установке из исходников сначала поставьте опциональную зависимость (пакета нет в PyPI):
 
 ```bash
-pip install "autobrowser-client[cloak]"
-# или: pip install cloakbrowser
+cd python
+pip install -e ".[cloak]"
 ```
 
 Движок — это настройка уровня процесса (конфиг-файл или переменная окружения `AUTOBROWSER_BROWSER_ENGINE`). Его нельзя изменить на уровне сессии или API-запроса.
+
+Go-бинарь (`autobrowser-go-<os>-<arch>`, см. [go/README.ru.md](../go/README.ru.md)) поддерживает только `cloakbrowser`: с движком по умолчанию `patchright` он при запуске даёт `CONFIG_ERROR`, поэтому задайте `AUTOBROWSER_BROWSER_ENGINE=cloakbrowser`. Ему не нужны ни pip, ни extra `cloak`: `autobrowser install` и определение geoip скачивают всё необходимое сами.
 
 `browser.fingerprintPlatform` (env `AUTOBROWSER_FINGERPRINT_PLATFORM`) задаёт ОС, которую показывает cloakbrowser (`--fingerprint-platform`): `windows`, `linux` или `macos`. Если не задано, используется значение cloakbrowser по умолчанию (Windows). Если Cloudflare challenge зацикливается (чекбокс пройден, но challenge появляется снова), ставьте `linux`: на десктопном Linux-хосте Windows-отпечаток зацикливался на criptonoticias.com, а `linux` проходил (в Docker-образе проходили оба). Для patchright игнорируется.
 
@@ -414,6 +424,8 @@ Chrome без окна отправляет в User-Agent `HeadlessChrome/<ве�
 - **Linux**: подмена не нужна (родная ОС)
 
 Для мобильных User-Agent строк (Android) контекст браузера автоматически настраивается с `is_mobile: true` и `has_touch: true`. Это влияет на поведение viewport и включает эмуляцию тач-событий.
+
+Примеры ниже - блок `session` сценария; то же значение работает как `browser.userAgent` в конфиг-файле или `AUTOBROWSER_USER_AGENT`.
 
 Пример — притвориться Windows-машиной:
 
@@ -470,14 +482,14 @@ Relay `socks2http` также предустановлен по пути `/usr/l
 
 ```bash
 # использовать cloakbrowser
-docker run --rm -e AUTOBROWSER_BROWSER_ENGINE=cloakbrowser autobrowser ...
+docker run --rm -e AUTOBROWSER_BROWSER_ENGINE=cloakbrowser autobrowser-client:dev ...
 
 # использовать patchright (по умолчанию)
-docker run --rm autobrowser ...
+docker run --rm autobrowser-client:dev ...
 ```
 
 Для сборки компактного образа без cloakbrowser:
 
 ```bash
-docker build --build-arg INSTALL_CLOAKBROWSER=0 -t autobrowser-slim .
+docker build --build-arg INSTALL_CLOAKBROWSER=0 -t autobrowser-slim python/
 ```
