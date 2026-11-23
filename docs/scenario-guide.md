@@ -21,10 +21,12 @@ autobrowser run-script -f examples/google-search.yaml \
   -p youtube \                                 # saved profile (cookies, logins)
   --proxy socks5://127.0.0.1:1080 \            # overrides session.proxy
   --var "query=autobrowser github" \           # override vars (repeatable)
-  --headed \                                   # show the window
   -o result.json                               # JSON result to a file instead of stdout
 AUTOBROWSER_BROWSER_ENGINE=cloakbrowser autobrowser run-script -f s.yaml   # choose the engine
 ```
+
+The Go binary takes the same commands and flags but runs only cloakbrowser: set
+`AUTOBROWSER_BROWSER_ENGINE=cloakbrowser` (see [go/README.md](../go/README.md#known-differences)).
 
 The result is JSON `{success, sessionId, profile, steps, vars}`; the exit code is 1 when `success` is false.
 Read a value from it: `jq '.vars.results.items' result.json`.
@@ -147,6 +149,9 @@ The result must be JSON-like. Checked conversions:
 | `Map`, `Set` | `{}` (data lost) - convert with `Object.fromEntries(...)` / `[...set]` |
 | DOM element | string `ref: <Node>` (useless) - return `el.innerText`, `el.href` etc. |
 
+The Go binary converts objects with `JSON.stringify`: `Infinity` becomes `null`, a `Date` becomes
+`1970-01-01T00:00:00.000Z`, a DOM element `{}`. Return plain values to get the same result in both.
+
 Return one object with everything you need, and store it with `as:`; then use `${results.items}`,
 `${results.captcha}` in later steps.
 
@@ -268,7 +273,7 @@ steps:
 ### 8. Debugging
 
 - `autobrowser validate-script -f s.yaml` first: catches field names (`type` needs `value`, not `text`).
-- `--headed` to watch; `errorArtifacts: output/err` (or `--artifacts`) saves a screenshot and HTML
+- `session: {headless: false}` in the scenario to watch the window; `errorArtifacts: output/err` (or `--artifacts`) saves a screenshot and HTML
   of each failed step.
 - Print intermediate values: `evaluate` with `as:` and look at `vars` in the result JSON.
 - Step errors are in `steps[].error`; `name:` on steps makes them easy to find.
@@ -285,10 +290,12 @@ autobrowser run-script -f examples/google-search.yaml \
   -p youtube \                                 # сохранённый профиль (cookies, входы)
   --proxy socks5://127.0.0.1:1080 \            # важнее, чем session.proxy
   --var "query=autobrowser github" \           # переопределить vars (можно несколько раз)
-  --headed \                                   # показать окно
   -o result.json                               # JSON-результат в файл вместо stdout
 AUTOBROWSER_BROWSER_ENGINE=cloakbrowser autobrowser run-script -f s.yaml   # выбор движка
 ```
+
+Go-бинарник принимает те же команды и флаги, но работает только с cloakbrowser: задайте
+`AUTOBROWSER_BROWSER_ENGINE=cloakbrowser` (см. [go/README.ru.md](../go/README.ru.md#известные-отличия)).
 
 Результат - JSON `{success, sessionId, profile, steps, vars}`; код выхода 1, если `success` false.
 Достать значение: `jq '.vars.results.items' result.json`.
@@ -411,6 +418,9 @@ steps:
 | `Map`, `Set` | `{}` (данные теряются) - преобразуйте `Object.fromEntries(...)` / `[...set]` |
 | DOM-элемент | строка `ref: <Node>` (бесполезно) - возвращайте `el.innerText`, `el.href` и т.п. |
 
+Go-бинарник преобразует объекты через `JSON.stringify`: `Infinity` становится `null`, `Date` -
+`1970-01-01T00:00:00.000Z`, DOM-элемент - `{}`. Возвращайте простые значения, чтобы результат совпадал.
+
 Возвращайте один объект со всем нужным и сохраняйте его через `as:`; дальше используйте
 `${results.items}`, `${results.captcha}` в следующих шагах.
 
@@ -501,7 +511,7 @@ items.map((x, i) => (i + 1) + '. ' + x.title).join('\n')
 ### 8. Отладка
 
 - Сначала `autobrowser validate-script -f s.yaml`: ловит ошибки в полях (у `type` поле `value`, а не `text`).
-- `--headed`, чтобы смотреть; `errorArtifacts: output/err` (или `--artifacts`) сохраняет скриншот и
+- `session: {headless: false}` в сценарии, чтобы видеть окно; `errorArtifacts: output/err` (или `--artifacts`) сохраняет скриншот и
   HTML каждого упавшего шага.
 - Промежуточные значения: `evaluate` с `as:` и поле `vars` в JSON-результате.
 - Ошибки шагов в `steps[].error`; `name:` у шагов облегчает поиск.
