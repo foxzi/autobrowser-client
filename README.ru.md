@@ -72,15 +72,16 @@ Install autobrowser by following https://github.com/foxzi/autobrowser-client/blo
 ### Поставка
 - Один бинарь без Python; релизы для Linux amd64/arm64, macOS arm64 и Windows amd64 с контрольными суммами sha256.
 - Самообновление: `mcp` и `serve` раз в сутки проверяют новый релиз; `autobrowser update` обновляет сразу, `AUTOBROWSER_NO_AUTO_UPDATE=1` отключает.
+- Альтернативный Go-бинарь `autobrowser-go-<os>-<arch>[.exe]` (Linux amd64/arm64, macOS arm64 как `darwin`, Windows amd64, с `.sha256`): те же команды, API и MCP-инструменты, только движок cloakbrowser. `autobrowser update` у Go-бинаря берёт Go-ассеты. См. [go/README.ru.md](go/README.ru.md).
 - Docker-образы для CLI и API; также ставится как Python-пакет.
 
 ## Структура репозитория
 
 - `python/` - основной Python-клиент (production): CLI, HTTP API, MCP-сервер, тесты, Docker, сборка бинарников.
-- `go/` - экспериментальная Go-версия (go-rod + cloakbrowser через CDP), см. [go/README.md](go/README.md).
+- `go/` - Go-версия (go-rod + cloakbrowser через CDP, только движок cloakbrowser): тот же CLI, HTTP API и MCP-сервер, с несколькими [известными отличиями](go/README.ru.md#известные-отличия); см. [go/README.ru.md](go/README.ru.md).
 - Общее для обеих версий: `docs/`, `examples/`, `scenario.schema.json`.
 
-CI собирает обе версии, пока Go-версия не достигнет паритета.
+CI собирает обе версии; релиз публикует Python-бинари (`autobrowser-<os>-<arch>`) и Go-бинари (`autobrowser-go-<os>-<arch>`).
 
 ## Документация
 
@@ -156,6 +157,8 @@ autobrowser install                               # download the browser
 autobrowser run --url https://example.com --format text
 autobrowser run-script --file examples/simple.yaml
 ```
+
+Go-бинарь (`autobrowser-go-<os>-<arch>` из того же релиза) используется так же; он запускает только движок `cloakbrowser`, поэтому перед `install` и остальными командами задайте `AUTOBROWSER_BROWSER_ENGINE=cloakbrowser`.
 
 ### Docker (рекомендуется для серверов)
 

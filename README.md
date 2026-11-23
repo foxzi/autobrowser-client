@@ -72,15 +72,16 @@ Install autobrowser by following https://github.com/foxzi/autobrowser-client/blo
 ### Delivery
 - Single binary with no Python required; releases for Linux amd64/arm64, macOS arm64 and Windows amd64 with sha256 checksums.
 - Self-update: `mcp` and `serve` check for a new release once a day; `autobrowser update` updates right away, `AUTOBROWSER_NO_AUTO_UPDATE=1` turns it off.
+- Alternative Go binary `autobrowser-go-<os>-<arch>[.exe]` (Linux amd64/arm64, macOS arm64 as `darwin`, Windows amd64, with `.sha256`): the same commands, API and MCP tools, cloakbrowser engine only. `autobrowser update` of a Go binary picks the Go assets. See [go/README.md](go/README.md).
 - Docker images for the CLI and the API; also installable as a Python package.
 
 ## Repository layout
 
 - `python/` - the main Python client (production): CLI, HTTP API, MCP server, tests, Docker, binary build.
-- `go/` - experimental Go version (go-rod + cloakbrowser over CDP), see [go/README.md](go/README.md).
+- `go/` - Go version (go-rod + cloakbrowser over CDP, cloakbrowser engine only): same CLI, HTTP API and MCP server, with a few [known differences](go/README.md#known-differences); see [go/README.md](go/README.md).
 - Shared between versions: `docs/`, `examples/`, `scenario.schema.json`.
 
-CI builds both versions until the Go version reaches parity.
+CI builds both versions; a release publishes the Python binaries (`autobrowser-<os>-<arch>`) and the Go binaries (`autobrowser-go-<os>-<arch>`).
 
 ## Documentation
 
@@ -156,6 +157,8 @@ autobrowser install                               # download the browser
 autobrowser run --url https://example.com --format text
 autobrowser run-script --file examples/simple.yaml
 ```
+
+The Go binary (`autobrowser-go-<os>-<arch>` from the same release) is used the same way; it runs only the `cloakbrowser` engine, so set `AUTOBROWSER_BROWSER_ENGINE=cloakbrowser` before `install` and the other commands.
 
 ### Docker (recommended for servers)
 
