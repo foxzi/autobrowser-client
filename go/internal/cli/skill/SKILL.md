@@ -22,12 +22,17 @@ Action tools return `{"pageId", "url", "title"}` - check them to see whether the
 
 ## Choosing the right read tool
 
-- `browser_snapshot` - to find elements to act on. Default choice.
-- `browser_get_text` - to read article or result text; cheaper than a snapshot for pure reading.
+- `browser_snapshot` - to find elements to act on. Default choice. With `target` (and `by`) it returns only that element's subtree; its refs work for clicking.
+- `browser_get_text` - to read article or result text; cheaper than a snapshot for pure reading. With `target` it returns the text of one element.
 - `browser_evaluate` - to extract structured data in one call, e.g. `() => [...document.querySelectorAll('a')].map(a => a.href)`. Return JSON-serializable values.
 - `browser_screenshot` - only when layout or visuals matter (captchas, charts, "what does it look like"). Pass `target` for one element, `full_page=true` for the whole page.
 
-A snapshot that ends with `[truncated]` is cut; use `browser_get_text`, `browser_evaluate` or a narrower page instead.
+`browser_snapshot` and `browser_get_text` take `max_chars` to cut the whole output to N characters; a cut ends with `... [truncated, N more chars]`. A snapshot that ends with `[truncated]` is cut by the server; use `browser_get_text`, `browser_evaluate` or a snapshot with `target` for a narrower part instead.
+
+## Scrolling and cookies
+
+- `browser_scroll(delta_y=800)` scrolls with the mouse wheel (`delta_x` for sideways), good for lazy-loaded lists; `browser_scroll(target=..., by=...)` scrolls an element into view. Returns the usual action result; take a new snapshot afterwards.
+- `browser_cookies(action="get")` returns the browser's cookies as JSON; `urls` limits them to cookies that affect those URLs. `action="set"` takes `cookies` (a list as in Playwright `add_cookies`: `name`, `value`, and either `url` or `domain` + `path`; optional `expires`, `httpOnly`, `secure`, `sameSite`). `action="clear"` removes all cookies, or only those matching `name`, `domain`, `path`. Set and clear also return the cookies left.
 
 ## Targeting without refs
 

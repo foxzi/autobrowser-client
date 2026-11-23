@@ -190,6 +190,9 @@ func checkValue(loc string, prop *omap.Map, v any) (any, []fieldError) {
 			return bad("dict_type", "Input should be a valid dictionary")
 		}
 		items, _ := prop.Get("additionalProperties")
+		if _, typed := items.(*omap.Map); !typed { // additionalProperties: true
+			return v, nil
+		}
 		var errs []fieldError
 		for _, k := range m.Keys() {
 			item, _ := m.Get(k)

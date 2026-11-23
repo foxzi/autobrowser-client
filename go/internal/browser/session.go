@@ -6,6 +6,7 @@ import (
 
 	"github.com/foxzi/autobrowser-client/go/internal/apperr"
 	"github.com/foxzi/autobrowser-client/go/internal/omap"
+	"github.com/foxzi/autobrowser-client/go/internal/scenario"
 )
 
 // State is SessionState.
@@ -176,6 +177,33 @@ func (s *Session) Content(pageID, fmt string) (string, error) {
 		content = strings.ToValidUTF8(content[:max], "")
 	}
 	return content, nil
+}
+
+// ElementText is actions.element_text: the innerText of the first match, cut
+// like Content.
+func (s *Session) ElementText(pageID string, l scenario.Locator, timeoutMs int) (string, error) {
+	t, err := s.tab(pageID)
+	if err != nil {
+		return "", err
+	}
+	lc, err := t.locator(l, nil)
+	if err != nil {
+		return "", err
+	}
+	lc.repr += ".first"
+	el, err := lc.waitFor("inner_text", "attached", timeoutMs)
+	if err != nil {
+		return "", err
+	}
+	v, err := elementValue(el, "")
+	if err != nil {
+		return "", err
+	}
+	text := v.(string)
+	if max := s.output.MaxContentBytes; max > 0 && len(text) > max {
+		text = strings.ToValidUTF8(text[:max], "")
+	}
+	return text, nil
 }
 
 // Info is BrowserSession.info.

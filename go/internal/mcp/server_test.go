@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -74,7 +75,7 @@ func TestListTools(t *testing.T) {
 	if err := json.Unmarshal(toolsJSON, &want); err != nil {
 		t.Fatal(err)
 	}
-	if len(res.Tools) != len(want) || len(want) != 19 {
+	if len(res.Tools) != len(want) || len(want) != 21 {
 		t.Fatalf("%d tools, want %d", len(res.Tools), len(want))
 	}
 	byName := map[string]*sdk.Tool{}
@@ -182,7 +183,8 @@ func TestDumpsASCII(t *testing.T) {
 
 const testPage = `<!doctype html><title>T</title>
 <input id="name"><button id="go" onclick="document.getElementById('out').textContent='hi '+document.getElementById('name').value">Go</button>
-<div id="out"></div>`
+<div id="out"></div>
+<div id="box"><b>boxed</b> text 0123456789</div><div style="height:3000px"></div>`
 
 func TestBrowserTools(t *testing.T) {
 	if os.Getenv(cloak.BinaryEnv) == "" {
@@ -225,6 +227,60 @@ func TestBrowserTools(t *testing.T) {
 		t.Fatal(got)
 	}
 	expect("browser_screenshot", nil, "image/png:\x89PNG")
+	// cookies: set, get, clear by name, clear all
+	cookie := func(name string) map[string]any {
+		return map[string]any{"name": name, "value": "1", "url": srv.URL + "/"}
+	}
+	got := expect("browser_cookies", map[string]any{"action": "set", "cookies": []any{cookie("a"), cookie("b")}}, "")
+	if !strings.Contains(got, `"name": "a"`) || !strings.Contains(got, `"name": "b"`) {
+		t.Fatal(got)
+	}
+	if got := expect("browser_cookies", map[string]any{"urls": []any{srv.URL + "/"}}, ""); strings.Count(got, `"name"`) != 2 {
+		t.Fatal(got)
+	}
+	if got := expect("browser_cookies", map[string]any{"action": "clear", "name": "a"}, ""); strings.Contains(got, `"name": "a"`) || !strings.Contains(got, `"name": "b"`) {
+		t.Fatal(got)
+	}
+	expect("browser_cookies", map[string]any{"action": "clear"}, "[]")
+	if got, isErr := call(t, c, "browser_cookies", map[string]any{"action": "set"}); !isErr ||
+		!strings.Contains(got, "cookies is required to set cookies") {
+		t.Fatal(got)
+	}
+	if got, isErr := call(t, c, "browser_cookies", map[string]any{"action": "set", "cookies": []any{map[string]any{"name": "x", "value": "1"}}}); !isErr ||
+		!strings.Contains(got, "Cookie should have a url or a domain/path pair") {
+		t.Fatal(got)
+	}
+	// scroll by wheel delta
+	scrollY := func() string {
+		return expect("browser_evaluate", map[string]any{"expression": "() => window.scrollY"}, "")
+	}
+	if got := scrollY(); got != "0" {
+		t.Fatal(got)
+	}
+	expect("browser_scroll", map[string]any{"delta_y": 500}, info)
+	for i := 0; i < 20 && scrollY() == "0"; i++ {
+		time.Sleep(100 * time.Millisecond)
+	}
+	if got := scrollY(); got == "0" {
+		t.Fatal("page did not scroll")
+	}
+	// text and snapshot of one element, max_chars
+	expect("browser_get_text", map[string]any{"target": "#box", "by": "css"}, "boxed text 0123456789")
+	expect("browser_get_text", map[string]any{"target": "#box", "by": "css", "max_chars": 5}, "boxed\n... [truncated, 16 more chars]")
+	sub := expect("browser_snapshot", map[string]any{"target": "#box", "by": "css"}, "")
+	if !strings.Contains(sub, "boxed") || strings.Contains(sub, `button "Go"`) {
+		t.Fatal(sub)
+	}
+	i := strings.Index(sub, "[ref=e")
+	if i < 0 {
+		t.Fatal(sub)
+	}
+	subRef := sub[i+len("[ref=") : i+strings.IndexByte(sub[i:], ']')]
+	expect("browser_click", map[string]any{"target": subRef}, info)
+	if got := expect("browser_snapshot", map[string]any{"max_chars": 10}, ""); !strings.HasSuffix(got, "more chars]") ||
+		len([]rune(strings.SplitN(got, "\n... [truncated", 2)[0])) != 10 {
+		t.Fatal(got)
+	}
 	expect("browser_handle_dialogs", map[string]any{"accept": true}, `{"accept": true, "promptText": null}`)
 	expect("browser_tabs", map[string]any{"action": "new"}, `{"page_0": "`+srv.URL+`/", "page_1": "about:blank"}`)
 	expect("browser_tabs", map[string]any{"action": "close", "page_id": "page_1"}, `{"page_0": "`+srv.URL+`/"}`)
@@ -237,7 +293,7 @@ func TestBrowserTools(t *testing.T) {
 		t.Fatal(got)
 	}
 	expect("browser_logs", map[string]any{"kind": "dialogs"}, "[]")
-	got := expect("browser_run_script", map[string]any{"script": "steps:\n  - action: evaluate\n    script: \"1 + ${n}\"\n", "vars": map[string]any{"n": "2"}}, "")
+	got = expect("browser_run_script", map[string]any{"script": "steps:\n  - action: evaluate\n    script: \"1 + ${n}\"\n", "vars": map[string]any{"n": "2"}}, "")
 	if !strings.HasPrefix(got, `{"success": true, "steps": [{"action": "evaluate", "success": true`) ||
 		!strings.HasSuffix(got, `"vars": {"n": "2"}}`) {
 		t.Fatal(got)

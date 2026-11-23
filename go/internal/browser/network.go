@@ -2,8 +2,11 @@ package browser
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"math"
+	"net/url"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -233,6 +236,12 @@ func (s *Session) Headers(pageID string) []any {
 
 // Cookies is BrowserSession.get_cookies: context.cookies() of Playwright.
 func (s *Session) Cookies() ([]any, error) {
+	return s.CookiesFor(nil)
+}
+
+// CookiesFor is context.cookies(urls): only the cookies that affect one of
+// the URLs, all of them without URLs.
+func (s *Session) CookiesFor(urls []string) ([]any, error) {
 	if s.ctx == nil {
 		return nil, apperr.New(apperr.BrowserStartFailed, "Browser context is not initialized")
 	}
@@ -240,8 +249,19 @@ func (s *Session) Cookies() ([]any, error) {
 	if err != nil {
 		return nil, err
 	}
+	var parsed []*url.URL
+	for _, u := range urls {
+		p, err := url.Parse(u)
+		if err != nil {
+			return nil, err
+		}
+		parsed = append(parsed, p)
+	}
 	out := []any{}
 	for _, c := range cookies {
+		if len(parsed) > 0 && !cookieMatches(c, parsed) {
+			continue
+		}
 		sameSite := string(c.SameSite)
 		if sameSite == "" {
 			sameSite = "Lax"
@@ -255,6 +275,108 @@ func (s *Session) Cookies() ([]any, error) {
 		out = append(out, m)
 	}
 	return out, nil
+}
+
+// cookieMatches is filterCookies of Playwright.
+func cookieMatches(c *proto.NetworkCookie, urls []*url.URL) bool {
+	domain := c.Domain
+	if !strings.HasPrefix(domain, ".") {
+		domain = "." + domain
+	}
+	for _, u := range urls {
+		host := u.Hostname()
+		if !strings.HasSuffix("."+host, domain) {
+			continue
+		}
+		path := u.EscapedPath()
+		if path == "" {
+			path = "/"
+		}
+		if !strings.HasPrefix(path, c.Path) {
+			continue
+		}
+		local := host == "localhost" || strings.HasSuffix(host, ".localhost") || host == "::1" || loopback.MatchString(host)
+		if u.Scheme != "https" && !local && c.Secure {
+			continue
+		}
+		return true
+	}
+	return false
+}
+
+var loopback = regexp.MustCompile(`^127\.\d+\.\d+\.\d+$`)
+
+// AddCookies is context.add_cookies: each cookie needs a url or a domain and
+// path; a url gives the domain, the path and secure.
+func (s *Session) AddCookies(cookies []*omap.Map) error {
+	if s.ctx == nil {
+		return apperr.New(apperr.BrowserStartFailed, "Browser context is not initialized")
+	}
+	var params []*proto.NetworkCookieParam
+	for _, c := range cookies {
+		get := func(k string) any { v, _ := c.Get(k); return v }
+		str := func(k string) string { v, _ := get(k).(string); return v }
+		flag := func(k string) bool { v, _ := get(k).(bool); return v }
+		p := &proto.NetworkCookieParam{Name: str("name"), Value: str("value"), Domain: str("domain"),
+			Path: str("path"), HTTPOnly: flag("httpOnly"), Secure: flag("secure"),
+			SameSite: proto.NetworkCookieSameSite(str("sameSite"))}
+		rawURL := str("url")
+		if rawURL == "" && (p.Domain == "" || p.Path == "") {
+			return errors.New("BrowserContext.add_cookies: Cookie should have a url or a domain/path pair")
+		}
+		if rawURL != "" && p.Domain != "" {
+			return errors.New("BrowserContext.add_cookies: Cookie should have either url or domain")
+		}
+		if rawURL != "" && p.Path != "" {
+			return errors.New("BrowserContext.add_cookies: Cookie should have either url or path")
+		}
+		if rawURL != "" {
+			u, err := url.Parse(rawURL)
+			if err != nil {
+				return err
+			}
+			p.Domain, p.Secure = u.Hostname(), u.Scheme == "https"
+			p.Path = u.EscapedPath()[:strings.LastIndex(u.EscapedPath(), "/")+1]
+		}
+		switch e := get("expires").(type) {
+		case int:
+			p.Expires = proto.TimeSinceEpoch(e)
+		case float64:
+			p.Expires = proto.TimeSinceEpoch(e)
+		}
+		params = append(params, p)
+	}
+	return proto.StorageSetCookies{Cookies: params, BrowserContextID: s.ctx.BrowserContextID}.Call(s.ctx)
+}
+
+// ClearCookies is context.clear_cookies: all cookies, or with a filter only
+// those whose name, domain and path equal the given ones, by expiring them.
+func (s *Session) ClearCookies(name, domain, path *string) error {
+	if s.ctx == nil {
+		return apperr.New(apperr.BrowserStartFailed, "Browser context is not initialized")
+	}
+	if name == nil && domain == nil && path == nil {
+		return proto.StorageClearCookies{BrowserContextID: s.ctx.BrowserContextID}.Call(s.ctx)
+	}
+	cookies, err := s.ctx.GetCookies()
+	if err != nil {
+		return err
+	}
+	eq := func(want *string, v string) bool { return want == nil || *want == v }
+	var expire []*proto.NetworkCookieParam
+	for _, c := range cookies {
+		if eq(name, c.Name) && eq(domain, c.Domain) && eq(path, c.Path) {
+			// Playwright sends expires 0, which the omitempty field drops:
+			// one second after the epoch is as much in the past.
+			expire = append(expire, &proto.NetworkCookieParam{Name: c.Name, Value: c.Value, Domain: c.Domain,
+				Path: c.Path, HTTPOnly: c.HTTPOnly, Secure: c.Secure, SameSite: c.SameSite,
+				Expires: 1, PartitionKey: c.PartitionKey})
+		}
+	}
+	if len(expire) == 0 {
+		return nil
+	}
+	return proto.StorageSetCookies{Cookies: expire, BrowserContextID: s.ctx.BrowserContextID}.Call(s.ctx)
 }
 
 // jsNumber is how a JS number reaches Python through JSON: whole numbers are ints.

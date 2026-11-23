@@ -76,7 +76,7 @@ There is one browser per server process. It starts on the first call and closes 
 |---|---|
 | `browser_navigate` | open a URL |
 | `browser_history` | back / forward / reload |
-| `browser_snapshot` | accessibility tree with `[ref=eN]` marks |
+| `browser_snapshot` | accessibility tree with `[ref=eN]` marks; `target`/`by` limit it to one element's subtree |
 | `browser_screenshot` | PNG of the viewport, the full page or one element |
 | `browser_click`, `browser_hover` | act on an element |
 | `browser_type` | fill an input, with optional Enter |
@@ -85,7 +85,9 @@ There is one browser per server process. It starts on the first call and closes 
 | `browser_file_upload` | attach local files |
 | `browser_evaluate` | run JS in the page |
 | `browser_wait_for` | wait for text to appear or disappear |
-| `browser_get_text` | visible page text |
+| `browser_get_text` | visible page text, or the text of one element (`target`/`by`) |
+| `browser_scroll` | scroll by mouse wheel (`delta_x`, `delta_y`) or scroll an element (`target`/`by`) into view |
+| `browser_cookies` | get, set or clear the browser cookies |
 | `browser_tabs` | list / new / close tabs |
 | `browser_logs` | console (browser-level messages only, no page `console.log`), network and dialogs log |
 | `browser_handle_dialogs` | accept or dismiss alert/confirm/prompt |
@@ -94,6 +96,12 @@ There is one browser per server process. It starts on the first call and closes 
 | `browser_close` | close the browser |
 
 Element tools take `target` and `by`. By default `target` is a ref from the latest snapshot (`e12`). With `by` set to `css`, `xpath`, `text`, `id`, `name`, `class` or `attribute` it is a locator value.
+
+`browser_snapshot` and `browser_get_text` also take `max_chars`: the whole output is cut to that many characters and ends with `... [truncated, N more chars]`. With `target`, `browser_snapshot` returns only that element's subtree (its refs work for clicking) and `browser_get_text` its text.
+
+`browser_scroll` scrolls with the mouse wheel by `delta_x` / `delta_y` pixels (positive `delta_y` scrolls down), or, if `target` is set, scrolls that element into view. It returns the same JSON as other actions: `{"pageId", "url", "title"}`.
+
+`browser_cookies` takes `action` (`get`, default; `set`; `clear`). `urls` limits the returned cookies to those that affect the URLs. `set` needs `cookies`, a list as in Playwright `add_cookies` (`name`, `value`, and `url` or `domain` + `path`; optional `expires`, `httpOnly`, `secure`, `sameSite`); without it the tool returns the error `cookies is required to set cookies`. `clear` removes all cookies, or only those matching `name`, `domain`, `path`. Every action returns the cookies after it as a JSON list (Playwright `context.cookies()` format).
 
 Failures come back as tool errors with the browser's message, for example a timeout while waiting for an element.
 
@@ -203,7 +211,7 @@ autobrowser mcp [--headless/--headed] [--profile NAME] [--proxy socks5://user:pa
 |---|---|
 | `browser_navigate` | открыть URL |
 | `browser_history` | назад / вперёд / перезагрузка |
-| `browser_snapshot` | дерево доступности с метками `[ref=eN]` |
+| `browser_snapshot` | дерево доступности с метками `[ref=eN]`; `target`/`by` ограничивают его поддеревом одного элемента |
 | `browser_screenshot` | PNG области просмотра, всей страницы или элемента |
 | `browser_click`, `browser_hover` | действие с элементом |
 | `browser_type` | заполнить поле, по желанию нажать Enter |
@@ -212,7 +220,9 @@ autobrowser mcp [--headless/--headed] [--profile NAME] [--proxy socks5://user:pa
 | `browser_file_upload` | прикрепить локальные файлы |
 | `browser_evaluate` | выполнить JS на странице |
 | `browser_wait_for` | дождаться появления или исчезновения текста |
-| `browser_get_text` | видимый текст страницы |
+| `browser_get_text` | видимый текст страницы или текст одного элемента (`target`/`by`) |
+| `browser_scroll` | прокрутка колесом мыши (`delta_x`, `delta_y`) или прокрутка элемента (`target`/`by`) в область видимости |
+| `browser_cookies` | получить, установить или удалить cookies браузера |
 | `browser_tabs` | список, новая вкладка, закрыть вкладку |
 | `browser_logs` | журнал консоли (только сообщения браузера, без `console.log` страницы), сети и диалогов |
 | `browser_handle_dialogs` | принимать или отклонять alert/confirm/prompt |
@@ -221,6 +231,12 @@ autobrowser mcp [--headless/--headed] [--profile NAME] [--proxy socks5://user:pa
 | `browser_close` | закрыть браузер |
 
 Инструменты для элементов принимают `target` и `by`. По умолчанию `target` — это ref из последнего snapshot (`e12`). Если `by` равен `css`, `xpath`, `text`, `id`, `name`, `class` или `attribute`, то `target` — значение локатора.
+
+`browser_snapshot` и `browser_get_text` также принимают `max_chars`: весь вывод обрезается до этого числа символов и заканчивается `... [truncated, N more chars]`. С `target` `browser_snapshot` возвращает только поддерево этого элемента (его ref подходят для клика), а `browser_get_text` — его текст.
+
+`browser_scroll` прокручивает колесом мыши на `delta_x` / `delta_y` пикселей (положительный `delta_y` — вниз) или, если задан `target`, прокручивает этот элемент в область видимости. Возвращает тот же JSON, что и другие действия: `{"pageId", "url", "title"}`.
+
+`browser_cookies` принимает `action` (`get` по умолчанию, `set`, `clear`). `urls` ограничивает возвращаемые cookies теми, что относятся к этим URL. Для `set` нужен `cookies` — список как в Playwright `add_cookies` (`name`, `value`, и `url` либо `domain` + `path`; необязательно `expires`, `httpOnly`, `secure`, `sameSite`); без него инструмент вернёт ошибку `cookies is required to set cookies`. `clear` удаляет все cookies или только подходящие по `name`, `domain`, `path`. Каждое действие возвращает cookies после него в виде JSON-списка (формат Playwright `context.cookies()`).
 
 Ошибки возвращаются как ошибки инструмента с сообщением браузера, например таймаут ожидания элемента.
 
