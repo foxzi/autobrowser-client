@@ -299,3 +299,51 @@ func TestActionChain(t *testing.T) {
 		t.Fatalf("page state: %s", body)
 	}
 }
+
+// TestElementRoutes smoke-tests the routes the Python tests do not cover
+// (their responses are compared with Python live).
+func TestElementRoutes(t *testing.T) {
+	s, _ := newServer(t, nil)
+	sid := browserSession(t, s)
+	_, body := do(t, s, "GET", "/api/v1/session/"+sid+"/pages", "")
+	pageID := jsonGet(t, body, "pages").(*omap.Map).Keys()[0]
+	base := "/api/v1/session/" + sid + "/pages/" + pageID
+	page := "data:text/html,<title>T</title><form id=f><input id=q value=old><input id=cb type=checkbox></form>" +
+		`<button id=go onclick=\"document.getElementById('out').textContent='hi'\">Go</button>` + "<p id=out></p><i class=x>1</i><i class=x>2</i>"
+	if code, body := do(t, s, "POST", base+"/navigate", `{"url":"`+page+`"}`); code != 200 {
+		t.Fatalf("navigate: %s", body)
+	}
+	loc := func(css string) string { return `{"locator":{"type":"css","value":"` + css + `"}` }
+	for _, c := range []struct{ method, path, body, want string }{
+		{"POST", "/elements/find", loc("#q") + "}", `"found":1`},
+		{"POST", "/elements/find-all", loc(".x") + "}", `"found":2`},
+		{"POST", "/elements/fill", loc("#q") + `,"value":"new"}`, `"success":true`},
+		{"POST", "/elements/clear", loc("#q") + "}", `"success":true`},
+		{"POST", "/elements/focus", loc("#q") + "}", `"success":true`},
+		{"POST", "/elements/check", loc("#cb") + "}", `"success":true`},
+		{"POST", "/elements/hover", loc("#go") + "}", `"success":true`},
+		{"POST", "/elements/click", loc("#go") + "}", `"success":true`},
+		{"POST", "/wait-text", `{"text":"hi"}`, `"success":true`},
+		{"POST", "/elements/wait", loc("#out") + `,"state":"visible"}`, `"success":true`},
+		{"POST", "/keyboard/press", `{"key":"Tab"}`, `"success":true`},
+		{"POST", "/mouse/move", `{"x":10,"y":10,"steps":2}`, `"success":true`},
+		{"POST", "/mouse/move-to", loc("#go") + "}", `"success":true`},
+		{"POST", "/mouse/move-random", `{"startX":1,"startY":1,"endX":5,"endY":5,"steps":2,"durationMs":10}`, `"success":true`},
+		{"POST", "/mouse/scroll", `{"deltaY":100}`, `"success":true`},
+		{"POST", "/mouse/scroll-to", loc("#out") + "}", `"success":true`},
+		{"POST", "/screenshot", loc("#go") + "}", `"success":true`},
+		{"POST", "/forms/submit", loc("#f") + "}", `"success":true`},
+		{"GET", "/../../content?fmt=text", "", `"success":true`},
+		{"GET", "/../../cookies", "", `"success":true`},
+		{"GET", "/../../headers", "", `"success":true`},
+		{"POST", "/../../dialog-policy", `{"accept":true}`, `"success":true`},
+	} {
+		path := base + c.path
+		if strings.HasPrefix(c.path, "/../../") {
+			path = "/api/v1/session/" + sid + strings.TrimPrefix(c.path, "/../..")
+		}
+		if code, body := do(t, s, c.method, path, c.body); code != 200 || !strings.Contains(body, c.want) {
+			t.Errorf("%s %s: %d %.300s", c.method, c.path, code, body)
+		}
+	}
+}
