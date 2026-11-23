@@ -8,21 +8,21 @@
 # - "wait: {any: [...]}" waits for the first true condition and "as" stores its index
 
 vars:
-  sel: h1
+  sel: title
 
 steps:
   - open: https://example.com
 
   - action: evaluate
-    script: "({sel, extra}) => document.querySelector(sel).innerText.length + extra"
+    script: "({sel, extra}) => document.querySelectorAll(sel).length + extra"
     args: {sel: "${sel}", extra: 10}
     as: size
-  - assert: {var: size, equals: 24}
+  - assert: {var: size, equals: 11}
 
   - wait:
       any:
         - visible: "#does-not-exist"
-        - text: "Example Domain"
+        - text: "This domain is for use"
     timeout: 5000
     as: which
   - if: {var: which, equals: 1}
