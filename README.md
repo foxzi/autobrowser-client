@@ -65,7 +65,7 @@ Install autobrowser by following https://github.com/foxzi/autobrowser-client/blo
 - Bearer token (`AUTOBROWSER_API_TOKEN`), session limit, health and readiness checks.
 
 ### MCP server for AI agents
-- `autobrowser mcp` (stdio) gives the agent 18 tools: navigate, history, snapshot, screenshot, click, hover, type, press key, select, file upload, evaluate, wait for text, get text, tabs, logs, dialogs, solve challenge, close.
+- `autobrowser mcp` (stdio) gives the agent 19 tools: navigate, history, snapshot, screenshot, click, hover, type, press key, select, file upload, evaluate, wait for text, get text, tabs, logs, dialogs, solve challenge, run script, close.
 - The snapshot returns `ref` ids for elements, so the agent clicks by reference instead of guessing selectors.
 - `autobrowser install-skill` installs a skill that teaches the agent the snapshot/ref loop, waits, Cloudflare handling and safety rules.
 
@@ -129,9 +129,8 @@ Two stealth engines are supported. Default is `patchright`.
 Switch to cloakbrowser:
 
 ```bash
-# Install optional dependency
-pip install "autobrowser-client[cloak]"
-# or: pip install cloakbrowser
+# Release binaries already include cloakbrowser. From source (in python/):
+pip install -e ".[cloak]"
 
 # Via env var
 AUTOBROWSER_BROWSER_ENGINE=cloakbrowser autobrowser run --url https://example.com
@@ -145,6 +144,8 @@ browser:
 ```
 
 Both engines support profiles, proxy, fingerprint injection, viewport, user_agent, all CLI commands, and all API endpoints.
+
+The Go binary runs only `cloakbrowser` (built in, no Python needed): set `AUTOBROWSER_BROWSER_ENGINE=cloakbrowser`, then `autobrowser install` downloads Chromium to `~/.cloakbrowser`.
 
 ## Quick start
 

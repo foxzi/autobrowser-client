@@ -65,7 +65,7 @@ Install autobrowser by following https://github.com/foxzi/autobrowser-client/blo
 - Bearer-токен (`AUTOBROWSER_API_TOKEN`), лимит сессий, проверки health и ready.
 
 ### MCP-сервер для AI-агентов
-- `autobrowser mcp` (stdio) даёт агенту 18 инструментов: navigate, history, snapshot, screenshot, click, hover, type, press key, select, file upload, evaluate, wait for text, get text, tabs, logs, dialogs, solve challenge, close.
+- `autobrowser mcp` (stdio) даёт агенту 19 инструментов: navigate, history, snapshot, screenshot, click, hover, type, press key, select, file upload, evaluate, wait for text, get text, tabs, logs, dialogs, solve challenge, run script, close.
 - Снапшот возвращает `ref` элементов, и агент кликает по ссылке, а не подбирает селекторы.
 - `autobrowser install-skill` ставит skill, который учит агента циклу snapshot/ref, ожиданиям, работе с Cloudflare и правилам безопасности.
 
@@ -129,9 +129,8 @@ CI собирает обе версии; релиз публикует Python-б
 Переключение на cloakbrowser:
 
 ```bash
-# Install optional dependency
-pip install "autobrowser-client[cloak]"
-# or: pip install cloakbrowser
+# Релизные бинари уже содержат cloakbrowser. Из исходников (в python/):
+pip install -e ".[cloak]"
 
 # Via env var
 AUTOBROWSER_BROWSER_ENGINE=cloakbrowser autobrowser run --url https://example.com
@@ -145,6 +144,8 @@ browser:
 ```
 
 Оба движка поддерживают профили, прокси, внедрение отпечатков, viewport, user_agent, все команды CLI и все эндпоинты API.
+
+Go-бинарь запускает только `cloakbrowser` (встроен, Python не нужен): задайте `AUTOBROWSER_BROWSER_ENGINE=cloakbrowser`, затем `autobrowser install` скачает Chromium в `~/.cloakbrowser`.
 
 ## Быстрый старт
 
