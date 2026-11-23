@@ -86,3 +86,9 @@ func (s *Session) Screenshot(pageID string, fullPage bool, locator *scenario.Loc
 	}
 	return el.Screenshot(proto.PageCaptureScreenshotFormatPng, 0)
 }
+
+// Do runs one step action like ExecuteStep but returns its data and the raw
+// error (an *apperr.Error keeps its code).
+func (s *Session) Do(step *scenario.Step, pageID string) (any, error) {
+	return s.run(step, pageID)
+}
