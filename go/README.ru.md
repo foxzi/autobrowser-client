@@ -1,8 +1,9 @@
 # autobrowser (Go)
 
 Порт Python-клиента `autobrowser` на Go (см. `../python`). Поддерживается только движок
-cloakbrowser (чистый CDP через go-rod, без Node и patchright). Статус: этап 1 из 5
-(ядро, сценарии, базовые действия). Статический бинарник без внешних зависимостей.
+cloakbrowser (чистый CDP через go-rod, без Node и patchright). Статический бинарник без
+внешних зависимостей. Порт соответствует Python-клиенту, кроме
+[известных отличий](#известные-отличия) ниже.
 
 ## Сборка
 
@@ -10,22 +11,32 @@ cloakbrowser (чистый CDP через go-rod, без Node и patchright). С
 cd go && CGO_ENABLED=0 go build -o autobrowser ./cmd/autobrowser
 ```
 
+Релизные бинарники называются `autobrowser-go-<os>-<arch>[.exe]` (linux amd64/arm64, darwin arm64,
+windows amd64), рядом лежит `.sha256`; `autobrowser update` берёт именно их.
+
 ## Использование
 
+Движок по умолчанию в конфиге - `patchright`, Go-версия его не запускает. Укажите движок:
+
 ```bash
-autobrowser version
-autobrowser show-config -c config.yaml
+export AUTOBROWSER_BROWSER_ENGINE=cloakbrowser   # или browser.engine в конфиге
+autobrowser install                              # скачать браузер
 autobrowser run-script -f file.yaml [--var K=V] [-c config.yaml] [-p profile] \
     [--proxy URL] [--viewport WxH] [-o result.json] [--preserve-session] [--artifacts DIR]
+autobrowser mcp                                  # MCP-сервер через stdio
+autobrowser serve                                # HTTP API
 ```
 
+Команды: `version`, `show-config`, `validate-script`, `run-script`, `run`, `serve`, `mcp`,
+`install`, `install-skill`, `update [--check]`, `generate-fingerprint`, `help`.
 `--var` можно повторять. JSON-результат выводится в stdout или в файл `-o`.
 
 ## Поиск бинарника браузера
 
-Chromium из cloakbrowser берётся из `CLOAKBROWSER_BINARY_PATH`, иначе из самого нового
-`~/.cloakbrowser/chromium-*/chrome`. Автоматической загрузки пока нет: установите бинарник
-через Python-клиент или задайте переменную.
+Chromium из cloakbrowser ищется и, если его нет, скачивается так же, как в cloakbrowser
+`ensure_binary` (`internal/cloak`): `CLOAKBROWSER_BINARY_PATH`, `CLOAKBROWSER_VERSION`,
+`CLOAKBROWSER_CACHE_DIR` (по умолчанию `~/.cloakbrowser`) работают так же. Загрузка проверяется
+по подписанному Ed25519 файлу SHA256SUMS до распаковки.
 
 ## Паритет с Python-клиентом
 
@@ -37,26 +48,111 @@ Chromium из cloakbrowser берётся из `CLOAKBROWSER_BINARY_PATH`, ин�
 | assert / set / fail, JSON-результат | готово | готово |
 | Профили, lock, preserveSession (`tabs.json`) | готово | готово |
 | Действия: open, wait, find, find-all, click, dblclick, hover, focus, fill, clear, check, uncheck, type, press, scroll, screenshot, get-content, save, evaluate, history, wait-text, extract | готово | готово |
-| CLI: version, show-config, run-script | готово | готово |
-| Прокси | готово (relay с авторизацией) | частично (http/socks5 без логина и пароля) |
-| Локаторы | готово | частично (`text` приближает get_by_text, `ref` не поддержан) |
-| Regex в условиях | готово | частично (RE2: без lookahead и обратных ссылок) |
-| Headless, viewport, userAgent | готово | частично (мобильная эмуляция только подменой UA) |
-| Движок patchright | готово | нет |
-| geoip | готово | нет |
-| Инъекция JS-отпечатка | готово | нет (`session.fingerprint` игнорируется с предупреждением) |
-| Действия: get-cookies, get-headers, solve-challenge, browse-tabs, submit, select, upload, read, mouse-move, mouse-scroll-to, mouse-random | готово | нет |
-| Загрузка бинарника | готово | нет |
-| MCP-сервер | готово | нет |
-| HTTP API | готово | нет |
-| Остальные CLI-команды | готово | нет |
-| Релизные бинарники | готово | нет |
+| Действия: get-cookies, get-headers, solve-challenge, browse-tabs, submit, select, upload, read, mouse-move, mouse-scroll-to, mouse-random | готово | готово |
+| Локаторы (css, xpath, text, id, name, class, attribute, `ref`) | готово | готово (`text` приближает `get_by_text`) |
+| Снимок доступности с ref (`page_snapshot`, локатор `ref`) | готово | готово (инжектируемый скрипт Playwright лежит в `internal/browser/injected`, обновляется через его `extract.sh`) |
+| Regex в условиях | готово | готово (RE2: без lookahead и обратных ссылок) |
+| Headless, viewport, userAgent, мобильная эмуляция | готово | готово |
+| Движок cloakbrowser | готово | готово |
+| Движок patchright | готово | не поддерживается (ошибка при запуске) |
+| Прокси (http, socks5, с логином и паролем) | готово (relay) | готово (`socks2http`, если установлен, иначе встроенный relay) |
+| geoip (часовой пояс и локаль по IP выхода) | готово | готово (`internal/cloak`, GeoLite2) |
+| Инъекция JS-отпечатка, `generate-fingerprint` | готово | готово |
+| Загрузка бинарника браузера | готово | готово |
+| Менеджер сессий (сессии, вкладки, политика диалогов, логи console/network/dialogs, закрытие по простою) | готово | готово (`internal/browser/manager.go`, `session.go`) |
+| MCP-сервер (`autobrowser mcp`, включая `browser_run_script`) | готово | готово (`internal/mcp`, официальный go-sdk; схемы инструментов те же, что в Python) |
+| HTTP API (`autobrowser serve`, OpenAPI, `/docs`) | готово | готово (`internal/api`, net/http) |
+| CLI: version, show-config, validate-script, run-script, run, serve, mcp, install, install-skill, update, generate-fingerprint, help | готово | готово |
+| Самообновление (`update`, фоновая проверка в `mcp` и `serve`) | готово | готово (Go-ассеты) |
+| Релизные бинарники | готово (`autobrowser-<os>-<arch>`) | готово (`autobrowser-go-<os>-<arch>`) |
 
-## Живое сравнение Python и Go
+## Известные отличия
 
-Примеры `conditions`, `try-catch`, `extract-loop`, `screenshot` и собственный сценарий с формой
-дали одинаковые результаты в обоих клиентах (без учёта `durationMs` и `sessionId`). `simple.yaml`
-отличается, потому что в Go нет `get-headers` и `get-cookies`.
+Где Go-клиент не может или не стал повторять Python дословно. Формы JSON-результатов, ключи
+конфига, переменные окружения и коды выхода совпадают, если не сказано иное.
+
+### Движок
+
+- Только `cloakbrowser`. `browser.engine=patchright` при запуске даёт `CONFIG_ERROR`
+  (`show-config` работает с любым движком); `install` не выполняет `patchright install chrome`.
+- Браузер, упавший при запуске (например, `headless: false` без X-сервера), даёт
+  `BROWSER_START_FAILED "browser exited during startup: <stderr chrome>"` вместо текста Playwright.
+- Ошибки CDP вне портированных текстов - обычные ошибки протокола без `Call log:` Playwright.
+
+### Действия и локаторы
+
+- Локатор `text` приближает `get_by_text`; `select` не переходит от `<label>` к элементу.
+- Проверка готовности элемента - только «в DOM и виден» (без enabled / stable). Ошибки `select`,
+  `read` и `mouse-scroll-to` содержат короткий call log, а не полный лог повторов Playwright.
+- `read` приближает `is_enabled` через `:disabled` и предков с `aria-disabled`.
+- `upload` нескольких файлов в поле без `multiple` не отклоняется.
+- `get-headers` берёт Document-ответы главного фрейма из событий CDP; имена заголовков
+  отсортированы, Python сохраняет порядок получения.
+- `mouse-random` использует тот же алгоритм с `math/rand` Go, поэтому один seed даёт другой путь
+  (вывод шага тот же).
+- `solve-challenge` находит iframe вне процесса через `Target.getTargets`; точка клика та же.
+- Regex в условиях - RE2; некорректный regex делает проверку ложной.
+- У неуспешного шага всегда есть ключ `error` (пустая строка без текста); Python опускает его для `None`.
+- Сообщения валидации сценария отличаются деталями (нет суффикса pydantic `[type=...]`).
+
+### Снимок страницы
+
+- Фреймы внутри межсайтового (out-of-process) iframe получают префикс `fN` при первом снимке,
+  поэтому нумерация может отличаться от Playwright, если таких фреймов несколько.
+- График повторов снимка (0, 1, 2, 4, 8 с) лишь приближает Playwright.
+
+### Сеть и логи
+
+- Вызовы `console.log` / `console.error` на странице не записываются: домен CDP `Runtime`
+  выключен ради скрытности. В лог попадают только сообщения браузера (например, ошибки загрузки
+  ресурсов), сетевые записи и диалоги. Записи воркеров пропускаются.
+- Ключи записей логов console, network и dialogs те же, что в Python.
+
+### Прокси и загрузка cloakbrowser
+
+- Строка лога relay скрывает пароль upstream (`***`); Python печатает его открытым текстом.
+- Relay отвечает 502 на не-ASCII имена upstream-хостов (браузеры всё равно шлют punycode) и при
+  ошибках после начала туннеля просто закрывает сокеты. Подпроцесс `socks2http` получает
+  SIGTERM, через 5 с - kill; его вывод отбрасывается.
+- Загрузка Pro / по ключу лицензии и `CLOAKBROWSER_RELEASE_CHANNEL` не поддерживаются
+  (заданный `CLOAKBROWSER_LICENSE_KEY` только пишет предупреждение).
+- Нет приветственного баннера и фоновой проверки новой сборки cloakbrowser;
+  маркеры `latest_version*`, записанные Python, учитываются.
+- Распаковка архива отклоняет записи, выходящие за целевой каталог.
+- Таймаут загрузки - «нет данных 60 с» (база geoip: 300 с), а не пофазные таймауты httpx.
+- geoip: SOCKS5-прокси работают сразу (Python нужен `cloakbrowser[geoip]`); ошибка выглядит как
+  `browser.geoip failed: <err>` без подсказки про pip; поиск IP выхода без прокси учитывает
+  `HTTP_PROXY` / `HTTPS_PROXY`, но не `ALL_PROXY`; пустой часовой пояс в базе - `""`.
+
+### Отпечаток
+
+- Генерация в точности повторяет `random.Random(seed).choice` Python; отличается только случайный
+  seed (без `--seed`), он случаен в обоих. Seed - int64 (в Python любой размер).
+- `fingerprint.json` читается строго по типам (без приведения pydantic для `"true"` или `"123"`);
+  некорректный файл создаётся заново.
+
+### Вывод CLI
+
+- Help, usage и ошибки - обычный текст (без рамок Rich); формулировки следуют Typer. Длинные
+  опции с одним дефисом (`-config`) тоже принимаются. Без аргументов help идёт в stdout, код 2.
+- `update` берёт ассеты `autobrowser-go-<os>-<arch>` (`darwin`, не `macos`); ошибка обновления,
+  кроме несовпадения контрольной суммы, печатается обычным текстом с кодом 1 (Python: traceback).
+- `serve` печатает одну строку `Serving the API on http://HOST:PORT` вместо логов uvicorn.
+- `run --profile-dir` передаётся как введён (Python нормализует через `pathlib.Path`).
+- Версия задаётся при сборке (`-ldflags -X`), по умолчанию `0.5.4`.
+
+### MCP
+
+- Capabilities в `initialize`: `{"prompts":{},"resources":{},"tools":{}}` (go-sdk не выводит
+  false-поля); в списках есть `ttlMs` / `cacheScope: "public"` от go-sdk.
+- Проверка аргументов повторяет нужное подмножество lax-режима pydantic с его текстами ошибок;
+  целые больше int64 дают `int_parsing`.
+
+### API
+
+- `/docs`, `/docs/oauth2-redirect` и `/redoc` отдают статическую копию HTML, снятую с
+  FastAPI 0.162.0. Access-лога нет.
+
 
 ## Прототип (go/cmd/cdpprobe)
 
