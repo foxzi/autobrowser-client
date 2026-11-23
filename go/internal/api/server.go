@@ -18,7 +18,8 @@ import (
 	"github.com/foxzi/autobrowser-client/go/internal/omap"
 )
 
-// openapiJSON is a byte-identical copy of python/openapi.json (CI diffs them).
+// openapiJSON is a byte-identical copy of python/openapi.json (CI diffs them);
+// it is served compact with info.version set, like FastAPI renders it.
 //
 //go:embed openapi.json
 var openapiJSON []byte
@@ -33,9 +34,18 @@ var (
 	redocHTML string
 )
 
-func serveOpenAPI(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(openapiJSON)
+func serveOpenAPI(version string) http.HandlerFunc {
+	spec, err := omap.ParseJSON(openapiJSON)
+	if err != nil {
+		panic(err)
+	}
+	info, _ := spec.(*omap.Map).Get("info")
+	info.(*omap.Map).Set("version", version)
+	body := omap.Marshal(spec, -1)
+	return func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, body)
+	}
 }
 
 func serveHTML(page string) http.HandlerFunc {

@@ -3,7 +3,7 @@
   "info": {
     "title": "autobrowser-client",
     "description": "HTTP API for browser automation with patchright.",
-    "version": "0.1.0"
+    "version": "0.5.4"
   },
   "paths": {
     "/health": {
@@ -90,9 +90,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "additionalProperties": true,
-                "type": "object",
-                "title": "Body"
+                "$ref": "#/components/schemas/CreateProfileRequest"
               }
             }
           },
@@ -1671,6 +1669,776 @@
           }
         }
       }
+    },
+    "/api/v1/session/{session_id}/script": {
+      "post": {
+        "tags": [
+          "actions"
+        ],
+        "summary": "Api Run Script",
+        "operationId": "api_run_script_api_v1_session__session_id__script_post",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScriptRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Run Script Api V1 Session  Session Id  Script Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/session/{session_id}/pages": {
+      "get": {
+        "tags": [
+          "pages"
+        ],
+        "summary": "Api List Pages",
+        "operationId": "api_list_pages_api_v1_session__session_id__pages_get",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api List Pages Api V1 Session  Session Id  Pages Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "pages"
+        ],
+        "summary": "Api New Tab",
+        "operationId": "api_new_tab_api_v1_session__session_id__pages_post",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewTabRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api New Tab Api V1 Session  Session Id  Pages Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/session/{session_id}/pages/{page_id}": {
+      "delete": {
+        "tags": [
+          "pages"
+        ],
+        "summary": "Api Close Tab",
+        "operationId": "api_close_tab_api_v1_session__session_id__pages__page_id__delete",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "page_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Page Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Close Tab Api V1 Session  Session Id  Pages  Page Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/session/{session_id}/pages/{page_id}/snapshot": {
+      "get": {
+        "tags": [
+          "pages"
+        ],
+        "summary": "Api Snapshot",
+        "operationId": "api_snapshot_api_v1_session__session_id__pages__page_id__snapshot_get",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "page_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Page Id"
+            }
+          },
+          {
+            "name": "timeout",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 10000,
+              "title": "Timeout"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Snapshot Api V1 Session  Session Id  Pages  Page Id  Snapshot Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/session/{session_id}/pages/{page_id}/screenshot": {
+      "post": {
+        "tags": [
+          "pages"
+        ],
+        "summary": "Api Screenshot",
+        "operationId": "api_screenshot_api_v1_session__session_id__pages__page_id__screenshot_post",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "page_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Page Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScreenshotRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Screenshot Api V1 Session  Session Id  Pages  Page Id  Screenshot Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/session/{session_id}/pages/{page_id}/navigate": {
+      "post": {
+        "tags": [
+          "pages"
+        ],
+        "summary": "Api Navigate",
+        "operationId": "api_navigate_api_v1_session__session_id__pages__page_id__navigate_post",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "page_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Page Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NavigateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Navigate Api V1 Session  Session Id  Pages  Page Id  Navigate Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/session/{session_id}/pages/{page_id}/history": {
+      "post": {
+        "tags": [
+          "pages"
+        ],
+        "summary": "Api History",
+        "operationId": "api_history_api_v1_session__session_id__pages__page_id__history_post",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "page_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Page Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HistoryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api History Api V1 Session  Session Id  Pages  Page Id  History Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/session/{session_id}/pages/{page_id}/evaluate": {
+      "post": {
+        "tags": [
+          "pages"
+        ],
+        "summary": "Api Evaluate",
+        "operationId": "api_evaluate_api_v1_session__session_id__pages__page_id__evaluate_post",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "page_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Page Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvaluateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Evaluate Api V1 Session  Session Id  Pages  Page Id  Evaluate Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/session/{session_id}/pages/{page_id}/wait-text": {
+      "post": {
+        "tags": [
+          "pages"
+        ],
+        "summary": "Api Wait Text",
+        "operationId": "api_wait_text_api_v1_session__session_id__pages__page_id__wait_text_post",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "page_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Page Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WaitTextRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Wait Text Api V1 Session  Session Id  Pages  Page Id  Wait Text Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/session/{session_id}/pages/{page_id}/elements/upload": {
+      "post": {
+        "tags": [
+          "dom"
+        ],
+        "summary": "Api Upload",
+        "operationId": "api_upload_api_v1_session__session_id__pages__page_id__elements_upload_post",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "page_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Page Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Upload Api V1 Session  Session Id  Pages  Page Id  Elements Upload Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/session/{session_id}/pages/{page_id}/logs/{kind}": {
+      "get": {
+        "tags": [
+          "pages"
+        ],
+        "summary": "Api Logs",
+        "operationId": "api_logs_api_v1_session__session_id__pages__page_id__logs__kind__get",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "page_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Page Id"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "clear",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Clear"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Logs Api V1 Session  Session Id  Pages  Page Id  Logs  Kind  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/session/{session_id}/dialog-policy": {
+      "post": {
+        "tags": [
+          "pages"
+        ],
+        "summary": "Api Dialog Policy",
+        "operationId": "api_dialog_policy_api_v1_session__session_id__dialog_policy_post",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DialogPolicyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Dialog Policy Api V1 Session  Session Id  Dialog Policy Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1741,6 +2509,43 @@
         ],
         "title": "ClickRequest"
       },
+      "CreateProfileRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "CreateProfileRequest"
+      },
+      "DialogPolicyRequest": {
+        "properties": {
+          "accept": {
+            "type": "boolean",
+            "title": "Accept"
+          },
+          "promptText": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompttext"
+          }
+        },
+        "type": "object",
+        "required": [
+          "accept"
+        ],
+        "title": "DialogPolicyRequest"
+      },
       "ElementRequest": {
         "properties": {
           "locator": {
@@ -1757,6 +2562,24 @@
           "locator"
         ],
         "title": "ElementRequest"
+      },
+      "EvaluateRequest": {
+        "properties": {
+          "expression": {
+            "type": "string",
+            "title": "Expression"
+          },
+          "isolated": {
+            "type": "boolean",
+            "title": "Isolated",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "expression"
+        ],
+        "title": "EvaluateRequest"
       },
       "FillRequest": {
         "properties": {
@@ -1797,6 +2620,25 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HistoryRequest": {
+        "properties": {
+          "direction": {
+            "type": "string",
+            "pattern": "^(back|forward|reload)$",
+            "title": "Direction"
+          },
+          "timeout": {
+            "type": "integer",
+            "title": "Timeout",
+            "default": 30000
+          }
+        },
+        "type": "object",
+        "required": [
+          "direction"
+        ],
+        "title": "HistoryRequest"
       },
       "LocatorBody": {
         "properties": {
@@ -1893,6 +2735,46 @@
         ],
         "title": "MouseRandomRequest"
       },
+      "NavigateRequest": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "waitUntil": {
+            "type": "string",
+            "title": "Waituntil",
+            "default": "load"
+          },
+          "timeout": {
+            "type": "integer",
+            "title": "Timeout",
+            "default": 30000
+          }
+        },
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "title": "NavigateRequest"
+      },
+      "NewTabRequest": {
+        "properties": {
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "type": "object",
+        "title": "NewTabRequest"
+      },
       "PressRequest": {
         "properties": {
           "key": {
@@ -1905,6 +2787,76 @@
           "key"
         ],
         "title": "PressRequest"
+      },
+      "ScreenshotRequest": {
+        "properties": {
+          "fullPage": {
+            "type": "boolean",
+            "title": "Fullpage",
+            "default": false
+          },
+          "locator": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LocatorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "timeout": {
+            "type": "integer",
+            "title": "Timeout",
+            "default": 10000
+          }
+        },
+        "type": "object",
+        "title": "ScreenshotRequest"
+      },
+      "ScriptRequest": {
+        "properties": {
+          "script": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Script"
+          },
+          "vars": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vars"
+          },
+          "pageId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pageid"
+          }
+        },
+        "type": "object",
+        "required": [
+          "script"
+        ],
+        "title": "ScriptRequest"
       },
       "ScrollRequest": {
         "properties": {
@@ -1996,6 +2948,16 @@
             ],
             "title": "Headless"
           },
+          "viewport": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ViewportBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "timeout": {
             "anyOf": [
               {
@@ -2010,6 +2972,31 @@
         },
         "type": "object",
         "title": "StartRequest"
+      },
+      "UploadRequest": {
+        "properties": {
+          "locator": {
+            "$ref": "#/components/schemas/LocatorBody"
+          },
+          "files": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Files"
+          },
+          "timeout": {
+            "type": "integer",
+            "title": "Timeout",
+            "default": 10000
+          }
+        },
+        "type": "object",
+        "required": [
+          "locator",
+          "files"
+        ],
+        "title": "UploadRequest"
       },
       "ValidationError": {
         "properties": {
@@ -2051,6 +3038,24 @@
         ],
         "title": "ValidationError"
       },
+      "ViewportBody": {
+        "properties": {
+          "width": {
+            "type": "integer",
+            "title": "Width"
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height"
+          }
+        },
+        "type": "object",
+        "required": [
+          "width",
+          "height"
+        ],
+        "title": "ViewportBody"
+      },
       "WaitRequest": {
         "properties": {
           "locator": {
@@ -2087,6 +3092,29 @@
         },
         "type": "object",
         "title": "WaitRequest"
+      },
+      "WaitTextRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "gone": {
+            "type": "boolean",
+            "title": "Gone",
+            "default": false
+          },
+          "timeout": {
+            "type": "integer",
+            "title": "Timeout",
+            "default": 10000
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "WaitTextRequest"
       }
     }
   },

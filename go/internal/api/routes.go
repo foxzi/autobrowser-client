@@ -83,7 +83,7 @@ const pagePath = sessionPath + "/pages/{page_id}"
 func (s *Server) table() []route {
 	el := func(path string, body []field, fn handler) route { return s.add("POST", pagePath+path, body, nil, fn) }
 	return []route{
-		{method: "GET", parts: []string{"", "openapi.json"}, raw: serveOpenAPI},
+		{method: "GET", parts: []string{"", "openapi.json"}, raw: serveOpenAPI(s.version)},
 		{method: "GET", parts: []string{"", "docs"}, raw: serveHTML(swaggerHTML)},
 		{method: "GET", parts: []string{"", "docs", "oauth2-redirect"}, raw: serveHTML(oauth2RedirectHTML)},
 		{method: "GET", parts: []string{"", "redoc"}, raw: serveHTML(redocHTML)},

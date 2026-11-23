@@ -112,13 +112,16 @@ func TestFastAPIErrors(t *testing.T) {
 func TestDocs(t *testing.T) {
 	s, _ := newServer(t, nil)
 	code, body := do(t, s, "GET", "/openapi.json", "")
-	want, _ := os.ReadFile("openapi.json")
-	if code != 200 || body != string(want) {
-		t.Fatalf("openapi.json: %d", code)
+	if code != 200 || strings.Contains(body, "\n") || !strings.HasPrefix(body, `{"openapi":"3.1.0","info":{"title":"autobrowser-client",`) {
+		t.Fatalf("openapi.json: %d %.100s", code, body)
 	}
 	v, err := omap.ParseJSON([]byte(body))
 	if err != nil {
 		t.Fatal(err)
+	}
+	if info, _ := v.(*omap.Map).Get("info"); omap.Marshal(info, -1) !=
+		`{"title":"autobrowser-client","description":"HTTP API for browser automation with patchright.","version":"1.2.3"}` {
+		t.Fatalf("openapi info: %s", omap.Marshal(info, -1))
 	}
 	paths, _ := v.(*omap.Map).Get("paths")
 	if _, ok := paths.(*omap.Map).Get("/health"); !ok {
