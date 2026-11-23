@@ -209,12 +209,17 @@ func (l *loc) timeoutErr(api string, ms int, suffix string) error {
 	return fmt.Errorf("Locator.%s: Timeout %dms exceeded.\nCall log:\n  - waiting for %s%s\n", api, ms, l.repr, suffix)
 }
 
+// errTargetNavigated is what Chrome returns for a call caught mid-navigation.
+// A really closed tab fails with "Session not found" instead.
+var errTargetNavigated = &cdp.Error{Code: -32000, Message: "Inspected target navigated or closed"}
+
 // contextLost reports errors of a document that went away during a call
 // (navigation); Playwright retries its waits on them.
 func contextLost(err error) bool {
 	var gone *rod.ObjectNotFoundError
 	return errors.Is(err, cdp.ErrCtxNotFound) || errors.Is(err, cdp.ErrCtxDestroyed) ||
-		errors.Is(err, cdp.ErrObjNotFound) || errors.As(err, &gone)
+		errors.Is(err, cdp.ErrObjNotFound) || errors.Is(err, errTargetNavigated) ||
+		errors.As(err, &gone)
 }
 
 // poll runs fn every 100 ms until it reports done or the timeout expires.
