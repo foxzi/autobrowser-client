@@ -241,6 +241,23 @@ func TestBrowserTools(t *testing.T) {
 		!strings.HasSuffix(got, `"vars": {"n": "2"}}`) {
 		t.Fatal(got)
 	}
+	file := filepath.Join(t.TempDir(), "s.yaml")
+	if err := os.WriteFile(file, []byte("steps:\n  - open: \"${url}\"\n  - extract: h1\n    as: heading\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got = expect("browser_run_script", map[string]any{"file": file, "vars": map[string]any{"url": "data:text/html,<h1>Hello</h1>"}}, "")
+	if !strings.HasSuffix(got, `"heading": "Hello"}}`) {
+		t.Fatal(got)
+	}
+	// a failing step is reported in the result, not as a tool error
+	got = expect("browser_run_script", map[string]any{"script": "steps:\n  - fail: boom\n"}, "")
+	if !strings.HasPrefix(got, `{"success": false, "steps": [{"action": "fail", "success": false`) || !strings.Contains(got, `"error": "boom"`) {
+		t.Fatal(got)
+	}
+	if got, isErr := call(t, c, "browser_run_script", map[string]any{"script": "steps:\n  - bogus: 1\n"}); !isErr ||
+		!strings.Contains(got, "SCRIPT_VALIDATION_ERROR") {
+		t.Fatal(got)
+	}
 	expect("browser_close", nil, "closed")
 	// the next call starts a fresh browser
 	expect("browser_tabs", nil, `{"page_0": "about:blank"}`)
