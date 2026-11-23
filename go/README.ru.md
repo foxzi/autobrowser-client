@@ -93,7 +93,10 @@ Chromium из cloakbrowser ищется и, если его нет, скачив
 - `solve-challenge` находит iframe вне процесса через `Target.getTargets`; точка клика та же.
 - Regex в условиях - RE2; некорректный regex делает проверку ложной.
 - У неуспешного шага всегда есть ключ `error` (пустая строка без текста); Python опускает его для `None`.
-- Сообщения валидации сценария отличаются деталями (нет суффикса pydantic `[type=...]`).
+- Ошибки валидации сценария (`run-script`, `validate-script`, MCP `browser_run_script`, API
+  `SCRIPT_VALIDATION_ERROR`) используют пути Go вида `steps.0.action` без хвоста pydantic
+  `[type=..., input_value=...]` и строки "For further information"; Python печатает
+  `steps.0.step.action` с ними. Коды ошибок и коды выхода совпадают.
 
 ### Снимок страницы
 
@@ -144,7 +147,8 @@ Chromium из cloakbrowser ищется и, если его нет, скачив
 ### MCP
 
 - Capabilities в `initialize`: `{"prompts":{},"resources":{},"tools":{}}` (go-sdk не выводит
-  false-поля); в списках есть `ttlMs` / `cacheScope: "public"` от go-sdk.
+  false-поля); в списках есть `ttlMs` / `cacheScope: "public"` от go-sdk (Python: `"private"`).
+- В результатах инструментов нет `isError: false` (go-sdk); при ошибке по-прежнему `isError: true`.
 - Проверка аргументов повторяет нужное подмножество lax-режима pydantic с его текстами ошибок;
   целые больше int64 дают `int_parsing`.
 
@@ -152,6 +156,7 @@ Chromium из cloakbrowser ищется и, если его нет, скачив
 
 - `/docs`, `/docs/oauth2-redirect` и `/redoc` отдают статическую копию HTML, снятую с
   FastAPI 0.162.0. Access-лога нет.
+- Заголовок `Authorization` с не-ASCII символами даёт 401 (Python: 500 из `hmac.compare_digest`).
 
 
 ## Прототип (go/cmd/cdpprobe)

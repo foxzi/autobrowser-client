@@ -93,7 +93,10 @@ environment variables and exit codes are the same unless listed here.
 - `solve-challenge` finds out-of-process iframes through `Target.getTargets`; the click point is the same.
 - Regex conditions use RE2; an invalid regex makes the check false.
 - A failed step always has an `error` key (empty string without text); Python omits it for `None`.
-- Scenario validation messages differ in details (no pydantic `[type=...]` suffix).
+- Scenario validation errors (`run-script`, `validate-script`, MCP `browser_run_script`, API
+  `SCRIPT_VALIDATION_ERROR`) use Go paths such as `steps.0.action` without pydantic's
+  `[type=..., input_value=...]` trailer and "For further information" line; Python prints
+  `steps.0.step.action` with them. Error codes and exit codes are the same.
 
 ### Snapshot
 
@@ -144,7 +147,8 @@ environment variables and exit codes are the same unless listed here.
 ### MCP
 
 - `initialize` capabilities are `{"prompts":{},"resources":{},"tools":{}}` (go-sdk omits false
-  fields); list results carry go-sdk's `ttlMs` / `cacheScope: "public"`.
+  fields); list results carry go-sdk's `ttlMs` / `cacheScope: "public"` (Python: `"private"`).
+- Tool results omit `isError: false` (go-sdk); failed tools still return `isError: true`.
 - Argument validation reimplements the pydantic lax subset the tools need with pydantic's error
   texts; integers beyond int64 fail with `int_parsing`.
 
@@ -152,6 +156,7 @@ environment variables and exit codes are the same unless listed here.
 
 - `/docs`, `/docs/oauth2-redirect` and `/redoc` serve a static copy of the HTML captured from
   FastAPI 0.162.0. There is no access log.
+- A non-ASCII `Authorization` header gets 401 (Python: 500 from `hmac.compare_digest`).
 
 
 ## Prototype (go/cmd/cdpprobe)
