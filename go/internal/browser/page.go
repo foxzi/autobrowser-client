@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/cdp"
 	"github.com/go-rod/rod/lib/proto"
 
 	"github.com/foxzi/autobrowser-client/go/internal/engine"
@@ -81,8 +82,11 @@ func (t *tab) Screenshot(path string) error { return t.screenshot(path, false) }
 
 func (t *tab) screenshot(path string, fullPage bool) error {
 	png, err := t.page.Screenshot(fullPage, nil)
+	if ce := (*cdp.Error)(nil); errors.As(err, &ce) {
+		return fmt.Errorf("Page.screenshot: Protocol error (Page.captureScreenshot): %s", ce.Message)
+	}
 	if err != nil {
-		return err
+		return fmt.Errorf("Page.screenshot: %s", err)
 	}
 	return os.WriteFile(path, png, 0o644)
 }
