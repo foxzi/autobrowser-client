@@ -125,6 +125,8 @@ func TestMobileEmulation(t *testing.T) {
 // With a proxy the browser goes through the relay, which adds the upstream
 // credentials; the relay stops with the session.
 func TestProxyRelay(t *testing.T) {
+	// socks2http on PATH tunnels plain HTTP via CONNECT; test the built-in relay
+	t.Setenv("PATH", t.TempDir())
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Host != "example.test" || r.Header.Get("Proxy-Authorization") == "" {
 			http.Error(w, "not proxied", http.StatusBadGateway)
