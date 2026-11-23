@@ -313,13 +313,19 @@ func (s *Server) tools() map[string]toolFunc {
 		"browser_navigate": func(a *omap.Map) (result, error) {
 			return s.run(func(sess *browser.Session) (string, error) {
 				m, err := sess.Navigate(pageIDOf(sess, str(a, "page_id")), str(a, "url"), navMs)
-				return dumpsASCII(m), err
+				if err != nil {
+					return "", err
+				}
+				return dumpsASCII(m), nil
 			})
 		},
 		"browser_history": func(a *omap.Map) (result, error) {
 			return s.run(func(sess *browser.Session) (string, error) {
 				m, err := sess.History(pageIDOf(sess, str(a, "page_id")), str(a, "direction"), navMs)
-				return dumpsASCII(m), err
+				if err != nil {
+					return "", err
+				}
+				return dumpsASCII(m), nil
 			})
 		},
 		"browser_snapshot": func(a *omap.Map) (result, error) {
@@ -433,7 +439,10 @@ func (s *Server) tools() map[string]toolFunc {
 		"browser_solve_challenge": func(a *omap.Map) (result, error) {
 			return s.run(func(sess *browser.Session) (string, error) {
 				m, err := sess.SolveChallenge(str(a, "page_id"), integer(a, "timeout_ms"))
-				return dumpsASCII(m), err
+				if err != nil {
+					return "", err
+				}
+				return dumpsASCII(m), nil
 			})
 		},
 		"browser_run_script": s.runScript,

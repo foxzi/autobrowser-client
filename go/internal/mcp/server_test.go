@@ -258,6 +258,11 @@ func TestBrowserTools(t *testing.T) {
 		!strings.Contains(got, "SCRIPT_VALIDATION_ERROR") {
 		t.Fatal(got)
 	}
+	// a failed navigation is a tool error, not a crash on its nil result
+	if got, isErr := call(t, c, "browser_navigate", map[string]any{"url": "http://127.0.0.1:1/"}); !isErr ||
+		!strings.Contains(got, "Page.goto: net::") {
+		t.Fatal(got)
+	}
 	expect("browser_close", nil, "closed")
 	// the next call starts a fresh browser
 	expect("browser_tabs", nil, `{"page_0": "about:blank"}`)
