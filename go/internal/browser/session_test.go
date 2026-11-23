@@ -158,4 +158,11 @@ func TestTabsDialogsLogsContent(t *testing.T) {
 	if got, _ := s.Content("page_0", "text"); got != full[:cut-1] {
 		t.Fatalf("cut content %q", got)
 	}
+	s.output.MaxContentBytes = 1000
+	if _, err := s.Navigate("page_0", "data:text/html,<!doctype html><p>x", 10000); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := s.Content("page_0", "html"); got != "<!DOCTYPE html><html><head></head><body><p>x</p></body></html>" {
+		t.Fatalf("html content %q", got)
+	}
 }

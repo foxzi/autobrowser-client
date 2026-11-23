@@ -63,7 +63,19 @@ func (t *tab) Title() (string, error) {
 	return res.Value.Str(), nil
 }
 
-func (t *tab) Content() (string, error) { return t.page.HTML() }
+// Content is Playwright's page.content(): the doctype plus the document HTML.
+func (t *tab) Content() (string, error) {
+	res, err := t.page.Eval(`() => {
+		let html = '';
+		if (document.doctype) html = new XMLSerializer().serializeToString(document.doctype);
+		if (document.documentElement) html += document.documentElement.outerHTML;
+		return html;
+	}`)
+	if err != nil {
+		return "", err
+	}
+	return res.Value.Str(), nil
+}
 
 func (t *tab) Screenshot(path string) error { return t.screenshot(path, false) }
 
