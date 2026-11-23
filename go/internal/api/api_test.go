@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"io"
 	"net/http/httptest"
 	"os"
@@ -36,6 +37,9 @@ func do(t *testing.T, s *Server, method, path, body string, header ...string) (i
 		rd = strings.NewReader(body)
 	}
 	req := httptest.NewRequest(method, path, rd)
+	if body != "" {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	for i := 0; i+1 < len(header); i += 2 {
 		req.Header.Set(header[i], header[i+1])
 	}
@@ -92,8 +96,6 @@ func TestFastAPIErrors(t *testing.T) {
 	expect(t, s, "POST", "/health", "", 405, `{"detail":"Method Not Allowed"}`)
 	expect(t, s, "POST", "/api/v1/profile/create", "", 422,
 		`{"detail":[{"type":"missing","loc":["body"],"msg":"Field required","input":null}]}`)
-	expect(t, s, "POST", "/api/v1/profile/create", "{bad", 422,
-		`{"detail":[{"type":"model_attributes_type","loc":["body"],"msg":"Input should be a valid dictionary or object to extract fields from","input":"{bad"}]}`)
 	expect(t, s, "POST", "/api/v1/profile/create", `{"name":5}`, 422,
 		`{"detail":[{"type":"string_type","loc":["body","name"],"msg":"Input should be a valid string","input":5}]}`)
 	expect(t, s, "POST", "/api/v1/session/x/pages/p/history", `{"direction":"up"}`, 422,
@@ -107,6 +109,36 @@ func TestFastAPIErrors(t *testing.T) {
 		`{"success":false,"error":{"code":"INVALID_ARGUMENT","message":"kind must be console, network or dialogs"}}`)
 	expect(t, s, "POST", "/api/v1/session/x/pages/p/elements/upload", `{"locator":{"value":"#f"},"files":["/nope"]}`, 400,
 		`{"success":false,"error":{"code":"INVALID_ARGUMENT","message":"Files not found: /nope"}}`)
+}
+
+func TestBadJSON(t *testing.T) {
+	s, _ := newServer(t, nil)
+	jsonErr := func(pos int, msg string) string {
+		return fmt.Sprintf(`{"detail":[{"type":"json_invalid","loc":["body",%d],"msg":"JSON decode error","input":{},"ctx":{"error":%q}}]}`, pos, msg)
+	}
+	for body, want := range map[string]string{
+		`{bad`:          jsonErr(1, "Expecting property name enclosed in double quotes"),
+		`{"name":"a" x`: jsonErr(12, "Expecting ',' delimiter"),
+		`{"name":"a`:    jsonErr(8, "Unterminated string starting at"),
+		`[1,]`:          jsonErr(3, "Expecting value"),
+		`{"name":"\q"}`: jsonErr(9, `Invalid \escape`),
+		`nul`:           jsonErr(0, "Expecting value"),
+	} {
+		expect(t, s, "POST", "/api/v1/profile/create", body, 422, want)
+	}
+	expect(t, s, "POST", "/api/v1/profile/create", "{\"name\":\"\xff\"}", 400, `{"detail":"There was an error parsing the body"}`)
+	// FastAPI parses JSON only for a JSON content type, otherwise the body is a string
+	for _, ct := range []string{"", "text/plain"} {
+		code, got := do(t, s, "POST", "/api/v1/profile/create", `{"name":"a"}`, "Content-Type", ct)
+		want := `{"detail":[{"type":"model_attributes_type","loc":["body"],"msg":"Input should be a valid dictionary or object to extract fields from","input":"{\"name\":\"a\"}"}]}`
+		if code != 422 || got != want {
+			t.Errorf("content type %q: got %d %s", ct, code, got)
+		}
+	}
+	code, got := do(t, s, "POST", "/api/v1/profile/create", "\xef\xbb\xbf{\"name\":\".x\"}", "Content-Type", "application/vnd.x+json; charset=utf-8")
+	if code != 400 || got != `{"detail":"Invalid profile name"}` {
+		t.Errorf("BOM body: got %d %s", code, got)
+	}
 }
 
 func TestDocs(t *testing.T) {

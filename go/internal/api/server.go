@@ -3,6 +3,7 @@
 package api
 
 import (
+	"bytes"
 	"crypto/subtle"
 	_ "embed"
 	"errors"
@@ -11,6 +12,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/foxzi/autobrowser-client/go/internal/apperr"
 	"github.com/foxzi/autobrowser-client/go/internal/browser"
@@ -255,6 +257,16 @@ func (s *Server) handle(w http.ResponseWriter, r *http.Request, rt *route, param
 		rt.raw(w, r)
 		return
 	}
+	var body any
+	var hasBody bool
+	if rt.body != nil {
+		// FastAPI reads the body first: a JSON or encoding error ends the request
+		var err error
+		if body, hasBody, err = readBody(r); err != nil {
+			writeError(w, err)
+			return
+		}
+	}
 	req := &request{r: r, params: params, query: omap.New()}
 	var errs []any
 	q := r.URL.Query()
@@ -265,9 +277,13 @@ func (s *Server) handle(w http.ResponseWriter, r *http.Request, rt *route, param
 		req.query.Set(f.name, v)
 	}
 	if rt.body != nil {
-		body, fe := readBody(r, rt.body)
+		var fe []any
+		if !hasBody {
+			fe = []any{verr("missing", []any{"body"}, "Field required", nil)}
+		} else {
+			req.body, fe = validateModel(body, rt.body, []any{"body"})
+		}
 		errs = append(errs, fe...)
-		req.body = body
 	}
 	if len(errs) > 0 {
 		writeError(w, validationError(errs))
@@ -281,26 +297,37 @@ func (s *Server) handle(w http.ResponseWriter, r *http.Request, rt *route, param
 	writeJSON(w, 200, out)
 }
 
-// readBody parses and validates the JSON body like FastAPI: an empty body is
-// "missing", a body that is not JSON is validated as a string.
-func readBody(r *http.Request, fields []field) (*omap.Map, []any) {
+// readBody reads the body like FastAPI: the parsed JSON for a JSON content
+// type, otherwise the raw string; ok is false for an empty body.
+func readBody(r *http.Request) (v any, ok bool, err error) {
 	data, err := io.ReadAll(r.Body)
 	if err != nil || len(data) == 0 {
-		return nil, []any{verr("missing", []any{"body"}, "Field required", nil)}
+		return nil, false, nil
 	}
-	var v any = string(data)
-	if isJSON(r.Header.Get("Content-Type")) {
-		// invalid JSON is validated as the raw string, like FastAPI does here
-		if parsed, err := omap.ParseJSON(data); err == nil {
-			v = parsed
-		}
+	if !isJSON(r.Header.Get("Content-Type")) {
+		return string(data), true, nil
 	}
-	return validateModel(v, fields, []any{"body"})
+	// shortcut: json.loads also detects UTF-16/32; only UTF-8 is handled
+	data = bytes.TrimPrefix(data, []byte("\xef\xbb\xbf"))
+	if !utf8.Valid(data) {
+		return nil, false, &httpError{400, "There was an error parsing the body"}
+	}
+	parsed, perr := omap.ParseJSON(data)
+	if perr == nil {
+		return parsed, true, nil
+	}
+	if msg, pos, ok := jsonError([]rune(string(data))); ok {
+		e := verr("json_invalid", []any{"body", pos}, "JSON decode error", omap.New())
+		e.Set("ctx", omap.New("error", msg))
+		return nil, false, validationError{e}
+	}
+	// shortcut: NaN and Infinity that json.loads accepts are validated as the raw string
+	return string(data), true, nil
 }
 
 func isJSON(contentType string) bool {
 	if contentType == "" {
-		return true
+		return false
 	}
 	mt, _, err := mime.ParseMediaType(contentType)
 	if err != nil {
