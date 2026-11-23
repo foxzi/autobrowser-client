@@ -88,11 +88,12 @@ Templates `${...}`:
 
 JavaScript in `evaluate`:
 
-- `script` can be an expression, statements, `() => ...` or `async () => ...`; the function gets no arguments. Use `script: |` for long code.
-- A JS template literal `` `${x}` `` is taken as a scenario variable. Write `$${x}` or join strings with `+`.
-- Values inserted into JS are raw text, not escaped: a quote in user text breaks the script. Put user text into the page with `type`/`fill` (`value: "${query}"`) instead of into JS.
+- `script` can be an expression, statements, `() => ...` or `async () => ...`. Use `script: |` for long code. Pass data with `args` (any value; `${...}` works inside it, an exact `"${x}"` keeps its type): `script: "({q, n}) => ..."` + `args: {q: "${query}", n: 3}`; with `args` the script must be a function that receives it as its single argument.
+- A JS template literal `` `${x}` `` is taken as a scenario variable. Write `$${x}` for a literal `${`; better pass values via `args`.
+- Values inserted into the script text are raw, not escaped: a quote in user text breaks the script. Use `args`, or put user text into the page with `type`/`fill` (`value: "${query}"`).
 - Return one JSON-like object with everything you need (`as: results`), then use `${results.items}`, `${results.text}`. DOM nodes, `Map`, `Set` do not come back; return `innerText`, `href`, arrays.
 - After a step that navigates (`press: Enter`, a submit click) wait first (`action: wait` with `waitUntil: visible` and a locator of the new page, or `wait: load`); otherwise JS fails with `Execution context was destroyed`.
+- To wait for one of several states use `wait: {any: [<condition>, ...]}` with the step `timeout` and `as: name` (index of the first true condition, 0-based), then `if: {var: name, equals: 1}`; prefer it to polling loops in JS.
 - Polling loops in JS need their own deadline: `while (Date.now() - t0 < 20000 && !done()) await new Promise(r => setTimeout(r, 500));`.
 
 Files and results:

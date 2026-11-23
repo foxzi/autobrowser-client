@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import tempfile
 from pathlib import Path
 
@@ -211,3 +212,43 @@ def test_new_action_fields():
         {"action": "mouse-random", "startX": 1, "startY": 2, "endX": 3, "endY": 4, "durationMs": 10}
     )
     assert (s.start_x, s.end_y, s.duration_ms) == (1, 4, 10)
+
+
+def test_args_only_for_evaluate():
+    with pytest.raises(ValueError, match="'args' is not supported by 'click'"):
+        ScriptStep.model_validate({"action": "click", "locator": "#a", "args": [1]})
+    s = ScriptStep.model_validate({"evaluate": "(a) => a", "args": {"k": [1, 2]}})
+    assert s.args == {"k": [1, 2]}
+    assert ScriptStep.model_validate({"evaluate": "1", "args": None}).args is None
+
+
+@pytest.mark.parametrize(
+    "step,message",
+    [
+        ({"action": "click", "locator": "#a", "any": [{"text": "x"}]}, "'any' is not supported by 'click'"),
+        ({"action": "wait", "any": []}, "'wait' with 'any' requires at least one condition"),
+        (
+            {"action": "wait", "any": [{"text": "x"}], "waitUntil": "load"},
+            "'wait' with 'any' cannot be combined with 'waitUntil'",
+        ),
+        (
+            {"action": "wait", "any": [{"text": "x", "timeout": 5}]},
+            "'wait' alternatives cannot have 'timeout'; use the step 'timeout'",
+        ),
+        ({"action": "wait", "timeout": 5, "as": "g"}, "'as' is not supported by 'wait'"),
+        ({"action": "wait", "any": [{}]}, "condition needs exactly one of"),
+        ({"wait": "bogus"}, "wait shorthand expects int (ms), load-state string or {any: [...]}, got: 'bogus'"),
+        ({"wait": {"any": [{"text": "x"}], "timeout": 5}}, "wait shorthand expects int (ms)"),
+        ({"wait": {"any": [{"text": "x"}]}, "any": [{"text": "y"}]}, "shorthand conflict"),
+    ],
+)
+def test_wait_any_validation_errors(step, message):
+    with pytest.raises(ValueError, match=re.escape(message)):
+        ScriptStep.model_validate(step)
+
+
+def test_wait_any_valid():
+    s = ScriptStep.model_validate({"wait": {"any": [{"visible": "#a"}, {"text": "x"}]}, "timeout": 500, "as": "g"})
+    assert s.action == "wait" and len(s.any_) == 2 and s.timeout == 500 and s.as_name == "g"
+    canon = ScriptStep.model_validate({"action": "wait", "any": [{"text": "x"}]})
+    assert canon.any_[0].text == "x"

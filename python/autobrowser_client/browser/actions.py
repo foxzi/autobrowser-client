@@ -107,10 +107,16 @@ def evaluate(
     page_id: str,
     expression: str,
     isolated: bool = False,
+    args: Any = None,
 ) -> dict[str, Any]:
-    """Run JS (expression or function source). Main world by default so page globals are visible."""
+    """Run JS (expression or function source). Main world by default so page globals are visible.
+
+    With ``args`` a function is called with it as its single argument.
+    """
     page = session.get_page(page_id)
-    return {"result": page.evaluate(expression, isolated_context=isolated)}
+    if args is None:
+        return {"result": page.evaluate(expression, isolated_context=isolated)}
+    return {"result": page.evaluate(expression, args, isolated_context=isolated)}
 
 
 def wait_for_text(

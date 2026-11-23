@@ -324,7 +324,7 @@ def execute_step(session: BrowserSession, step: ScriptStep, page_id: str | None 
             )
 
         elif step.action == "evaluate":
-            result.data = actions.evaluate(session, effective_page_id, step.script)
+            result.data = actions.evaluate(session, effective_page_id, step.script, args=step.args)
 
         elif step.action == "history":
             nav = actions.history(

@@ -21,6 +21,9 @@ import (
 	"github.com/foxzi/autobrowser-client/go/internal/scenario"
 )
 
+// ActionTimeout is the default action timeout in milliseconds.
+func (s *Session) ActionTimeout() int { return s.settingsT.ActionMs }
+
 // ExecuteStep is executor.execute_step for the actions the Go version supports.
 func (s *Session) ExecuteStep(step *scenario.Step, pageID string) *engine.StepResult {
 	res := &engine.StepResult{Action: step.Action, Success: true}
@@ -339,7 +342,7 @@ func (s *Session) run(step *scenario.Step, pageID string) (any, error) {
 		return omap.New("points", n), nil
 
 	case "evaluate":
-		v, err := t.evaluate(step.Script)
+		v, err := t.evaluate(step.Script, step.Args)
 		if err != nil {
 			return nil, err
 		}

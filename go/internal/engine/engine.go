@@ -131,6 +131,48 @@ func substituteCondition(cond *scenario.Condition, vars *omap.Map) (*scenario.Co
 
 func elapsedMs(t0 time.Time) float64 { return float64(time.Since(t0)) / float64(time.Millisecond) }
 
+// waitAny polls the alternatives every 250 ms; the first true one wins (its index is the data).
+func (c *runCtx) waitAny(step *scenario.Step) *StepResult {
+	t0 := time.Now()
+	limit := c.b.ActionTimeout()
+	if step.Timeout != nil && *step.Timeout != 0 {
+		limit = *step.Timeout
+	}
+	pageID := c.pageID
+	if step.Page != "" {
+		pageID = step.Page
+	}
+	deadline := t0.Add(time.Duration(limit) * time.Millisecond)
+	result := &StepResult{Action: "wait"}
+	for matched := -1; ; {
+		for i, cond := range step.Any {
+			if CheckCondition(c.b, cond, c.vars, pageID) {
+				matched = i
+				break
+			}
+		}
+		if matched >= 0 {
+			result.Success = true
+			result.Data = omap.New("matched", matched)
+			if step.AsName != nil {
+				c.vars.Set(*step.AsName, matched)
+			}
+			break
+		}
+		if !time.Now().Before(deadline) {
+			items := make([]any, len(step.Any))
+			for i, cond := range step.Any {
+				items[i] = cond.Raw
+			}
+			result.Error = fmt.Sprintf("wait any timed out after %dms: none of %s", limit, omap.Marshal(items, 0))
+			break
+		}
+		sleepMs(250)
+	}
+	result.DurationMs = elapsedMs(t0)
+	return result
+}
+
 // attempt substitutes variables and runs one step once.
 func (c *runCtx) attempt(step *scenario.Step) *StepResult {
 	concrete, err := substituteStep(step, c.vars)
@@ -159,6 +201,9 @@ func (c *runCtx) attempt(step *scenario.Step) *StepResult {
 		}
 		result.DurationMs = elapsedMs(t0)
 		return result
+	}
+	if concrete.Action == "wait" && concrete.Any != nil {
+		return c.waitAny(concrete)
 	}
 	result := c.b.ExecuteStep(concrete, c.pageID)
 	if result.Success && concrete.AsName != nil {

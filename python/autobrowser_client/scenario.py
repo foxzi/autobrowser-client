@@ -190,9 +190,12 @@ def _expand_shorthand_step(d: dict) -> dict:
         elif isinstance(value, str) and value in _WAIT_STATES:
             _check_conflict("waitUntil")
             result["waitUntil"] = value
+        elif isinstance(value, dict) and list(value) == ["any"]:
+            _check_conflict("any")
+            result["any"] = value["any"]
         else:
             raise ValueError(
-                f"wait shorthand expects int (ms) or load-state string, got: {value!r}"
+                f"wait shorthand expects int (ms), load-state string or {{any: [...]}}, got: {value!r}"
             )
 
     elif verb in _LOCATOR_ACTIONS:
@@ -330,6 +333,7 @@ class ScriptStep(BaseModel):
     options: list[str] | None = None
     files: list[str] | None = None
     script: str | None = None
+    args: Any = None
     direction: Literal["back", "forward", "reload"] | None = None
     text: str | None = None
     gone: bool = False
@@ -348,6 +352,7 @@ class ScriptStep(BaseModel):
     as_name: str | None = Field(default=None, alias="as")
     vars: dict[str, Any] | None = None
     condition: Condition | None = None
+    any_: list[Condition] | None = Field(default=None, alias="any")
     message: str | None = None
     name: str | None = None
     retry: int = Field(default=0, ge=0)
@@ -385,6 +390,17 @@ class ScriptStep(BaseModel):
             raise ValueError(f"'{self.action}' step requires 'value'")
         if self.action == "wait" and self.wait_until in {"visible", "hidden"} and not self.locator:
             raise ValueError(f"'wait' with waitUntil '{self.wait_until}' requires 'locator'")
+        if self.args is not None and self.action != "evaluate":
+            raise ValueError(f"'args' is not supported by '{self.action}'")
+        if self.any_ is not None:
+            if self.action != "wait":
+                raise ValueError(f"'any' is not supported by '{self.action}'")
+            if not self.any_:
+                raise ValueError("'wait' with 'any' requires at least one condition")
+            if self.wait_until is not None:
+                raise ValueError("'wait' with 'any' cannot be combined with 'waitUntil'")
+            if any(c.timeout for c in self.any_):
+                raise ValueError("'wait' alternatives cannot have 'timeout'; use the step 'timeout'")
         if self.action == "press" and not self.key:
             raise ValueError("'press' step requires 'key'")
         if self.action == "scroll" and self.delta_x is None and self.delta_y is None:
@@ -398,7 +414,7 @@ class ScriptStep(BaseModel):
         if self.action == "assert" and self.condition is None:
             raise ValueError("'assert' step requires 'condition'")
         if self.as_name is not None:
-            if self.action not in _VALUE_ACTIONS:
+            if self.action not in _VALUE_ACTIONS and not (self.action == "wait" and self.any_ is not None):
                 raise ValueError(f"'as' is not supported by '{self.action}'")
             if not _NAME_RE.match(self.as_name):
                 raise ValueError(f"invalid variable name: {self.as_name!r}")

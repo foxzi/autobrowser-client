@@ -34,6 +34,8 @@ type Page interface {
 type Browser interface {
 	// Page returns a tab by id; an empty id is the current/first tab.
 	Page(pageID string) (Page, error)
+	// ActionTimeout is the default action timeout in milliseconds.
+	ActionTimeout() int
 	// ExecuteStep runs a concrete (substituted) action step; pageID is the
 	// scenario default tab, the step's own Page overrides it. It never panics
 	// for action failures: they are reported in the result.

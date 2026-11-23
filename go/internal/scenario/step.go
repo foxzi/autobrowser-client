@@ -90,7 +90,11 @@ func expandShorthand(d *omap.Map) (*omap.Map, error) {
 		if s, ok := value.(string); ok && waitStates[s] {
 			return result, set("waitUntil", value)
 		}
-		return nil, shorthandErr("wait shorthand expects int (ms) or load-state string, got: " + omap.Repr(value))
+		if m, ok := value.(*omap.Map); ok && m.Len() == 1 && m.Has("any") {
+			list, _ := m.Get("any")
+			return result, set("any", list)
+		}
+		return nil, shorthandErr("wait shorthand expects int (ms), load-state string or {any: [...]}, got: " + omap.Repr(value))
 	case locatorActions[verb]:
 		return result, set("locator", value)
 	case verb == "fill" || verb == "type":
@@ -179,9 +183,9 @@ func parseStep(p *parser, loc []string, v any) *Step {
 	o := obj{p: p, loc: loc, m: expanded, coerce: true}
 	start := len(p.errs)
 	o.forbidExtra("action", "page", "url", "locator", "value", "key", "format", "waitUntil", "timeout",
-		"deltaX", "deltaY", "delay", "index", "fullPage", "file", "stopOnError", "options", "files", "script",
+		"deltaX", "deltaY", "delay", "index", "fullPage", "file", "stopOnError", "options", "files", "script", "args",
 		"direction", "text", "gone", "attribute", "all", "x", "y", "steps", "startX", "startY", "endX", "endY",
-		"durationMs", "jitter", "seed", "as", "vars", "condition", "message", "name", "retry", "retryDelay",
+		"durationMs", "jitter", "seed", "as", "vars", "condition", "any", "message", "name", "retry", "retryDelay",
 		"optional")
 	zero := 0
 	s := &Step{}
@@ -214,6 +218,7 @@ func parseStep(p *parser, loc []string, v any) *Step {
 	s.Options = o.strList("options")
 	s.Files = o.strList("files")
 	s.Script = o.strOr("script")
+	s.Args, _ = o.m.Get("args")
 	if d := o.literal("direction", "back", "forward", "reload"); d != nil {
 		s.Direction = *d
 	}
@@ -236,6 +241,7 @@ func parseStep(p *parser, loc []string, v any) *Step {
 	if cv, ok := o.get("condition"); ok {
 		s.Condition = parseCondition(p, join(loc, "condition"), cv)
 	}
+	s.Any = conditionList(o, "any")
 	s.Message = o.strOr("message")
 	s.Name = o.strOr("name")
 	s.Retry = o.intOr("retry", 0, &zero)
@@ -249,6 +255,13 @@ func parseStep(p *parser, loc []string, v any) *Step {
 		return nil
 	}
 	s.Raw = expanded.Copy()
+	if s.Any != nil {
+		items := make([]any, len(s.Any))
+		for i, c := range s.Any {
+			items[i] = c.Raw
+		}
+		s.Raw.Set("any", items)
+	}
 	if s.Locator != nil {
 		s.Raw.Set("locator", s.Locator.Dump())
 	}
@@ -284,6 +297,16 @@ func (s *Step) validatePayload() string {
 		return "'" + a + "' step requires 'value'"
 	case a == "wait" && (s.WaitUntil == "visible" || s.WaitUntil == "hidden") && s.Locator == nil:
 		return "'wait' with waitUntil '" + s.WaitUntil + "' requires 'locator'"
+	case s.Args != nil && a != "evaluate":
+		return "'args' is not supported by '" + a + "'"
+	case s.Any != nil && a != "wait":
+		return "'any' is not supported by '" + a + "'"
+	case s.Any != nil && len(s.Any) == 0:
+		return "'wait' with 'any' requires at least one condition"
+	case s.Any != nil && s.WaitUntil != "":
+		return "'wait' with 'any' cannot be combined with 'waitUntil'"
+	case s.Any != nil && hasTimeout(s.Any):
+		return "'wait' alternatives cannot have 'timeout'; use the step 'timeout'"
 	case a == "press" && s.Key == "":
 		return "'press' step requires 'key'"
 	case a == "scroll" && s.DeltaX == nil && s.DeltaY == nil:
@@ -298,7 +321,7 @@ func (s *Step) validatePayload() string {
 		return "'assert' step requires 'condition'"
 	}
 	if s.AsName != nil {
-		if !valueActions[a] {
+		if !valueActions[a] && !(a == "wait" && s.Any != nil) {
 			return "'as' is not supported by '" + a + "'"
 		}
 		if !nameRe.MatchString(*s.AsName) {
@@ -306,4 +329,13 @@ func (s *Step) validatePayload() string {
 		}
 	}
 	return ""
+}
+
+func hasTimeout(list []*Condition) bool {
+	for _, c := range list {
+		if c.Timeout != 0 {
+			return true
+		}
+	}
+	return false
 }

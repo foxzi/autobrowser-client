@@ -46,3 +46,20 @@ def test_extract_select_check_evaluate(run):
     assert run({"wait-text": "Hello"})["success"]
     assert run({"find-all": "a"})["data"]["found"] == 2
     assert run({"wait-text": "nope", "timeout": 300})["success"] is False
+
+
+@pytest.mark.parametrize(
+    "script,args,expected",
+    [
+        ("(o) => Object.keys(o).join(',') + o.z", {"z": 1, "a": 2}, "z,a1"),
+        ("(l) => l.length + l[1]", ["a", "b", "c"], "3b"),
+        ("async (s) => s + '!'", "hi", "hi!"),
+        ("(n) => n * 2", 21, 42),
+        ("(v) => v === false", False, True),
+        ("1 + 1", 5, 2),
+    ],
+)
+def test_evaluate_args(run, script, args, expected):
+    out = run({"action": "evaluate", "script": script, "args": args})
+    assert out["data"] == {"result": expected}, out
+

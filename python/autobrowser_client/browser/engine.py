@@ -211,6 +211,33 @@ def _stored_value(step: ScriptStep, data: Any) -> Any:
     return data
 
 
+def _wait_any(step: ScriptStep, ctx: _Context) -> StepResult:
+    """Poll the alternatives every 250 ms; the first true one wins (its index is the data)."""
+    t0 = time.monotonic()
+    limit = step.timeout or ctx.session.settings.timeouts.action_ms
+    page_id = step.page or ctx.page_id
+    matched = None
+    while matched is None:
+        for i, cond in enumerate(step.any_):
+            if check_condition(ctx.session, cond, ctx.vars, page_id):
+                matched = i
+                break
+        else:
+            if time.monotonic() - t0 >= limit / 1000:
+                break
+            _sleep(250)
+    result = StepResult("wait", success=matched is not None)
+    if matched is None:
+        what = json.dumps([c.model_dump(by_alias=True, exclude_unset=True) for c in step.any_], ensure_ascii=False)
+        result.error = f"wait any timed out after {limit}ms: none of {what}"
+    else:
+        result.data = {"matched": matched}
+        if step.as_name:
+            ctx.vars[step.as_name] = matched
+    result.duration_ms = (time.monotonic() - t0) * 1000
+    return result
+
+
 def _attempt(step: ScriptStep, ctx: _Context) -> StepResult:
     """Substitute variables and run one step once."""
     try:
@@ -244,6 +271,9 @@ def _attempt(step: ScriptStep, ctx: _Context) -> StepResult:
             result.error = concrete.message or f"assertion failed: {what}"
         result.duration_ms = (time.monotonic() - t0) * 1000
         return result
+
+    if concrete.action == "wait" and concrete.any_ is not None:
+        return _wait_any(concrete, ctx)
 
     result = execute_step(ctx.session, concrete, ctx.page_id)
     if result.success and concrete.as_name:
