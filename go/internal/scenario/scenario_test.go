@@ -434,3 +434,16 @@ func TestIncludeErrors(t *testing.T) {
 		}
 	}
 }
+
+func TestEvaluateArgs(t *testing.T) {
+	if err := stepErr(t, "{action: click, locator: '#a', args: [1]}"); !strings.Contains(err.Error(), "'args' is not supported by 'click'") {
+		t.Fatal(err)
+	}
+	s := mustStep(t, `{evaluate: "(a) => a", args: {k: [1, 2]}}`)
+	if got := omap.Marshal(s.Args, 0); got != `{"k": [1, 2]}` {
+		t.Fatal(got)
+	}
+	if mustStep(t, `{evaluate: "1", args: null}`).Args != nil {
+		t.Fatal("null args")
+	}
+}

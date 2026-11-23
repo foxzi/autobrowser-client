@@ -211,3 +211,11 @@ def test_new_action_fields():
         {"action": "mouse-random", "startX": 1, "startY": 2, "endX": 3, "endY": 4, "durationMs": 10}
     )
     assert (s.start_x, s.end_y, s.duration_ms) == (1, 4, 10)
+
+
+def test_args_only_for_evaluate():
+    with pytest.raises(ValueError, match="'args' is not supported by 'click'"):
+        ScriptStep.model_validate({"action": "click", "locator": "#a", "args": [1]})
+    s = ScriptStep.model_validate({"evaluate": "(a) => a", "args": {"k": [1, 2]}})
+    assert s.args == {"k": [1, 2]}
+    assert ScriptStep.model_validate({"evaluate": "1", "args": None}).args is None

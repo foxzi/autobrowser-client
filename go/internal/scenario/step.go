@@ -179,7 +179,7 @@ func parseStep(p *parser, loc []string, v any) *Step {
 	o := obj{p: p, loc: loc, m: expanded, coerce: true}
 	start := len(p.errs)
 	o.forbidExtra("action", "page", "url", "locator", "value", "key", "format", "waitUntil", "timeout",
-		"deltaX", "deltaY", "delay", "index", "fullPage", "file", "stopOnError", "options", "files", "script",
+		"deltaX", "deltaY", "delay", "index", "fullPage", "file", "stopOnError", "options", "files", "script", "args",
 		"direction", "text", "gone", "attribute", "all", "x", "y", "steps", "startX", "startY", "endX", "endY",
 		"durationMs", "jitter", "seed", "as", "vars", "condition", "message", "name", "retry", "retryDelay",
 		"optional")
@@ -214,6 +214,7 @@ func parseStep(p *parser, loc []string, v any) *Step {
 	s.Options = o.strList("options")
 	s.Files = o.strList("files")
 	s.Script = o.strOr("script")
+	s.Args, _ = o.m.Get("args")
 	if d := o.literal("direction", "back", "forward", "reload"); d != nil {
 		s.Direction = *d
 	}
@@ -284,6 +285,8 @@ func (s *Step) validatePayload() string {
 		return "'" + a + "' step requires 'value'"
 	case a == "wait" && (s.WaitUntil == "visible" || s.WaitUntil == "hidden") && s.Locator == nil:
 		return "'wait' with waitUntil '" + s.WaitUntil + "' requires 'locator'"
+	case s.Args != nil && a != "evaluate":
+		return "'args' is not supported by '" + a + "'"
 	case a == "press" && s.Key == "":
 		return "'press' step requires 'key'"
 	case a == "scroll" && s.DeltaX == nil && s.DeltaY == nil:

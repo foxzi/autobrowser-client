@@ -339,7 +339,7 @@ func (s *Session) run(step *scenario.Step, pageID string) (any, error) {
 		return omap.New("points", n), nil
 
 	case "evaluate":
-		v, err := t.evaluate(step.Script)
+		v, err := t.evaluate(step.Script, step.Args)
 		if err != nil {
 			return nil, err
 		}

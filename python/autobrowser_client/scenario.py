@@ -330,6 +330,7 @@ class ScriptStep(BaseModel):
     options: list[str] | None = None
     files: list[str] | None = None
     script: str | None = None
+    args: Any = None
     direction: Literal["back", "forward", "reload"] | None = None
     text: str | None = None
     gone: bool = False
@@ -385,6 +386,8 @@ class ScriptStep(BaseModel):
             raise ValueError(f"'{self.action}' step requires 'value'")
         if self.action == "wait" and self.wait_until in {"visible", "hidden"} and not self.locator:
             raise ValueError(f"'wait' with waitUntil '{self.wait_until}' requires 'locator'")
+        if self.args is not None and self.action != "evaluate":
+            raise ValueError(f"'args' is not supported by '{self.action}'")
         if self.action == "press" and not self.key:
             raise ValueError("'press' step requires 'key'")
         if self.action == "scroll" and self.delta_x is None and self.delta_y is None:

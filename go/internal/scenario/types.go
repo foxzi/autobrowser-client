@@ -61,6 +61,7 @@ type Step struct {
 	Options     []string
 	Files       []string
 	Script      string
+	Args        any
 	Direction   string
 	Text        string
 	Gone        bool

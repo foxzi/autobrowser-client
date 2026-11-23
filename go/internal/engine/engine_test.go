@@ -731,3 +731,16 @@ steps:
 		t.Fatalf("%s", omap.Marshal(out, 0))
 	}
 }
+
+func TestEvaluateArgsTemplated(t *testing.T) {
+	b := newBrowser()
+	run(t, b, `
+vars: {q: hi, n: 5}
+steps:
+  - evaluate: "(a) => a"
+    args: {q: "${q}", n: "${n}", t: "x-${q}"}
+`)
+	if got := omap.Marshal(b.log[0].Args, 0); got != `{"q": "hi", "n": 5, "t": "x-hi"}` {
+		t.Errorf("%s", got)
+	}
+}

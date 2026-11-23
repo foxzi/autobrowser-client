@@ -500,3 +500,11 @@ def test_wrong_type_after_substitution_is_step_error(session, calls):
     assert out["steps"][1]["optional"] is True
     assert out["vars"]["same"] is True
     assert calls == []
+
+
+def test_evaluate_args_templated(session, calls):
+    script = _script(
+        [{"evaluate": "(a) => a", "args": {"q": "${q}", "n": "${n}", "t": "x-${q}"}}], vars={"q": "hi", "n": 5}
+    )
+    assert run_script(session, script)["success"]
+    assert calls[0].args == {"q": "hi", "n": 5, "t": "x-hi"}

@@ -217,3 +217,25 @@ func TestDetectPlatformFromUA(t *testing.T) {
 		t.Errorf("android: %+v", a)
 	}
 }
+
+func TestEvaluateArgs(t *testing.T) {
+	s := startSession(t)
+	cases := []struct {
+		script string
+		args   any
+		want   string
+	}{
+		{`(o) => Object.keys(o).join(",") + o.z`, omap.New("z", 1, "a", 2), `{"result": "z,a1"}`},
+		{`(l) => l.length + l[1]`, []any{"a", "b", "c"}, `{"result": "3b"}`},
+		{`async (s) => s + "!"`, "hi", `{"result": "hi!"}`},
+		{`(n) => n * 2`, 21, `{"result": 42}`},
+		{`(v) => v === false`, false, `{"result": true}`},
+		{`1 + 1`, 5, `{"result": 2}`},
+	}
+	for _, c := range cases {
+		r := s.ExecuteStep(step(t, "evaluate", "script", c.script, "args", c.args), "")
+		if !r.Success || omap.Marshal(r.Data, 0) != c.want {
+			t.Errorf("%s with %v: %v %s %s", c.script, c.args, r.Success, omap.Marshal(r.Data, 0), r.Error)
+		}
+	}
+}

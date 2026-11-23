@@ -103,3 +103,17 @@ def test_failure_artifacts(run, tmp_path, monkeypatch):
     art = out["steps"][0]["artifacts"]
     assert (tmp_path / art["screenshot"]).stat().st_size > 0
     assert "Hello" in (tmp_path / art["html"]).read_text()
+
+
+def test_evaluate_args_templating(run):
+    out = run(
+        """
+vars: {q: hello}
+steps:
+  - evaluate: "(a) => a.s + a.l[0] + a.l[1]"
+    args: {s: "${q}", l: ["${q}", "x-${q}"]}
+    as: got
+"""
+    )
+    assert out["success"], out
+    assert out["vars"]["got"] == "hellohellox-hello"
