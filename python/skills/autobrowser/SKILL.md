@@ -5,7 +5,7 @@ description: Drive a stealth browser through the autobrowser MCP server (browser
 
 # autobrowser
 
-The `autobrowser` MCP server gives one stealth Chromium (patchright or cloakbrowser) as `browser_*` tools. The browser starts on the first call and keeps cookies, tabs and state until `browser_close` or the server stops.
+The `autobrowser` MCP server gives one stealth Chromium (patchright or cloakbrowser; the Go binary runs only cloakbrowser) as `browser_*` tools. The browser starts on the first call and keeps cookies, tabs and state until `browser_close` or the server stops.
 
 Other MCP servers (for example Playwright MCP) also have `browser_*` tools with the same names. Use only the tools of the `autobrowser` server: clients usually prefix them with the server name, such as `mcp__autobrowser__browser_navigate`.
 
@@ -178,7 +178,7 @@ Call it with `browser_run_script(script=..., vars={"query": "..."})` and read `v
 Check `status` and `title` after `browser_navigate`:
 
 - Title like "Just a moment..." or status 403/503 with a challenge -> call `browser_solve_challenge(timeout_ms=90000)`. It waits, clicks Turnstile when needed and returns `{"challenge", "clicks", "url"}`. Then snapshot again.
-- `Page blocked without challenge: HTTP 4xx` - hard block; retries in the same setup are useless. Report it and suggest another engine, a proxy (`--proxy`) or `AUTOBROWSER_FINGERPRINT_PLATFORM=linux` for cloakbrowser on a Linux host.
+- `Page blocked without challenge: HTTP 4xx` - hard block; retries in the same setup are useless. Report it and suggest another engine (Python build only), a proxy (`--proxy`) or `AUTOBROWSER_FINGERPRINT_PLATFORM=linux` for cloakbrowser on a Linux host.
 - `Cloudflare challenge not passed` - the challenge loops; one more attempt is fine, then report with the same suggestions.
 - Never try to solve image captchas by guessing; tell the user.
 
