@@ -289,6 +289,16 @@ func stringList(args *omap.Map, key string) []string {
 	return out
 }
 
+// cut is cut of mcp_server.py: at most maxChars characters, with a marker
+// of what was left out.
+func cut(text string, maxChars int) string {
+	r := []rune(text)
+	if maxChars > 0 && len(r) > maxChars {
+		return string(r[:maxChars]) + fmt.Sprintf("\n... [truncated, %d more chars]", len(r)-maxChars)
+	}
+	return text
+}
+
 func target(args *omap.Map) *scenario.Locator {
 	return &scenario.Locator{Type: str(args, "by"), Value: str(args, "target")}
 }
@@ -333,7 +343,14 @@ func (s *Server) tools() map[string]toolFunc {
 		},
 		"browser_snapshot": func(a *omap.Map) (result, error) {
 			return s.run(func(sess *browser.Session) (string, error) {
-				snap, err := sess.Snapshot(pageIDOf(sess, str(a, "page_id")), actionMs)
+				pid := pageIDOf(sess, str(a, "page_id"))
+				var snap *browser.Snapshot
+				var err error
+				if str(a, "target") != "" {
+					snap, err = sess.ElementSnapshot(pid, *target(a), actionMs)
+				} else {
+					snap, err = sess.Snapshot(pid, actionMs)
+				}
 				if err != nil {
 					return "", err
 				}
@@ -341,7 +358,7 @@ func (s *Server) tools() map[string]toolFunc {
 				if snap.Truncated {
 					text += "\n[truncated]"
 				}
-				return text, nil
+				return cut(text, integer(a, "max_chars")), nil
 			})
 		},
 		"browser_screenshot": func(a *omap.Map) (result, error) {
@@ -404,7 +421,51 @@ func (s *Server) tools() map[string]toolFunc {
 		},
 		"browser_get_text": func(a *omap.Map) (result, error) {
 			return s.run(func(sess *browser.Session) (string, error) {
-				return sess.Content(pageIDOf(sess, str(a, "page_id")), "text")
+				pid := pageIDOf(sess, str(a, "page_id"))
+				var text string
+				var err error
+				if str(a, "target") != "" {
+					text, err = sess.ElementText(pid, *target(a), actionMs)
+				} else {
+					text, err = sess.Content(pid, "text")
+				}
+				return cut(text, integer(a, "max_chars")), err
+			})
+		},
+		"browser_scroll": func(a *omap.Map) (result, error) {
+			if str(a, "target") != "" {
+				return s.act(a, &scenario.Step{Action: "mouse-scroll-to", Locator: target(a), Timeout: &actionMs})
+			}
+			dx, dy := integer(a, "delta_x"), integer(a, "delta_y")
+			return s.act(a, &scenario.Step{Action: "scroll", DeltaX: &dx, DeltaY: &dy})
+		},
+		"browser_cookies": func(a *omap.Map) (result, error) {
+			return s.run(func(sess *browser.Session) (string, error) {
+				var err error
+				switch str(a, "action") {
+				case "set":
+					v, _ := a.Get("cookies")
+					list, _ := v.([]any)
+					if len(list) == 0 {
+						return "", toolError("cookies is required to set cookies")
+					}
+					var cookies []*omap.Map
+					for _, c := range list {
+						cookies = append(cookies, c.(*omap.Map))
+					}
+					err = sess.AddCookies(cookies)
+				case "clear":
+					err = sess.ClearCookies(strPtr(a, "name"), strPtr(a, "domain"), strPtr(a, "path"))
+				}
+				if err != nil {
+					return "", err
+				}
+				var urls []string
+				if v, _ := a.Get("urls"); v != nil {
+					urls = stringList(a, "urls")
+				}
+				cookies, err := sess.CookiesFor(urls)
+				return dumpsASCII(cookies), err
 			})
 		},
 		"browser_tabs": func(a *omap.Map) (result, error) {

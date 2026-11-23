@@ -43,6 +43,20 @@ By = Annotated[LocatorType, Field(description="Locator type of target; ref by de
 PageId = Annotated[
     str | None, Field(description="Tab id from browser_tabs; first tab by default")
 ]
+OptTarget = Annotated[
+    str | None,
+    Field(description="Element ref or locator; only this element and its subtree"),
+]
+MaxChars = Annotated[
+    int | None, Field(description="Cut the output to this many characters")
+]
+
+
+def cut(text: str, max_chars: int | None) -> str:
+    """Cut text to max_chars characters with a marker of what was left out."""
+    if max_chars and 0 < max_chars < len(text):
+        return text[:max_chars] + f"\n... [truncated, {len(text) - max_chars} more chars]"
+    return text
 
 
 def create_server(settings: Settings, profile: str | None = None) -> MCPServer:
@@ -120,16 +134,25 @@ def create_server(settings: Settings, profile: str | None = None) -> MCPServer:
         )
 
     @server.tool()
-    def browser_snapshot(page_id: PageId = None) -> str:
+    def browser_snapshot(
+        target: OptTarget = None,
+        by: By = "ref",
+        max_chars: MaxChars = None,
+        page_id: PageId = None,
+    ) -> str:
         """Accessibility tree of the page with [ref=eN] marks to target elements."""
         data = run(
             lambda s: actions.page_snapshot(
-                s, page_id_of(s, page_id), timeout=action_ms
+                s,
+                page_id_of(s, page_id),
+                timeout=action_ms,
+                loc_type=by if target else None,
+                value=target,
             )
         )
         head = f"URL: {data['url']}\nTitle: {data['title']}\n"
         tail = "\n[truncated]" if data["truncated"] else ""
-        return head + data["snapshot"] + tail
+        return cut(head + data["snapshot"] + tail, max_chars)
 
     @server.tool()
     def browser_screenshot(
@@ -243,9 +266,72 @@ def create_server(settings: Settings, profile: str | None = None) -> MCPServer:
         return act(actions.wait_for_text, page_id, text, gone=gone, timeout=timeout_ms)
 
     @server.tool()
-    def browser_get_text(page_id: PageId = None) -> str:
+    def browser_get_text(
+        target: OptTarget = None,
+        by: By = "ref",
+        max_chars: MaxChars = None,
+        page_id: PageId = None,
+    ) -> str:
         """Visible text of the page body."""
-        return run(lambda s: s.get_content(page_id_of(s, page_id), "text"))
+
+        def _do(s: BrowserSession) -> str:
+            pid = page_id_of(s, page_id)
+            if target:
+                return actions.element_text(s, pid, by, target, timeout=action_ms)
+            return s.get_content(pid, "text")
+
+        return cut(run(_do), max_chars)
+
+    @server.tool()
+    def browser_scroll(
+        delta_x: Annotated[int, Field(description="Horizontal wheel delta in pixels")] = 0,
+        delta_y: Annotated[
+            int, Field(description="Vertical wheel delta in pixels; positive scrolls down")
+        ] = 0,
+        target: Annotated[
+            str | None,
+            Field(description="Element ref or locator to scroll into view instead"),
+        ] = None,
+        by: By = "ref",
+        page_id: PageId = None,
+    ) -> str:
+        """Scroll with the mouse wheel by delta_x/delta_y pixels, or scroll an element into view."""
+        if target:
+            return act(
+                actions.mouse_scroll_to_element, page_id, by, target, timeout=action_ms
+            )
+        return act(actions.mouse_scroll, page_id, delta_x, delta_y)
+
+    @server.tool()
+    def browser_cookies(
+        action: Literal["get", "set", "clear"] = "get",
+        urls: Annotated[
+            list[str] | None,
+            Field(description="Only cookies that affect these URLs in the result"),
+        ] = None,
+        cookies: Annotated[
+            list[dict[str, Any]] | None,
+            Field(
+                description="Cookies to set, as in Playwright add_cookies: name, value, "
+                "url or domain and path, expires, httpOnly, secure, sameSite"
+            ),
+        ] = None,
+        name: Annotated[str | None, Field(description="clear: only this name")] = None,
+        domain: Annotated[str | None, Field(description="clear: only this domain")] = None,
+        path: Annotated[str | None, Field(description="clear: only this path")] = None,
+    ) -> str:
+        """Get, set, or clear cookies of the browser; returns the cookies after the action as JSON."""
+
+        def _do(s: BrowserSession) -> list[dict[str, Any]]:
+            if action == "set":
+                if not cookies:
+                    raise ToolError("cookies is required to set cookies")
+                s.context.add_cookies(cookies)
+            elif action == "clear":
+                s.context.clear_cookies(name=name, domain=domain, path=path)
+            return s.context.cookies(urls) if urls else s.context.cookies()
+
+        return json.dumps(run(_do))
 
     @server.tool()
     def browser_tabs(

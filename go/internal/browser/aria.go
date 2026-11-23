@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/foxzi/autobrowser-client/go/internal/scenario"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/ysmood/gson"
@@ -41,6 +42,35 @@ func (s *Session) Snapshot(pageID string, timeoutMs int) (*Snapshot, error) {
 	if err != nil {
 		return nil, err
 	}
+	return s.snapshotResult(t, text)
+}
+
+// ElementSnapshot is page_snapshot with a locator: the aria snapshot of the
+// first match (Locator.aria_snapshot(mode="ai")), whose refs work like the
+// refs of a page snapshot.
+func (s *Session) ElementSnapshot(pageID string, l scenario.Locator, timeoutMs int) (*Snapshot, error) {
+	t, err := s.tab(pageID)
+	if err != nil {
+		return nil, err
+	}
+	lc, err := t.locator(l, nil)
+	if err != nil {
+		return nil, err
+	}
+	lc.repr += ".first"
+	el, err := lc.waitFor("aria_snapshot", "attached", timeoutMs)
+	if err != nil {
+		return nil, err
+	}
+	text, err := t.elementAriaSnapshot(el)
+	if err != nil {
+		return nil, err
+	}
+	return s.snapshotResult(t, text)
+}
+
+func (s *Session) snapshotResult(t *tab, text string) (*Snapshot, error) {
+	var err error
 	res := &Snapshot{Snapshot: text}
 	if max := s.output.MaxContentBytes; max > 0 && len(text) > max {
 		res.Snapshot, res.Truncated = strings.ToValidUTF8(text[:max], ""), true
@@ -69,6 +99,7 @@ type ariaTab struct {
 type ariaWorld struct {
 	page *rod.Page // the session of the frame: the tab or an out-of-process iframe
 	obj  proto.RuntimeRemoteObjectID
+	ctx  proto.RuntimeExecutionContextID
 }
 
 // newAria starts tracking the frames of a page. Playwright numbers frames from
@@ -170,17 +201,22 @@ func (t *tab) world(frameID proto.PageFrameID, session *rod.Page) (*ariaWorld, e
 	if res.ExceptionDetails != nil {
 		return nil, fmt.Errorf("injected script: %s", res.ExceptionDetails.Exception.Description)
 	}
-	w = &ariaWorld{page: page, obj: res.Result.ObjectID}
+	w = &ariaWorld{page: page, obj: res.Result.ObjectID, ctx: world.ExecutionContextID}
 	a.mu.Lock()
 	a.worlds[frameID] = w
 	a.mu.Unlock()
 	return w, nil
 }
 
-// call runs fn with this = the injected script and returns the value.
+// call runs fn with this = the injected script and returns the value. A
+// remote object id argument is passed as that object.
 func (w *ariaWorld) call(fn string, args ...any) (*proto.RuntimeRemoteObject, error) {
 	var callArgs []*proto.RuntimeCallArgument
 	for _, a := range args {
+		if id, ok := a.(proto.RuntimeRemoteObjectID); ok {
+			callArgs = append(callArgs, &proto.RuntimeCallArgument{ObjectID: id})
+			continue
+		}
 		callArgs = append(callArgs, &proto.RuntimeCallArgument{Value: gson.New(a)})
 	}
 	res, err := proto.RuntimeCallFunctionOn{
@@ -230,6 +266,57 @@ func (t *tab) frameSnapshot(frameID proto.PageFrameID, session *rod.Page) (nodes
 	if err != nil {
 		return nil, false, err
 	}
+	return t.mergeSnapshot(w, res)
+}
+
+// elementAriaSnapshot is the YAML aria snapshot of one element, taken in the
+// injected script of its frame.
+func (t *tab) elementAriaSnapshot(el *rod.Element) (string, error) {
+	doc, err := proto.RuntimeCallFunctionOn{ObjectID: el.Object.ObjectID,
+		FunctionDeclaration: `function() { return this.ownerDocument }`}.Call(el.Page())
+	if err != nil {
+		return "", err
+	}
+	docNode, err := proto.DOMDescribeNode{ObjectID: doc.Result.ObjectID}.Call(el.Page())
+	if err != nil {
+		return "", err
+	}
+	node, err := proto.DOMDescribeNode{ObjectID: el.Object.ObjectID}.Call(el.Page())
+	if err != nil {
+		return "", err
+	}
+	// The main document of a session carries no frame id.
+	frameID := docNode.Node.FrameID
+	if frameID == "" {
+		frameID = el.Page().FrameID
+	}
+	w, err := t.world(frameID, el.Page())
+	if err != nil {
+		return "", err
+	}
+	obj, err := proto.DOMResolveNode{BackendNodeID: node.Node.BackendNodeID, ExecutionContextID: w.ctx}.Call(w.page)
+	if err != nil {
+		return "", err
+	}
+	res, err := w.call(`function(opts, root) { return this.ariaSnapshotJSON(root, opts); }`,
+		map[string]any{"mode": "ai"}, obj.Object.ObjectID)
+	if err != nil {
+		return "", err
+	}
+	nodes, _, err := t.mergeSnapshot(w, res)
+	if err != nil {
+		return "", err
+	}
+	out, err := w.call(`function(json) { return this.renderAriaSnapshotAsYaml(json); }`, nodes)
+	if err != nil {
+		return "", err
+	}
+	return out.Value.Str(), nil
+}
+
+// mergeSnapshot merges the trees of the rendered iframes into the result of
+// ariaSnapshotJSON.
+func (t *tab) mergeSnapshot(w *ariaWorld, res *proto.RuntimeRemoteObject) (nodes []any, ok bool, err error) {
 	if res.Value.Nil() {
 		return nil, false, nil
 	}

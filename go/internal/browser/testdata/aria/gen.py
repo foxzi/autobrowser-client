@@ -34,8 +34,8 @@ s.start(headless=True)
 out = {}
 
 
-def snap(name):
-    text = s.call(actions.page_snapshot, s, "page_0")["snapshot"]
+def snap(name, *loc):
+    text = s.call(actions.page_snapshot, s, "page_0", 10000, *loc)["snapshot"]
     out[name] = text.replace(host, "HOST").replace(
         f"localhost:{server.server_port}", "LOCALHOST"
     )
@@ -53,6 +53,12 @@ try:
     call(actions.click_element, "ref", "f3e3")
     call(actions.fill_element, "ref", "f2e3", "typed")
     snap("frames-after")
+
+    # Element snapshots: a main frame element, an element inside a frame.
+    snap("element-h1", "css", "h1")
+    snap("element-frame", "ref", "f3e1")
+    call(actions.click_element, "ref", "f1e2")
+    call(actions.fill_element, "ref", "f3e4", "el")
 
     call(actions.navigate, f"http://{host}/dynamic.html")
     snap("dynamic-1")

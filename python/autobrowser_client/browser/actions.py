@@ -49,11 +49,34 @@ def _truncate(session: BrowserSession, text: str) -> tuple[str, bool]:
     return text, False
 
 
-def page_snapshot(session: BrowserSession, page_id: str, timeout: int = 10000) -> dict[str, Any]:
-    """Accessibility tree with [ref=eN] marks; use refs as locator type "ref"."""
+def page_snapshot(
+    session: BrowserSession,
+    page_id: str,
+    timeout: int = 10000,
+    loc_type: LocatorType | None = None,
+    value: str | None = None,
+) -> dict[str, Any]:
+    """Accessibility tree with [ref=eN] marks; use refs as locator type "ref".
+
+    With a locator, only the subtree of its first match.
+    """
     page = session.get_page(page_id)
-    text, truncated = _truncate(session, page.aria_snapshot(mode="ai", timeout=timeout))
+    root = resolve_locator(page, loc_type, value).first if loc_type and value else page
+    text, truncated = _truncate(session, root.aria_snapshot(mode="ai", timeout=timeout))
     return {"url": page.url, "title": page.title(), "snapshot": text, "truncated": truncated}
+
+
+def element_text(
+    session: BrowserSession,
+    page_id: str,
+    loc_type: LocatorType,
+    value: str,
+    timeout: int = 10000,
+) -> str:
+    """Visible text of the first match, cut like get_content."""
+    page = session.get_page(page_id)
+    text = resolve_locator(page, loc_type, value).first.inner_text(timeout=timeout)
+    return _truncate(session, text)[0]
 
 
 def take_screenshot(

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/foxzi/autobrowser-client/go/internal/omap"
+	"github.com/foxzi/autobrowser-client/go/internal/scenario"
 )
 
 // TestAriaSnapshot compares Snapshot with the output of the Python client on
@@ -28,9 +29,15 @@ func TestAriaSnapshot(t *testing.T) {
 	port := host[strings.LastIndex(host, ":")+1:]
 
 	s := startSession(t)
-	snap := func(name string) {
+	snap := func(name string, loc ...string) {
 		t.Helper()
-		res, err := s.Snapshot("page_0", 10000)
+		var res *Snapshot
+		var err error
+		if loc != nil {
+			res, err = s.ElementSnapshot("page_0", scenario.Locator{Type: loc[0], Value: loc[1]}, 10000)
+		} else {
+			res, err = s.Snapshot("page_0", 10000)
+		}
 		if err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
@@ -55,6 +62,11 @@ func TestAriaSnapshot(t *testing.T) {
 	run("click", "locator", ref("f3e3"))
 	run("fill", "locator", ref("f2e3"), "value", "typed")
 	snap("frames-after")
+	// Element snapshots: a main frame element, an element inside a frame.
+	snap("element-h1", "css", "h1")
+	snap("element-frame", "ref", "f3e1")
+	run("click", "locator", ref("f1e2"))
+	run("fill", "locator", ref("f3e4"), "value", "el")
 
 	run("open", "url", srv.URL+"/dynamic.html")
 	snap("dynamic-1")

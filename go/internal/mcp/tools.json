@@ -25,8 +25,8 @@
    "required": [
     "url"
    ],
-   "type": "object",
-   "title": "browser_navigateArguments"
+   "title": "browser_navigateArguments",
+   "type": "object"
   },
   "outputSchema": {
    "properties": {
@@ -38,8 +38,8 @@
    "required": [
     "result"
    ],
-   "type": "object",
-   "title": "browser_navigateOutput"
+   "title": "browser_navigateOutput",
+   "type": "object"
   }
  },
  {
@@ -73,8 +73,8 @@
    "required": [
     "direction"
    ],
-   "type": "object",
-   "title": "browser_historyArguments"
+   "title": "browser_historyArguments",
+   "type": "object"
   },
   "outputSchema": {
    "properties": {
@@ -86,8 +86,8 @@
    "required": [
     "result"
    ],
-   "type": "object",
-   "title": "browser_historyOutput"
+   "title": "browser_historyOutput",
+   "type": "object"
   }
  },
  {
@@ -95,6 +95,48 @@
   "description": "Accessibility tree of the page with [ref=eN] marks to target elements.",
   "inputSchema": {
    "properties": {
+    "target": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Element ref or locator; only this element and its subtree",
+     "title": "Target"
+    },
+    "by": {
+     "default": "ref",
+     "description": "Locator type of target; ref by default",
+     "enum": [
+      "css",
+      "xpath",
+      "id",
+      "name",
+      "class",
+      "text",
+      "attribute",
+      "ref"
+     ],
+     "title": "By",
+     "type": "string"
+    },
+    "max_chars": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Cut the output to this many characters",
+     "title": "Max Chars"
+    },
     "page_id": {
      "anyOf": [
       {
@@ -109,8 +151,8 @@
      "title": "Page Id"
     }
    },
-   "type": "object",
-   "title": "browser_snapshotArguments"
+   "title": "browser_snapshotArguments",
+   "type": "object"
   },
   "outputSchema": {
    "properties": {
@@ -122,8 +164,8 @@
    "required": [
     "result"
    ],
-   "type": "object",
-   "title": "browser_snapshotOutput"
+   "title": "browser_snapshotOutput",
+   "type": "object"
   }
  },
  {
@@ -179,8 +221,8 @@
      "title": "Page Id"
     }
    },
-   "type": "object",
-   "title": "browser_screenshotArguments"
+   "title": "browser_screenshotArguments",
+   "type": "object"
   }
  },
  {
@@ -231,8 +273,8 @@
    "required": [
     "target"
    ],
-   "type": "object",
-   "title": "browser_clickArguments"
+   "title": "browser_clickArguments",
+   "type": "object"
   },
   "outputSchema": {
    "properties": {
@@ -244,8 +286,8 @@
    "required": [
     "result"
    ],
-   "type": "object",
-   "title": "browser_clickOutput"
+   "title": "browser_clickOutput",
+   "type": "object"
   }
  },
  {
@@ -291,8 +333,8 @@
    "required": [
     "target"
    ],
-   "type": "object",
-   "title": "browser_hoverArguments"
+   "title": "browser_hoverArguments",
+   "type": "object"
   },
   "outputSchema": {
    "properties": {
@@ -304,8 +346,8 @@
    "required": [
     "result"
    ],
-   "type": "object",
-   "title": "browser_hoverOutput"
+   "title": "browser_hoverOutput",
+   "type": "object"
   }
  },
  {
@@ -362,8 +404,8 @@
     "target",
     "text"
    ],
-   "type": "object",
-   "title": "browser_typeArguments"
+   "title": "browser_typeArguments",
+   "type": "object"
   },
   "outputSchema": {
    "properties": {
@@ -375,8 +417,8 @@
    "required": [
     "result"
    ],
-   "type": "object",
-   "title": "browser_typeOutput"
+   "title": "browser_typeOutput",
+   "type": "object"
   }
  },
  {
@@ -406,8 +448,8 @@
    "required": [
     "key"
    ],
-   "type": "object",
-   "title": "browser_press_keyArguments"
+   "title": "browser_press_keyArguments",
+   "type": "object"
   },
   "outputSchema": {
    "properties": {
@@ -419,8 +461,8 @@
    "required": [
     "result"
    ],
-   "type": "object",
-   "title": "browser_press_keyOutput"
+   "title": "browser_press_keyOutput",
+   "type": "object"
   }
  },
  {
@@ -474,8 +516,8 @@
     "target",
     "values"
    ],
-   "type": "object",
-   "title": "browser_select_optionArguments"
+   "title": "browser_select_optionArguments",
+   "type": "object"
   },
   "outputSchema": {
    "properties": {
@@ -487,8 +529,8 @@
    "required": [
     "result"
    ],
-   "type": "object",
-   "title": "browser_select_optionOutput"
+   "title": "browser_select_optionOutput",
+   "type": "object"
   }
  },
  {
@@ -543,8 +585,8 @@
     "target",
     "paths"
    ],
-   "type": "object",
-   "title": "browser_file_uploadArguments"
+   "title": "browser_file_uploadArguments",
+   "type": "object"
   },
   "outputSchema": {
    "properties": {
@@ -556,8 +598,8 @@
    "required": [
     "result"
    ],
-   "type": "object",
-   "title": "browser_file_uploadOutput"
+   "title": "browser_file_uploadOutput",
+   "type": "object"
   }
  },
  {
@@ -587,8 +629,8 @@
    "required": [
     "expression"
    ],
-   "type": "object",
-   "title": "browser_evaluateArguments"
+   "title": "browser_evaluateArguments",
+   "type": "object"
   },
   "outputSchema": {
    "properties": {
@@ -600,8 +642,8 @@
    "required": [
     "result"
    ],
-   "type": "object",
-   "title": "browser_evaluateOutput"
+   "title": "browser_evaluateOutput",
+   "type": "object"
   }
  },
  {
@@ -641,8 +683,8 @@
    "required": [
     "text"
    ],
-   "type": "object",
-   "title": "browser_wait_forArguments"
+   "title": "browser_wait_forArguments",
+   "type": "object"
   },
   "outputSchema": {
    "properties": {
@@ -654,8 +696,8 @@
    "required": [
     "result"
    ],
-   "type": "object",
-   "title": "browser_wait_forOutput"
+   "title": "browser_wait_forOutput",
+   "type": "object"
   }
  },
  {
@@ -663,6 +705,48 @@
   "description": "Visible text of the page body.",
   "inputSchema": {
    "properties": {
+    "target": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Element ref or locator; only this element and its subtree",
+     "title": "Target"
+    },
+    "by": {
+     "default": "ref",
+     "description": "Locator type of target; ref by default",
+     "enum": [
+      "css",
+      "xpath",
+      "id",
+      "name",
+      "class",
+      "text",
+      "attribute",
+      "ref"
+     ],
+     "title": "By",
+     "type": "string"
+    },
+    "max_chars": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Cut the output to this many characters",
+     "title": "Max Chars"
+    },
     "page_id": {
      "anyOf": [
       {
@@ -677,8 +761,8 @@
      "title": "Page Id"
     }
    },
-   "type": "object",
-   "title": "browser_get_textArguments"
+   "title": "browser_get_textArguments",
+   "type": "object"
   },
   "outputSchema": {
    "properties": {
@@ -690,8 +774,190 @@
    "required": [
     "result"
    ],
-   "type": "object",
-   "title": "browser_get_textOutput"
+   "title": "browser_get_textOutput",
+   "type": "object"
+  }
+ },
+ {
+  "name": "browser_scroll",
+  "description": "Scroll with the mouse wheel by delta_x/delta_y pixels, or scroll an element into view.",
+  "inputSchema": {
+   "properties": {
+    "delta_x": {
+     "default": 0,
+     "description": "Horizontal wheel delta in pixels",
+     "title": "Delta X",
+     "type": "integer"
+    },
+    "delta_y": {
+     "default": 0,
+     "description": "Vertical wheel delta in pixels; positive scrolls down",
+     "title": "Delta Y",
+     "type": "integer"
+    },
+    "target": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Element ref or locator to scroll into view instead",
+     "title": "Target"
+    },
+    "by": {
+     "default": "ref",
+     "description": "Locator type of target; ref by default",
+     "enum": [
+      "css",
+      "xpath",
+      "id",
+      "name",
+      "class",
+      "text",
+      "attribute",
+      "ref"
+     ],
+     "title": "By",
+     "type": "string"
+    },
+    "page_id": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Tab id from browser_tabs; first tab by default",
+     "title": "Page Id"
+    }
+   },
+   "title": "browser_scrollArguments",
+   "type": "object"
+  },
+  "outputSchema": {
+   "properties": {
+    "result": {
+     "title": "Result",
+     "type": "string"
+    }
+   },
+   "required": [
+    "result"
+   ],
+   "title": "browser_scrollOutput",
+   "type": "object"
+  }
+ },
+ {
+  "name": "browser_cookies",
+  "description": "Get, set, or clear cookies of the browser; returns the cookies after the action as JSON.",
+  "inputSchema": {
+   "properties": {
+    "action": {
+     "default": "get",
+     "enum": [
+      "get",
+      "set",
+      "clear"
+     ],
+     "title": "Action",
+     "type": "string"
+    },
+    "urls": {
+     "anyOf": [
+      {
+       "items": {
+        "type": "string"
+       },
+       "type": "array"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Only cookies that affect these URLs in the result",
+     "title": "Urls"
+    },
+    "cookies": {
+     "anyOf": [
+      {
+       "items": {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       "type": "array"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Cookies to set, as in Playwright add_cookies: name, value, url or domain and path, expires, httpOnly, secure, sameSite",
+     "title": "Cookies"
+    },
+    "name": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "clear: only this name",
+     "title": "Name"
+    },
+    "domain": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "clear: only this domain",
+     "title": "Domain"
+    },
+    "path": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "clear: only this path",
+     "title": "Path"
+    }
+   },
+   "title": "browser_cookiesArguments",
+   "type": "object"
+  },
+  "outputSchema": {
+   "properties": {
+    "result": {
+     "title": "Result",
+     "type": "string"
+    }
+   },
+   "required": [
+    "result"
+   ],
+   "title": "browser_cookiesOutput",
+   "type": "object"
   }
  },
  {
@@ -736,8 +1002,8 @@
      "title": "Page Id"
     }
    },
-   "type": "object",
-   "title": "browser_tabsArguments"
+   "title": "browser_tabsArguments",
+   "type": "object"
   },
   "outputSchema": {
    "properties": {
@@ -749,8 +1015,8 @@
    "required": [
     "result"
    ],
-   "type": "object",
-   "title": "browser_tabsOutput"
+   "title": "browser_tabsOutput",
+   "type": "object"
   }
  },
  {
@@ -789,8 +1055,8 @@
    "required": [
     "kind"
    ],
-   "type": "object",
-   "title": "browser_logsArguments"
+   "title": "browser_logsArguments",
+   "type": "object"
   },
   "outputSchema": {
    "properties": {
@@ -802,8 +1068,8 @@
    "required": [
     "result"
    ],
-   "type": "object",
-   "title": "browser_logsOutput"
+   "title": "browser_logsOutput",
+   "type": "object"
   }
  },
  {
@@ -831,8 +1097,8 @@
    "required": [
     "accept"
    ],
-   "type": "object",
-   "title": "browser_handle_dialogsArguments"
+   "title": "browser_handle_dialogsArguments",
+   "type": "object"
   },
   "outputSchema": {
    "properties": {
@@ -844,8 +1110,8 @@
    "required": [
     "result"
    ],
-   "type": "object",
-   "title": "browser_handle_dialogsOutput"
+   "title": "browser_handle_dialogsOutput",
+   "type": "object"
   }
  },
  {
@@ -872,8 +1138,8 @@
      "title": "Page Id"
     }
    },
-   "type": "object",
-   "title": "browser_solve_challengeArguments"
+   "title": "browser_solve_challengeArguments",
+   "type": "object"
   },
   "outputSchema": {
    "properties": {
@@ -885,8 +1151,8 @@
    "required": [
     "result"
    ],
-   "type": "object",
-   "title": "browser_solve_challengeOutput"
+   "title": "browser_solve_challengeOutput",
+   "type": "object"
   }
  },
  {
@@ -950,8 +1216,8 @@
      "title": "Page Id"
     }
    },
-   "type": "object",
-   "title": "browser_run_scriptArguments"
+   "title": "browser_run_scriptArguments",
+   "type": "object"
   },
   "outputSchema": {
    "properties": {
@@ -963,8 +1229,8 @@
    "required": [
     "result"
    ],
-   "type": "object",
-   "title": "browser_run_scriptOutput"
+   "title": "browser_run_scriptOutput",
+   "type": "object"
   }
  },
  {
@@ -972,8 +1238,8 @@
   "description": "Close the browser; the next tool call starts a fresh one.",
   "inputSchema": {
    "properties": {},
-   "type": "object",
-   "title": "browser_closeArguments"
+   "title": "browser_closeArguments",
+   "type": "object"
   },
   "outputSchema": {
    "properties": {
@@ -985,8 +1251,8 @@
    "required": [
     "result"
    ],
-   "type": "object",
-   "title": "browser_closeOutput"
+   "title": "browser_closeOutput",
+   "type": "object"
   }
  }
 ]

@@ -7,12 +7,14 @@ import os
 import re
 import sys
 
+import anyio
 import pytest
 from mcp import ClientSession, StdioServerParameters, stdio_client
 
 PAGE = (
     "data:text/html,<title>T</title><input id=q>"
     "<button onclick=\"document.body.insertAdjacentHTML('beforeend','<p>clicked</p>')\">Go</button>"
+    "<div id=box><b>boxed</b> text 0123456789</div><div style='height:3000px'></div>"
 )
 
 
@@ -29,9 +31,9 @@ async def test_mcp_browser_flow() -> None:
     ):
         await client.initialize()
         tools = {t.name for t in (await client.list_tools()).tools}
-        assert {"browser_navigate", "browser_snapshot", "browser_click"} <= tools
+        assert {"browser_navigate", "browser_snapshot", "browser_click", "browser_cookies", "browser_scroll"} <= tools
 
-        async def call(name: str, **args: object):
+        async def call(name: str, /, **args: object):
             res = await client.call_tool(name, args)
             return res
 
@@ -61,6 +63,57 @@ async def test_mcp_browser_flow() -> None:
         assert res.is_error
         assert "Timeout" in res.content[0].text
         assert ": :" not in res.content[0].text
+
+        # cookies: set, get, clear by name, clear all
+        cookie = {"name": "a", "value": "1", "domain": "example.com", "path": "/"}
+        res = await call("browser_cookies", action="set", cookies=[cookie, {**cookie, "name": "b"}])
+        assert not res.is_error, res.content
+        got = json.loads(res.content[0].text)
+        assert {(c["name"], c["value"]) for c in got} == {("a", "1"), ("b", "1")}
+        got = json.loads((await call("browser_cookies")).content[0].text)
+        assert len(got) == 2
+        res = await call("browser_cookies", action="clear", name="a")
+        assert [c["name"] for c in json.loads(res.content[0].text)] == ["b"]
+        res = await call("browser_cookies", action="clear")
+        assert json.loads(res.content[0].text) == []
+        res = await call("browser_cookies", action="set")
+        assert res.is_error
+        assert "cookies is required to set cookies" in res.content[0].text
+        res = await call("browser_cookies", action="set", cookies=[{"name": "x", "value": "1"}])
+        assert res.is_error
+        assert "Cookie should have a url or a domain/path pair" in res.content[0].text
+
+        # scroll by wheel delta
+        async def scroll_y() -> object:
+            res = await call("browser_evaluate", expression="() => window.scrollY")
+            return json.loads(res.content[0].text)
+
+        assert await scroll_y() == 0
+        res = await call("browser_scroll", delta_y=500)
+        assert not res.is_error, res.content
+        assert json.loads(res.content[0].text)["title"] == "T"
+        for _ in range(20):
+            if await scroll_y() > 0:
+                break
+            await anyio.sleep(0.1)
+        assert await scroll_y() > 0
+
+        # text and snapshot of one element, max_chars
+        res = await call("browser_get_text", target="#box", by="css")
+        assert res.content[0].text == "boxed text 0123456789"
+        res = await call("browser_get_text", target="#box", by="css", max_chars=5)
+        assert res.content[0].text == "boxed\n... [truncated, 16 more chars]"
+        res = await call("browser_snapshot", target="#box", by="css")
+        assert not res.is_error, res.content
+        sub = res.content[0].text
+        assert "boxed" in sub
+        assert "button \"Go\"" not in sub
+        subref = re.search(r"\[ref=(e\d+)\]", sub).group(1)
+        res = await call("browser_click", target=subref)
+        assert not res.is_error, res.content
+        res = await call("browser_snapshot", max_chars=10)
+        assert res.content[0].text.endswith("more chars]")
+        assert len(res.content[0].text.split("\n... [truncated")[0]) == 10
 
         res = await call("browser_close")
         assert not res.is_error
