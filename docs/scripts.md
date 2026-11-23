@@ -103,7 +103,7 @@ Typical fields:
 - `viewport` — browser viewport size, e.g. `{width: 1920, height: 1080}`
 - `timeout`
 - `preserveSession` — save open tabs to `tabs.json` on stop, restore them on next start (default: `false`)
-- `fingerprint` — enable browser fingerprint spoofing (default: `null` / disabled). Accepts `true`, `false`, or an object with overrides.
+- `fingerprint` — browser fingerprint spoofing. Accepts `true`, `false`, or an object with overrides. Default `null`: on when the session uses a profile, off without one; `false` turns it off, `true` alone does nothing without a profile (see [runtime.md](runtime.md#fingerprint-spoofing)).
 
 Example:
 
@@ -198,6 +198,7 @@ Supported locator types:
 - `class`
 - `text`
 - `attribute`
+- `ref` - ref from the latest page snapshot (MCP `browser_snapshot`, API `GET .../snapshot`), e.g. `e2`
 
 ### Shorthand locator strings / Сокращённая запись локатора
 
@@ -350,7 +351,7 @@ The `<locator-str>` value uses the same string parsing rules described in "Short
 
 `press` takes an optional `locator`: then the key is pressed on that element. `type` waits a random delay in `[delay*0.5, delay*1.5]` between characters. `wait` with `waitUntil: visible|hidden` requires a `locator`.
 
-Shorthand forms: `hover`/`dblclick`/`focus`/`clear`/`check`/`uncheck`/`submit`/`extract`/`find-all`/`read: <locator>`; `select: [<locator>, <option or list>]`; `upload: [<locator>, <file or list>]`; `evaluate: <script>`; `history: <direction>`; `wait-text: <text>`; `set: {name: value}`; `assert: <condition>`; `fail: <message>`.
+Shorthand forms: `hover`/`dblclick`/`focus`/`clear`/`check`/`uncheck`/`submit`/`extract`/`find-all`/`read`/`mouse-scroll-to: <locator>`; `mouse-move: ~` and `mouse-random: ~` with their fields next to the key; `select: [<locator>, <option or list>]`; `upload: [<locator>, <file or list>]`; `evaluate: <script>`; `history: <direction>`; `wait-text: <text>`; `set: {name: value}`; `assert: <condition>`; `fail: <message>`.
 
 ### Variables
 
@@ -495,7 +496,7 @@ On success it prints `{"success": true, "steps": N, "stopOnError": bool}` (exit 
 {"success": false, "error": {"code": "SCRIPT_VALIDATION_ERROR", "message": "1 validation error for ScriptDefinition\nsteps.0.step\n  Value error, 'open' step requires 'url' ..."}}
 ```
 
-The message contains the path to the invalid field (`steps.0.step` - first step). MCP returns the same text as a tool error, the HTTP API as a 400 response with the same `code`.
+The message contains the path to the invalid field (`steps.0.step` - first step). MCP returns the same text as a tool error, the HTTP API as a 400 response with the same `code`. The Go binary prints Go paths (`steps.0` instead of `steps.0.step`) without pydantic's `[type=...]` trailer; see [go/README.md](../go/README.md#known-differences).
 
 ### Execution result
 
@@ -609,7 +610,7 @@ output:
 - `viewport` — размер окна браузера, например `{width: 1920, height: 1080}`
 - `timeout`
 - `preserveSession` — сохранять открытые вкладки в `tabs.json` при остановке, восстанавливать при следующем запуске (по умолчанию: `false`)
-- `fingerprint` — включить подмену отпечатка браузера (по умолчанию: `null` / выключено). Принимает `true`, `false` или объект с переопределениями.
+- `fingerprint` — подмена отпечатка браузера. Принимает `true`, `false` или объект с переопределениями. По умолчанию `null`: включена, если у сессии есть профиль, без профиля выключена; `false` выключает, `true` без профиля ничего не делает (см. [runtime.md](runtime.md#подмена-отпечатка-браузера-fingerprint-spoofing)).
 
 Пример:
 
@@ -704,6 +705,7 @@ locator:
 - `class`
 - `text`
 - `attribute`
+- `ref` - ref из последнего снимка страницы (MCP `browser_snapshot`, API `GET .../snapshot`), например `e2`
 
 ### Дополнительные действия
 
@@ -726,7 +728,7 @@ locator:
 
 У `press` есть необязательный `locator`: тогда клавиша нажимается на этом элементе. `type` ждёт случайную паузу в диапазоне `[delay*0.5, delay*1.5]` между символами. `wait` с `waitUntil: visible|hidden` требует `locator`.
 
-Сокращённая запись: `hover`/`dblclick`/`focus`/`clear`/`check`/`uncheck`/`submit`/`extract`/`find-all`/`read: <локатор>`; `select: [<локатор>, <значение или список>]`; `upload: [<локатор>, <файл или список>]`; `evaluate: <скрипт>`; `history: <направление>`; `wait-text: <текст>`; `set: {имя: значение}`; `assert: <условие>`; `fail: <сообщение>`.
+Сокращённая запись: `hover`/`dblclick`/`focus`/`clear`/`check`/`uncheck`/`submit`/`extract`/`find-all`/`read`/`mouse-scroll-to: <локатор>`; `mouse-move: ~` и `mouse-random: ~` с полями рядом с ключом; `select: [<локатор>, <значение или список>]`; `upload: [<локатор>, <файл или список>]`; `evaluate: <скрипт>`; `history: <направление>`; `wait-text: <текст>`; `set: {имя: значение}`; `assert: <условие>`; `fail: <сообщение>`.
 
 ### Переменные
 
@@ -871,7 +873,7 @@ JetBrains IDE: Settings -> Languages & Frameworks -> Schemas and DTDs -> JSON Sc
 {"success": false, "error": {"code": "SCRIPT_VALIDATION_ERROR", "message": "1 validation error for ScriptDefinition\nsteps.0.step\n  Value error, 'open' step requires 'url' ..."}}
 ```
 
-Сообщение содержит путь к некорректному полю (`steps.0.step` - первый шаг). MCP возвращает тот же текст как ошибку инструмента, HTTP API - как ответ 400 с тем же `code`.
+Сообщение содержит путь к некорректному полю (`steps.0.step` - первый шаг). MCP возвращает тот же текст как ошибку инструмента, HTTP API - как ответ 400 с тем же `code`. Go-бинарник печатает пути Go (`steps.0` вместо `steps.0.step`) без хвоста pydantic `[type=...]`; см. [go/README.ru.md](../go/README.ru.md#известные-отличия).
 
 ### Результат выполнения
 
