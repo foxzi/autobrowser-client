@@ -154,12 +154,17 @@ func (l *loc) read(ms int) (*omap.Map, error) {
 // upload is upload_files: set the files of a file input, or of the chooser
 // opened by clicking the element.
 func (l *loc) upload(files []string, ms int) (*omap.Map, error) {
-	paths := make([]string, len(files))
-	for i, f := range files {
-		if _, err := os.Stat(f); errors.Is(err, fs.ErrNotExist) {
-			return nil, fmt.Errorf("[Errno 2] No such file or directory: '%s'", f)
+	// Playwright reads the files only when setting them, so a missing file
+	// fails after the chooser wait, like in Python.
+	resolve := func() ([]string, error) {
+		paths := make([]string, len(files))
+		for i, f := range files {
+			if _, err := os.Stat(f); errors.Is(err, fs.ErrNotExist) {
+				return nil, fmt.Errorf("[Errno 2] No such file or directory: '%s'", f)
+			}
+			paths[i], _ = filepath.Abs(f)
 		}
-		paths[i], _ = filepath.Abs(f)
+		return paths, nil
 	}
 	el, err := l.waitFor("evaluate", "attached", ms)
 	if err != nil {
@@ -170,6 +175,10 @@ func (l *loc) upload(files []string, ms int) (*omap.Map, error) {
 		return nil, err
 	}
 	if r.Value.Bool() {
+		paths, err := resolve()
+		if err != nil {
+			return nil, err
+		}
 		if err := el.SetFiles(paths); err != nil {
 			return nil, err
 		}
@@ -193,6 +202,10 @@ func (l *loc) upload(files []string, ms int) (*omap.Map, error) {
 			"=========================== logs ===========================\n"+
 			"waiting for event \"filechooser\"\n"+
 			"============================================================", ms)
+	}
+	paths, err := resolve()
+	if err != nil {
+		return nil, err
 	}
 	if err := (proto.DOMSetFileInputFiles{Files: paths, BackendNodeID: e.BackendNodeID}).Call(p); err != nil {
 		return nil, err
