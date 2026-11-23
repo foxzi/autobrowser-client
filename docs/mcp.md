@@ -19,6 +19,8 @@ Step-by-step guide for an agent: [install-agent.md](install-agent.md). The binar
 
 To build it yourself: `python/scripts/build-binary.sh` (needs Python 3.11+, result in `python/dist/autobrowser`).
 
+The same release also has a Go build, `autobrowser-go-<os>-<arch>[.exe]` (`linux-amd64`, `linux-arm64`, `darwin-arm64`, `windows-amd64`, each with a `.sha256`). It has the same commands (`mcp`, `install`, `install-skill`, `update`) and the same tools, but runs only the `cloakbrowser` engine: set `AUTOBROWSER_BROWSER_ENGINE=cloakbrowser` (the default `patchright` fails at launch). `autobrowser install` downloads the cloakbrowser Chromium into `~/.cloakbrowser`. See [go/README.md](../go/README.md).
+
 ### Install: uv
 
 You only need [uv](https://docs.astral.sh/uv/getting-started/installation/). uv downloads Python and all dependencies by itself, isolated from the system.
@@ -119,7 +121,7 @@ or copy the `python/skills/autobrowser` folder to `.claude/skills/` of a project
 
 ### Updates
 
-The binary updates itself. `autobrowser mcp` and `autobrowser serve` check the latest GitHub release at most once a day in the background; a newer binary is downloaded, verified against its `.sha256` and put in place of the current one. It takes effect on the next start. Log lines go to stderr. `autobrowser update` updates right away, `autobrowser update --check` only reports. Set `AUTOBROWSER_NO_AUTO_UPDATE=1` to turn the background check off. A pip/uv install is not updated this way: upgrade the package instead.
+The binary updates itself. `autobrowser mcp` and `autobrowser serve` check the latest GitHub release at most once a day in the background; a newer binary is downloaded, verified against its `.sha256` and put in place of the current one. It takes effect on the next start. Log lines go to stderr. `autobrowser update` updates right away, `autobrowser update --check` only reports. Set `AUTOBROWSER_NO_AUTO_UPDATE=1` to turn the background check off. A Go binary updates itself from the `autobrowser-go-*` assets. A pip/uv install is not updated this way: upgrade the package instead.
 
 ### Security
 
@@ -143,6 +145,8 @@ claude mcp add autobrowser -e AUTOBROWSER_BROWSER_ENGINE=cloakbrowser -- ~/.loca
 Пошаговая инструкция для агента: [install-agent.md](install-agent.md). Бинарь при каждом запуске распаковывается во временный каталог, поэтому первый ответ занимает несколько секунд.
 
 Собрать самому: `python/scripts/build-binary.sh` (нужен Python 3.11+, результат в `python/dist/autobrowser`).
+
+В том же релизе есть и Go-сборка `autobrowser-go-<os>-<arch>[.exe]` (`linux-amd64`, `linux-arm64`, `darwin-arm64`, `windows-amd64`, к каждой `.sha256`). Команды те же (`mcp`, `install`, `install-skill`, `update`), инструменты те же, но запускается только движок `cloakbrowser`: задайте `AUTOBROWSER_BROWSER_ENGINE=cloakbrowser` (движок по умолчанию `patchright` при запуске даёт ошибку). `autobrowser install` скачивает Chromium cloakbrowser в `~/.cloakbrowser`. См. [go/README.ru.md](../go/README.ru.md).
 
 ### Установка: uv
 
@@ -244,7 +248,7 @@ curl -fsSL https://raw.githubusercontent.com/foxzi/autobrowser-client/main/pytho
 
 ### Обновления
 
-Бинарь обновляется сам. `autobrowser mcp` и `autobrowser serve` не чаще раза в сутки в фоне проверяют последний релиз на GitHub; новый бинарь скачивается, сверяется с `.sha256` и заменяет текущий. Новая версия заработает при следующем запуске. Сообщения идут в stderr. `autobrowser update` обновляет сразу, `autobrowser update --check` только сообщает о новой версии. `AUTOBROWSER_NO_AUTO_UPDATE=1` отключает фоновую проверку. Установка через pip/uv так не обновляется: обновляйте пакет.
+Бинарь обновляется сам. `autobrowser mcp` и `autobrowser serve` не чаще раза в сутки в фоне проверяют последний релиз на GitHub; новый бинарь скачивается, сверяется с `.sha256` и заменяет текущий. Новая версия заработает при следующем запуске. Сообщения идут в stderr. `autobrowser update` обновляет сразу, `autobrowser update --check` только сообщает о новой версии. `AUTOBROWSER_NO_AUTO_UPDATE=1` отключает фоновую проверку. Go-бинарь обновляется из ассетов `autobrowser-go-*`. Установка через pip/uv так не обновляется: обновляйте пакет.
 
 ### Безопасность
 

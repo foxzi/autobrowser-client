@@ -154,6 +154,8 @@ pip install "autobrowser-client[cloak]"
 
 Engine is a process-wide setting (config file or env var `AUTOBROWSER_BROWSER_ENGINE`). It cannot be changed per session or per API request.
 
+The Go binary (`autobrowser-go-<os>-<arch>`, see [go/README.md](../go/README.md)) supports only `cloakbrowser`: with the default `patchright` it fails at launch with `CONFIG_ERROR`, so set `AUTOBROWSER_BROWSER_ENGINE=cloakbrowser`. It needs neither pip nor the `cloak` extra: `autobrowser install` and the geoip lookup download what they need themselves.
+
 `browser.fingerprintPlatform` (env `AUTOBROWSER_FINGERPRINT_PLATFORM`) sets the OS that cloakbrowser presents (`--fingerprint-platform`): `windows`, `linux` or `macos`. Unset keeps the cloakbrowser default (Windows). If a Cloudflare challenge loops (checkbox passes, then the challenge reappears), set `linux`: on a desktop Linux host the Windows fingerprint looped on criptonoticias.com while `linux` passed (in the Docker image both passed). Ignored by patchright.
 
 `browser.geoip` (env `AUTOBROWSER_GEOIP`, default `false`) sets the browser timezone and language from the exit IP: through the proxy when one is configured, otherwise the machine's own public IP. Without it the browser keeps the host timezone, which may not match the proxy country (for example `Europe/Moscow` with a Finnish IP), and anti-bot systems can treat that as a sign of spoofing. It works with both engines: cloakbrowser gets the `--fingerprint-timezone`/`--lang` flags, patchright gets the context `timezone_id`/`locale`. The language follows the country, so sites switch their UI language too (a Finnish IP gives `fi-FI`). Lookup uses cloakbrowser's GeoIP module: it needs `pip install 'cloakbrowser[geoip]'` (included in the `cloak` extra, the Docker image and the binaries), finds the exit IP through public echo services (api.ipify.org, checkip.amazonaws.com, ifconfig.me) and on first use downloads the GeoLite2-City database (~70 MB) to `~/.cloakbrowser/geoip/`. If the lookup fails, the session does not start.
@@ -394,6 +396,8 @@ pip install "autobrowser-client[cloak]"
 ```
 
 Движок — это настройка уровня процесса (конфиг-файл или переменная окружения `AUTOBROWSER_BROWSER_ENGINE`). Его нельзя изменить на уровне сессии или API-запроса.
+
+Go-бинарь (`autobrowser-go-<os>-<arch>`, см. [go/README.ru.md](../go/README.ru.md)) поддерживает только `cloakbrowser`: с движком по умолчанию `patchright` он при запуске даёт `CONFIG_ERROR`, поэтому задайте `AUTOBROWSER_BROWSER_ENGINE=cloakbrowser`. Ему не нужны ни pip, ни extra `cloak`: `autobrowser install` и определение geoip скачивают всё необходимое сами.
 
 `browser.fingerprintPlatform` (env `AUTOBROWSER_FINGERPRINT_PLATFORM`) задаёт ОС, которую показывает cloakbrowser (`--fingerprint-platform`): `windows`, `linux` или `macos`. Если не задано, используется значение cloakbrowser по умолчанию (Windows). Если Cloudflare challenge зацикливается (чекбокс пройден, но challenge появляется снова), ставьте `linux`: на десктопном Linux-хосте Windows-отпечаток зацикливался на criptonoticias.com, а `linux` проходил (в Docker-образе проходили оба). Для patchright игнорируется.
 

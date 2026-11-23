@@ -25,6 +25,8 @@ Pick the file for the OS and CPU (`uname -sm` on Linux / macOS):
 | macOS Apple Silicon (arm64) | `autobrowser-macos-arm64` | `~/.local/bin/autobrowser` |
 | Windows x64 | `autobrowser-windows-amd64.exe` | `%LOCALAPPDATA%\autobrowser\autobrowser.exe` |
 
+Optional smaller alternative: the Go build of the same release, `autobrowser-go-linux-amd64`, `autobrowser-go-linux-arm64`, `autobrowser-go-darwin-arm64` or `autobrowser-go-windows-amd64.exe`. It supports only the cloakbrowser engine, which is what the steps below use. Use the Python binaries from the table unless the user asks for Go.
+
 For other platforms (for example macOS on Intel) there is no binary: stop and point the user to the uv install in https://github.com/foxzi/autobrowser-client/blob/main/docs/mcp.md.
 
 Linux / macOS (replace `FILE`):
@@ -146,6 +148,8 @@ Report to the user: what was installed, where the binary and the config are, and
 | Linux aarch64 | `autobrowser-linux-arm64` | `~/.local/bin/autobrowser` |
 | macOS Apple Silicon (arm64) | `autobrowser-macos-arm64` | `~/.local/bin/autobrowser` |
 | Windows x64 | `autobrowser-windows-amd64.exe` | `%LOCALAPPDATA%\autobrowser\autobrowser.exe` |
+
+Необязательная альтернатива: Go-сборка того же релиза - `autobrowser-go-linux-amd64`, `autobrowser-go-linux-arm64`, `autobrowser-go-darwin-arm64` или `autobrowser-go-windows-amd64.exe`. Она поддерживает только движок cloakbrowser, как раз его используют шаги ниже. Если пользователь не просил Go, берите Python-бинари из таблицы.
 
 Для других платформ (например, macOS на Intel) бинаря нет: остановиться и отправить пользователя к установке через uv в https://github.com/foxzi/autobrowser-client/blob/main/docs/mcp.md.
 
