@@ -2,6 +2,8 @@
 
 ## English
 
+The Go binary (see [go/README.md](../go/README.md)) implements the same profiles, proxy relay, platform and fingerprint spoofing with the `cloakbrowser` engine only; small differences are listed in [Known differences](../go/README.md#known-differences).
+
 ### Profiles
 
 Browser profiles store user data (cookies, localStorage, session storage) between runs.
@@ -131,7 +133,7 @@ Browser --> browser engine (proxy=http://127.0.0.1:PORT) --> socks2http --> upst
 - Converts HTTP proxy protocol to SOCKS5 upstream
 - Shuts down automatically when the browser session ends
 
-If `socks2http` is not found (`proxy.socks2httpBin` is empty and the binary is not in `PATH`), a built-in Python relay with the same behavior is started in-process. It supports SOCKS5 (with or without auth) and HTTP upstream proxies and needs no extra install. An explicitly set `socks2httpBin` that does not exist is an error.
+If `socks2http` is not found (`proxy.socks2httpBin` is empty and the binary is not in `PATH`), a built-in relay with the same behavior is started in-process (written in Python, or in Go in the Go binary). It supports SOCKS5 (with or without auth) and HTTP upstream proxies and needs no extra install. An explicitly set `socks2httpBin` that does not exist is an error.
 
 #### Configuration
 
@@ -220,7 +222,7 @@ Mobile User-Agents automatically enable `is_mobile: true` and `has_touch: true` 
 
 ### Fingerprint spoofing
 
-When `fingerprint: true` is set in a scenario, the browser injects JavaScript that modifies browser APIs to produce a unique but consistent fingerprint for each profile.
+When a session uses a profile, the browser injects JavaScript that modifies browser APIs to produce a unique but consistent fingerprint for that profile. It works with both engines. `fingerprint: false` in the scenario `session` turns it off. Without a profile the injection is off unless the scenario sets `fingerprint` overrides (a mapping, see below); `fingerprint: true` alone does nothing without a profile.
 
 #### Spoofed APIs
 
@@ -234,7 +236,7 @@ When `fingerprint: true` is set in a scenario, the browser injects JavaScript th
 
 #### How it works
 
-1. On first run with `fingerprint: true`, a `fingerprint.json` is generated in the profile directory with a random seed, GPU strings, and per-API toggles. The GPU profile pool is selected automatically based on the User-Agent: Android UA gets mobile GPUs (Qualcomm Adreno, ARM Mali), Linux UA gets OpenGL/Mesa drivers, Windows UA gets Direct3D11 profiles.
+1. On the first run with a profile, a `fingerprint.json` is generated in the profile directory with a random seed, GPU strings, and per-API toggles. The GPU profile pool is selected automatically based on the User-Agent: Android UA gets mobile GPUs (Qualcomm Adreno, ARM Mali), Linux UA gets OpenGL/Mesa drivers, Windows UA gets Direct3D11 profiles.
 2. On subsequent runs, the same `fingerprint.json` is loaded, ensuring the profile always produces the same fingerprint.
 3. The fingerprint config is baked into a JavaScript injection script and executed via `context.add_init_script()` before any page content loads.
 4. The injection uses a seeded PRNG (mulberry32) so all noise is deterministic — same seed always produces the same modifications.
@@ -307,7 +309,7 @@ Sensitive HTTP headers (`authorization`, `cookie`, `set-cookie`, `proxy-authoriz
 
 #### Session idle timeout
 
-Sessions are automatically terminated after `timeouts.idleSessionMs` (default: 300000 ms = 5 minutes) of inactivity. Every API request to a session resets the idle timer.
+Sessions are automatically terminated after `timeouts.idleSessionMs` (default: 300000 ms = 5 minutes) of inactivity. Every API request to a session resets the idle timer. `0` disables the timeout.
 
 ```yaml
 timeouts:
@@ -319,6 +321,8 @@ Environment variable: `AUTOBROWSER_SESSION_IDLE_MS`
 ---
 
 ## Русский
+
+Go-бинарь (см. [go/README.ru.md](../go/README.ru.md)) реализует те же профили, прокси-relay, подмену платформы и отпечатка, но только с движком `cloakbrowser`; небольшие отличия перечислены в разделе [Известные отличия](../go/README.ru.md#известные-отличия).
 
 ### Профили
 
@@ -449,7 +453,7 @@ Browser --> browser engine (proxy=http://127.0.0.1:PORT) --> socks2http --> upst
 - Конвертирует протокол HTTP-прокси в upstream SOCKS5
 - Автоматически завершается при окончании браузерной сессии
 
-Если `socks2http` не найден (`proxy.socks2httpBin` пуст и бинарника нет в `PATH`), внутри процесса запускается встроенный relay на Python с тем же поведением. Он поддерживает upstream SOCKS5 (с авторизацией и без) и HTTP и не требует установки. Явно заданный несуществующий `socks2httpBin` считается ошибкой.
+Если `socks2http` не найден (`proxy.socks2httpBin` пуст и бинарника нет в `PATH`), внутри процесса запускается встроенный relay с тем же поведением (на Python, а в Go-бинаре на Go). Он поддерживает upstream SOCKS5 (с авторизацией и без) и HTTP и не требует установки. Явно заданный несуществующий `socks2httpBin` считается ошибкой.
 
 #### Конфигурация
 
@@ -538,7 +542,7 @@ session:
 
 ### Подмена отпечатка браузера (fingerprint spoofing)
 
-При указании `fingerprint: true` в сценарии браузер инжектирует JavaScript, который модифицирует API браузера для создания уникального, но постоянного отпечатка для каждого профиля.
+Если сессия использует профиль, браузер инжектирует JavaScript, который модифицирует API браузера для создания уникального, но постоянного отпечатка этого профиля. Работает с обоими движками. `fingerprint: false` в блоке `session` сценария отключает инъекцию. Без профиля инъекция выключена, если сценарий не задаёт переопределения `fingerprint` (mapping, см. ниже); один `fingerprint: true` без профиля ничего не делает.
 
 #### Подменяемые API
 
@@ -552,7 +556,7 @@ session:
 
 #### Как это работает
 
-1. При первом запуске с `fingerprint: true` в директории профиля создаётся `fingerprint.json` со случайным seed, строками GPU и флагами для каждого API. Пул GPU-профилей выбирается автоматически на основе User-Agent: Android UA получает мобильные GPU (Qualcomm Adreno, ARM Mali), Linux UA — драйверы OpenGL/Mesa, Windows UA — профили Direct3D11.
+1. При первом запуске с профилем в директории профиля создаётся `fingerprint.json` со случайным seed, строками GPU и флагами для каждого API. Пул GPU-профилей выбирается автоматически на основе User-Agent: Android UA получает мобильные GPU (Qualcomm Adreno, ARM Mali), Linux UA — драйверы OpenGL/Mesa, Windows UA — профили Direct3D11.
 2. При последующих запусках загружается тот же `fingerprint.json`, обеспечивая постоянство отпечатка профиля.
 3. Конфиг отпечатка встраивается в JavaScript-скрипт инъекции и выполняется через `context.add_init_script()` до загрузки любого контента страницы.
 4. Инъекция использует ГПСЧ с seed (mulberry32), поэтому весь шум детерминирован — один и тот же seed всегда даёт одинаковые модификации.
@@ -625,7 +629,7 @@ output:
 
 #### Таймаут бездействия сессий
 
-Сессии автоматически завершаются после `timeouts.idleSessionMs` (по умолчанию: 300000 мс = 5 минут) бездействия. Каждый API-запрос к сессии сбрасывает таймер.
+Сессии автоматически завершаются после `timeouts.idleSessionMs` (по умолчанию: 300000 мс = 5 минут) бездействия. Каждый API-запрос к сессии сбрасывает таймер. `0` отключает таймаут.
 
 ```yaml
 timeouts:
