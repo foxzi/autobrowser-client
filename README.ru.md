@@ -113,7 +113,7 @@ CI собирает обе версии; релиз публикует Python-б
 | `autobrowser update [--check]` | Обновить бинарь до последнего релиза |
 | `autobrowser generate-fingerprint --profile DIR` | Создать fingerprint.json для профиля |
 
-Общие флаги: `--config`, `--profile`, `--proxy`, `--viewport`, `--output`, `--headless/--headful`, `--timeout`, `--preserve-session`.
+Основные флаги: `run` и `run-script` принимают `--config`, `--profile`, `--proxy`, `--viewport`, `--output`; `run` ещё `--url`, `--headless/--headful`, `--timeout`, `--format`; `run-script` ещё `--var`, `--artifacts`, `--preserve-session`; `mcp` принимает `--config`, `--profile`, `--proxy`, `--headless/--headed`; `serve` - `--config`, `--host`, `--port`.
 
 Справка: `autobrowser -h`, `autobrowser help <command>` или `autobrowser <command> -h` (с примерами и переменными окружения). `autobrowser -V` выводит версию.
 

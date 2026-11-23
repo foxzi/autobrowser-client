@@ -113,7 +113,7 @@ CI builds both versions; a release publishes the Python binaries (`autobrowser-<
 | `autobrowser update [--check]` | Update the binary to the latest release |
 | `autobrowser generate-fingerprint --profile DIR` | Generate fingerprint.json for a profile |
 
-Common flags: `--config`, `--profile`, `--proxy`, `--viewport`, `--output`, `--headless/--headful`, `--timeout`, `--preserve-session`.
+Main flags: `run` and `run-script` take `--config`, `--profile`, `--proxy`, `--viewport`, `--output`; `run` also `--url`, `--headless/--headful`, `--timeout`, `--format`; `run-script` also `--var`, `--artifacts`, `--preserve-session`; `mcp` takes `--config`, `--profile`, `--proxy`, `--headless/--headed`; `serve` takes `--config`, `--host`, `--port`.
 
 Help: `autobrowser -h`, `autobrowser help <command>` or `autobrowser <command> -h` (examples and environment variables included). `autobrowser -V` prints the version.
 
