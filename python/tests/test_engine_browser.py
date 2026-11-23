@@ -117,3 +117,23 @@ steps:
     )
     assert out["success"], out
     assert out["vars"]["got"] == "hellohellox-hello"
+
+
+def test_wait_any(run):
+    out = run(
+        """
+steps:
+  - wait:
+      any:
+        - visible: "#nope"
+        - text: Hello
+    timeout: 3000
+    as: gate
+  - wait: {any: [{exists: "#nope"}]}
+    timeout: 300
+    optional: true
+"""
+    )
+    assert out["success"], out
+    assert out["steps"][0]["data"] == {"matched": 1} and out["vars"]["gate"] == 1
+    assert out["steps"][1]["error"] == 'wait any timed out after 300ms: none of [{"exists": {"type": "id", "value": "nope"}}]'

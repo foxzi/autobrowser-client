@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import tempfile
 from pathlib import Path
 
@@ -219,3 +220,35 @@ def test_args_only_for_evaluate():
     s = ScriptStep.model_validate({"evaluate": "(a) => a", "args": {"k": [1, 2]}})
     assert s.args == {"k": [1, 2]}
     assert ScriptStep.model_validate({"evaluate": "1", "args": None}).args is None
+
+
+@pytest.mark.parametrize(
+    "step,message",
+    [
+        ({"action": "click", "locator": "#a", "any": [{"text": "x"}]}, "'any' is not supported by 'click'"),
+        ({"action": "wait", "any": []}, "'wait' with 'any' requires at least one condition"),
+        (
+            {"action": "wait", "any": [{"text": "x"}], "waitUntil": "load"},
+            "'wait' with 'any' cannot be combined with 'waitUntil'",
+        ),
+        (
+            {"action": "wait", "any": [{"text": "x", "timeout": 5}]},
+            "'wait' alternatives cannot have 'timeout'; use the step 'timeout'",
+        ),
+        ({"action": "wait", "timeout": 5, "as": "g"}, "'as' is not supported by 'wait'"),
+        ({"action": "wait", "any": [{}]}, "condition needs exactly one of"),
+        ({"wait": "bogus"}, "wait shorthand expects int (ms), load-state string or {any: [...]}, got: 'bogus'"),
+        ({"wait": {"any": [{"text": "x"}], "timeout": 5}}, "wait shorthand expects int (ms)"),
+        ({"wait": {"any": [{"text": "x"}]}, "any": [{"text": "y"}]}, "shorthand conflict"),
+    ],
+)
+def test_wait_any_validation_errors(step, message):
+    with pytest.raises(ValueError, match=re.escape(message)):
+        ScriptStep.model_validate(step)
+
+
+def test_wait_any_valid():
+    s = ScriptStep.model_validate({"wait": {"any": [{"visible": "#a"}, {"text": "x"}]}, "timeout": 500, "as": "g"})
+    assert s.action == "wait" and len(s.any_) == 2 and s.timeout == 500 and s.as_name == "g"
+    canon = ScriptStep.model_validate({"action": "wait", "any": [{"text": "x"}]})
+    assert canon.any_[0].text == "x"

@@ -78,6 +78,7 @@ type Step struct {
 	AsName      *string // yaml key "as"
 	Vars        *omap.Map
 	Condition   *Condition
+	Any         []*Condition // wait: alternatives, non-nil when the key is present
 	Message     string
 	Name        string
 	Retry       int

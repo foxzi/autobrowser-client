@@ -21,6 +21,9 @@ import (
 	"github.com/foxzi/autobrowser-client/go/internal/scenario"
 )
 
+// ActionTimeout is the default action timeout in milliseconds.
+func (s *Session) ActionTimeout() int { return s.settingsT.ActionMs }
+
 // ExecuteStep is executor.execute_step for the actions the Go version supports.
 func (s *Session) ExecuteStep(step *scenario.Step, pageID string) *engine.StepResult {
 	res := &engine.StepResult{Action: step.Action, Success: true}
