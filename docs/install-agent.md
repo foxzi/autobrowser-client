@@ -123,7 +123,7 @@ The skill is built into the binary. `BIN install-skill` writes it to `~/.claude/
 
 Report to the user: what was installed, where the binary and the config are, and whether the check passed. Mention:
 
-- To update, download the binary again (step 1).
+- The binary updates itself: `mcp` and `serve` check GitHub releases once a day in the background, `BIN update` updates right away, `AUTOBROWSER_NO_AUTO_UPDATE=1` turns the background check off.
 - `--headed` after `mcp` shows the browser window; `--profile NAME` keeps cookies between runs.
 - Full docs: https://github.com/foxzi/autobrowser-client/blob/main/docs/mcp.md
 - Problems with Cloudflare, proxies or engines: https://github.com/foxzi/autobrowser-client/blob/main/docs/troubleshooting.md
@@ -247,7 +247,7 @@ Skill встроен в бинарь. `BIN install-skill` записывает �
 
 Отчитаться пользователю: что установлено, где лежат бинарь и конфиг, прошла ли проверка. Упомянуть:
 
-- Для обновления — скачать бинарь заново (шаг 1).
+- Бинарь обновляется сам: `mcp` и `serve` раз в день проверяют GitHub-релизы в фоне, `BIN update` обновляет сразу, `AUTOBROWSER_NO_AUTO_UPDATE=1` отключает фоновую проверку.
 - `--headed` после `mcp` показывает окно браузера; `--profile NAME` сохраняет cookies между запусками.
 - Полная документация: https://github.com/foxzi/autobrowser-client/blob/main/docs/mcp.md
 - Проблемы с Cloudflare, прокси или движками: https://github.com/foxzi/autobrowser-client/blob/main/docs/troubleshooting.md
