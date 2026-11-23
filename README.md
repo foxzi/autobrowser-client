@@ -65,7 +65,7 @@ Install autobrowser by following https://github.com/foxzi/autobrowser-client/blo
 - Bearer token (`AUTOBROWSER_API_TOKEN`), session limit, health and readiness checks.
 
 ### MCP server for AI agents
-- `autobrowser mcp` (stdio) gives the agent 19 tools: navigate, history, snapshot, screenshot, click, hover, type, press key, select, file upload, evaluate, wait for text, get text, tabs, logs, dialogs, solve challenge, run script, close.
+- `autobrowser mcp` (stdio) gives the agent 21 tools: navigate, history, snapshot, screenshot, click, hover, type, press key, select, file upload, evaluate, wait for text, get text, scroll, cookies, tabs, logs, dialogs, solve challenge, run script, close.
 - The snapshot returns `ref` ids for elements, so the agent clicks by reference instead of guessing selectors.
 - `autobrowser install-skill` installs a skill that teaches the agent the snapshot/ref loop, waits, Cloudflare handling and safety rules.
 
