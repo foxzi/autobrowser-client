@@ -501,6 +501,9 @@
           "type": "string",
           "description": "JavaScript for evaluate"
         },
+        "args": {
+          "description": "evaluate: argument passed to the script; the script must then be a function source `(arg) => ...` (Playwright semantics). ${...} is expanded inside strings; an exact \"${x}\" keeps the type"
+        },
         "direction": {
           "enum": [
             "back",
@@ -560,7 +563,7 @@
         "as": {
           "type": "string",
           "pattern": "^[A-Za-z_]\\w*$",
-          "description": "Store the result in a variable (extract, evaluate, read, find-all, get-content, get-cookies, get-headers)"
+          "description": "Store the result in a variable (extract, evaluate, read, find-all, get-content, get-cookies, get-headers; wait with any stores the matched index)"
         },
         "vars": {
           "type": "object",
@@ -568,6 +571,14 @@
         },
         "condition": {
           "$ref": "#/$defs/condition"
+        },
+        "any": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/condition"
+          },
+          "description": "wait: poll until one alternative (a regular condition) is true; data {matched: index}; combine with timeout and as"
         },
         "message": {
           "type": "string",
@@ -592,7 +603,7 @@
           "$ref": "#/$defs/text"
         },
         "wait": {
-          "description": "Shorthand: milliseconds (integer) or a load state",
+          "description": "Shorthand: milliseconds (integer), a load state, or {any: [conditions]}",
           "anyOf": [
             {
               "type": "integer"
@@ -603,6 +614,22 @@
                 "domcontentloaded",
                 "networkidle"
               ]
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "any"
+              ],
+              "properties": {
+                "any": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "$ref": "#/$defs/condition"
+                  }
+                }
+              }
             }
           ]
         },
@@ -1362,7 +1389,23 @@
             "required": [
               "as",
               "action"
-            ]
+            ],
+            "not": {
+              "allOf": [
+                {
+                  "properties": {
+                    "action": {
+                      "const": "wait"
+                    }
+                  }
+                },
+                {
+                  "required": [
+                    "any"
+                  ]
+                }
+              ]
+            }
           },
           "then": {
             "properties": {
