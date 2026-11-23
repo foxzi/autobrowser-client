@@ -39,7 +39,76 @@ const locatorJS = `(kind, value) => {
 		walk(document);
 		return out;
 	}
-	return Array.from(document.querySelectorAll(value));
+	if (!value.includes(':has-text(')) return Array.from(document.querySelectorAll(value));
+	// Playwright's :has-text("x"): the element text contains x (case-insensitive,
+	// whitespace-normalised). The selector is split into compounds joined by
+	// combinators and matched right to left.
+	const norm = s => s.replace(/\s+/g, ' ').trim().toLowerCase();
+	const split = (s, seps) => {
+		const parts = [], ops = [];
+		let cur = '', depth = 0, q = '';
+		for (let i = 0; i < s.length; i++) {
+			const c = s[i];
+			if (q) { cur += c; if (c === '\\') cur += s[++i] || ''; else if (c === q) q = ''; continue; }
+			if (c === '"' || c === "'") { q = c; cur += c; continue; }
+			if (c === '(' || c === '[') depth++;
+			if (c === ')' || c === ']') depth--;
+			if (depth === 0 && seps.includes(c)) {
+				let op = c === ' ' ? '' : c;
+				while (i + 1 < s.length && seps.includes(s[i + 1])) { i++; if (s[i] !== ' ') op = s[i]; }
+				if (cur.trim()) { parts.push(cur.trim()); ops.push(op || ' '); } else if (op && ops.length) ops[ops.length - 1] = op;
+				cur = '';
+				continue;
+			}
+			cur += c;
+		}
+		if (cur.trim()) parts.push(cur.trim());
+		return { parts, ops: ops.slice(0, parts.length - 1) };
+	};
+	const compound = s => {
+		const texts = [];
+		let css = '', i = 0;
+		while (i < s.length) {
+			if (s.startsWith(':has-text(', i)) {
+				let j = i + 10, depth = 1, q = '', arg = '';
+				for (; j < s.length && depth; j++) {
+					const c = s[j];
+					if (q) { if (c === '\\') { arg += s[++j]; continue; } if (c === q) { q = ''; continue; } arg += c; continue; }
+					if (c === '"' || c === "'") { q = c; continue; }
+					if (c === '(') depth++;
+					if (c === ')' && --depth === 0) break;
+					arg += c;
+				}
+				texts.push(norm(arg));
+				i = j + 1;
+				continue;
+			}
+			css += s[i++];
+		}
+		return { css: css.trim() || '*', texts };
+	};
+	const matches = (el, c) => el.matches(c.css) && c.texts.every(t => norm(el.textContent || '').includes(t));
+	const out = new Set();
+	for (const complex of split(value, ',').parts) {
+		const { parts, ops } = split(complex, ' >+~');
+		const cs = parts.map(compound);
+		const at = (el, i) => {
+			if (!el || el.nodeType !== 1 || !matches(el, cs[i])) return false;
+			if (i === 0) return true;
+			const op = ops[i - 1];
+			if (op === '>') return at(el.parentElement, i - 1);
+			if (op === '+') return at(el.previousElementSibling, i - 1);
+			for (let n = op === '~' ? el.previousElementSibling : el.parentElement; n;
+				n = op === '~' ? n.previousElementSibling : n.parentElement) {
+				if (at(n, i - 1)) return true;
+			}
+			return false;
+		};
+		for (const el of document.querySelectorAll(cs[cs.length - 1].css)) {
+			if (at(el, cs.length - 1)) out.add(el);
+		}
+	}
+	return [...out].sort((a, b) => a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1);
 }`
 
 // visibleJS is Playwright's visibility: a non-empty box and not visibility:hidden.
