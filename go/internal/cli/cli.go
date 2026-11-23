@@ -16,7 +16,7 @@ import (
 
 // Version is the version of the Python package this port follows; release
 // builds set it with -ldflags "-X .../internal/cli.Version=X.Y.Z".
-var Version = "0.5.4"
+var Version = "0.6.0"
 
 // env is what a command may use: output streams and the arguments after its name.
 type env struct {

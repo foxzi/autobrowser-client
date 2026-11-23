@@ -145,7 +145,7 @@ environment variables and exit codes are the same unless listed here.
   other than a checksum mismatch prints the plain error and exits 1 (Python: traceback).
 - `serve` prints one line `Serving the API on http://HOST:PORT` instead of uvicorn's log lines.
 - `run --profile-dir` is passed as typed (Python normalizes it through `pathlib.Path`).
-- The version is set at build time (`-ldflags -X`), default `0.5.4`.
+- The version is set at build time (`-ldflags -X`), default `0.6.0`.
 
 ### MCP
 
