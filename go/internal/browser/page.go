@@ -144,15 +144,22 @@ func (t *tab) goto_(url string, ms int) error {
 
 // evaluate runs an expression or function source; a function is called.
 func (t *tab) evaluate(expr string) (any, error) {
-	res, err := t.page.Evaluate(rod.Eval(`(expr) => {
-		const v = (0, eval)(expr);
-		return typeof v === 'function' ? v() : v;
+	// Objects come back as JSON text: CDP values lose the key order.
+	res, err := t.page.Evaluate(rod.Eval(`async (expr) => {
+		let v = (0, eval)(expr);
+		v = await (typeof v === 'function' ? v() : v);
+		return v !== null && typeof v === 'object' ? [JSON.stringify(v)] : v;
 	}`, expr).ByPromise())
 	if ee := (*rod.EvalError)(nil); errors.As(err, &ee) {
 		return nil, fmt.Errorf("Page.evaluate: %s", exceptionMessage(ee.Exception))
 	}
 	if err != nil {
 		return nil, fmt.Errorf("Page.evaluate: %s", err)
+	}
+	if a, ok := res.Value.Val().([]any); ok && len(a) == 1 {
+		if j, ok := a[0].(string); ok {
+			return toValue([]byte(j))
+		}
 	}
 	return toValue([]byte(res.Value.JSON("", "")))
 }

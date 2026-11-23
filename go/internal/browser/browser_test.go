@@ -116,8 +116,8 @@ func TestSessionSteps(t *testing.T) {
 	if got := omap.Marshal(r.Data, 0); got != `{"result": ""}` {
 		t.Errorf("evaluate after typing: %s", got)
 	}
-	r = ok(run("evaluate", "script", `({a: 1, b: [1, "x"]})`))
-	if got := omap.Marshal(r.Data, 0); got != `{"result": {"a": 1, "b": [1, "x"]}}` {
+	r = ok(run("evaluate", "script", `({b: [1, "x", {d: 1, c: 2}], a: 1})`))
+	if got := omap.Marshal(r.Data, 0); got != `{"result": {"b": [1, "x", {"d": 1, "c": 2}], "a": 1}}` {
 		t.Errorf("evaluate: %s", got)
 	}
 	ok(run("check", "locator", loc("id", "cb")))
