@@ -526,19 +526,36 @@ func (l *loc) setChecked(api string, want bool, ms int) error {
 	if err != nil {
 		return err
 	}
-	state := func() bool {
-		r, err := el.Eval(`function() { return !!this.checked }`)
-		return err == nil && r.Value.Bool()
+	// Playwright's checked state: a checkbox or radio input, or an ARIA checkable role
+	state := func() (bool, error) {
+		r, err := el.Eval(`function() {
+			if (this.nodeName === 'INPUT' && ['checkbox', 'radio'].includes(this.type)) return this.checked;
+			const roles = ['checkbox', 'menuitemcheckbox', 'option', 'radio', 'switch', 'menuitemradio', 'treeitem'];
+			if (roles.includes(this.getAttribute('role') || '')) {
+				const a = this.getAttribute('aria-checked');
+				return a === 'true' || a === 'mixed';
+			}
+			return 'error';
+		}`)
+		if err != nil {
+			return false, err
+		}
+		if r.Value.Str() == "error" {
+			return false, fmt.Errorf("Locator.%s: Error: Not a checkbox or radio button\nCall log:\n  - waiting for %s\n", api, l.repr)
+		}
+		return r.Value.Bool(), nil
 	}
-	if state() == want {
-		return nil
+	if cur, err := state(); err != nil || cur == want {
+		return err
 	}
 	if err := l.withTimeout(api, ms, el, func(e *rod.Element) error {
 		return e.Click(proto.InputMouseButtonLeft, 1)
 	}); err != nil {
 		return err
 	}
-	if state() != want {
+	if cur, err := state(); err != nil {
+		return err
+	} else if cur != want {
 		return fmt.Errorf("Locator.%s: Clicking the checkbox did not change its state", api)
 	}
 	return nil

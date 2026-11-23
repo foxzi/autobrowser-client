@@ -182,6 +182,8 @@ func TestFormActions(t *testing.T) {
 	fails(run("select", "locator", css("#d"), "value", "zz", "timeout", 1000),
 		"Locator.select_option: Error: Element is not a <select> element\nCall log:\n  - waiting for locator(\"#d\").first\n")
 	fails(run("select", "locator", css("#nope"), "value", "zz", "timeout", 1000), waitErr("wait_for", "#nope"))
+	fails(run("check", "locator", css("#d"), "timeout", 1000),
+		"Locator.check: Error: Not a checkbox or radio button\nCall log:\n  - waiting for locator(\"#d\")\n")
 	fails(run("read", "locator", css("#nope"), "timeout", 1000), waitErr("wait_for", "#nope"))
 	missing := filepath.Join(dir, "missing.txt")
 	fails(run("upload", "locator", css("#up"), "files", []any{missing}), "[Errno 2] No such file or directory: '"+missing+"'")
