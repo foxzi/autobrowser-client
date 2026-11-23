@@ -306,6 +306,9 @@ func (s *Server) act(args *omap.Map, steps ...*scenario.Step) (result, error) {
 	})
 }
 
+// first makes the engine act on the first match, as Python's .first does.
+var first = new(int)
+
 func (s *Server) tools() map[string]toolFunc {
 	actionMs := s.settings.Timeouts.ActionMs
 	navMs := s.settings.Timeouts.NavigationMs
@@ -359,14 +362,14 @@ func (s *Server) tools() map[string]toolFunc {
 			if boolean(a, "double") {
 				action = "dblclick"
 			}
-			return s.act(a, &scenario.Step{Action: action, Locator: target(a), Timeout: &actionMs})
+			return s.act(a, &scenario.Step{Action: action, Locator: target(a), Index: first, Timeout: &actionMs})
 		},
 		"browser_hover": func(a *omap.Map) (result, error) {
-			return s.act(a, &scenario.Step{Action: "hover", Locator: target(a), Timeout: &actionMs})
+			return s.act(a, &scenario.Step{Action: "hover", Locator: target(a), Index: first, Timeout: &actionMs})
 		},
 		"browser_type": func(a *omap.Map) (result, error) {
 			text := str(a, "text")
-			steps := []*scenario.Step{{Action: "fill", Locator: target(a), Value: &text, Timeout: &actionMs}}
+			steps := []*scenario.Step{{Action: "fill", Locator: target(a), Index: first, Value: &text, Timeout: &actionMs}}
 			if boolean(a, "submit") {
 				steps = append(steps, &scenario.Step{Action: "press", Locator: target(a), Key: "Enter", Timeout: &actionMs})
 			}

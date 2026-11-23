@@ -197,6 +197,7 @@ func TestBrowserTools(t *testing.T) {
 	defer srv.Close()
 	st := defaultSettings(t, map[string]string{"AUTOBROWSER_BROWSER_ENGINE": "cloakbrowser"})
 	st.Browser.Headless = true
+	st.Timeouts.ActionMs = 1000
 	c := connect(t, st)
 
 	expect := func(name string, args map[string]any, want string) string {
@@ -261,6 +262,11 @@ func TestBrowserTools(t *testing.T) {
 	// a failed navigation is a tool error, not a crash on its nil result
 	if got, isErr := call(t, c, "browser_navigate", map[string]any{"url": "http://127.0.0.1:1/"}); !isErr ||
 		!strings.Contains(got, "Page.goto: net::") {
+		t.Fatal(got)
+	}
+	// element tools act on the first match, as Python's .first
+	if got, isErr := call(t, c, "browser_click", map[string]any{"target": "#zz", "by": "css"}); !isErr ||
+		!strings.Contains(got, `waiting for locator("#zz").first`) {
 		t.Fatal(got)
 	}
 	expect("browser_close", nil, "closed")
