@@ -10,7 +10,7 @@ Versions follow [SemVer](https://semver.org/): `MAJOR.MINOR.PATCH`. The single s
 2. Create an annotated tag: `git tag -a v0.2.0 -m "v0.2.0"`.
 3. Push the commit and the tag: `git push origin main v0.2.0`.
 
-The `.github/workflows/release.yml` workflow runs on the tag. It checks that the tag matches the version in `python/pyproject.toml`, builds the wheel, the sdist and single-file binaries (`python/scripts/build-binary.sh` with PyInstaller on Linux amd64/arm64, macOS arm64 and Windows amd64, each with a `.sha256`), builds static Go binaries (`go/`, `CGO_ENABLED=0`, named `autobrowser-go-<os>-<arch>[.exe]` for linux amd64/arm64, darwin arm64 and windows amd64, each with a `.sha256`; the tag without `v` is set as the version with `-ldflags -X`), and creates a GitHub Release with all these files. The release notes list the commit subjects since the previous tag.
+The `.github/workflows/release.yml` workflow runs on the tag. It checks that the tag matches the version in `python/pyproject.toml`, builds the wheel, the sdist and single-file binaries (`python/scripts/build-binary.sh` with PyInstaller, named `autobrowser-linux-amd64`, `autobrowser-linux-arm64`, `autobrowser-macos-arm64` and `autobrowser-windows-amd64.exe`, each with a `.sha256`), builds static Go binaries (`go/`, `CGO_ENABLED=0`, named `autobrowser-go-<os>-<arch>[.exe]` for linux amd64/arm64, darwin arm64 and windows amd64, each with a `.sha256`; the tag without `v` is set as the version with `-ldflags -X`), and creates a GitHub Release with all these files. The release notes list the commit subjects since the previous tag.
 
 If the tag does not match the version, the workflow fails and no release is created. Delete the tag (`git tag -d v0.2.0 && git push origin :refs/tags/v0.2.0`), fix the version and tag again.
 
@@ -34,7 +34,7 @@ Without a tag uv installs the latest commit of `main`.
 2. Создать аннотированный тег: `git tag -a v0.2.0 -m "v0.2.0"`.
 3. Отправить коммит и тег: `git push origin main v0.2.0`.
 
-На тег запускается workflow `.github/workflows/release.yml`. Он проверяет, что тег совпадает с версией в `python/pyproject.toml`, собирает wheel, sdist и бинари одним файлом (`python/scripts/build-binary.sh` через PyInstaller на Linux amd64/arm64, macOS arm64 и Windows amd64, к каждому `.sha256`) собирает статические Go-бинари (`go/`, `CGO_ENABLED=0`, имена `autobrowser-go-<os>-<arch>[.exe]` для linux amd64/arm64, darwin arm64 и windows amd64, к каждому `.sha256`; тег без `v` записывается как версия через `-ldflags -X`) и создаёт GitHub Release со всеми этими файлами. В заметках к релизу — заголовки коммитов с предыдущего тега.
+На тег запускается workflow `.github/workflows/release.yml`. Он проверяет, что тег совпадает с версией в `python/pyproject.toml`, собирает wheel, sdist и бинари одним файлом (`python/scripts/build-binary.sh` через PyInstaller, имена `autobrowser-linux-amd64`, `autobrowser-linux-arm64`, `autobrowser-macos-arm64` и `autobrowser-windows-amd64.exe`, к каждому `.sha256`), собирает статические Go-бинари (`go/`, `CGO_ENABLED=0`, имена `autobrowser-go-<os>-<arch>[.exe]` для linux amd64/arm64, darwin arm64 и windows amd64, к каждому `.sha256`; тег без `v` записывается как версия через `-ldflags -X`) и создаёт GitHub Release со всеми этими файлами. В заметках к релизу — заголовки коммитов с предыдущего тега.
 
 Если тег не совпадает с версией, workflow падает и релиз не создаётся. Удалите тег (`git tag -d v0.2.0 && git push origin :refs/tags/v0.2.0`), исправьте версию и поставьте тег заново.
 
