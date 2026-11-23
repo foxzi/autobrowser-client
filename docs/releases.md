@@ -19,7 +19,7 @@ If the tag does not match the version, the workflow fails and no release is crea
 Add `@<tag>` to the git URL:
 
 ```bash
-uvx --from "autobrowser-client[cloak] @ git+https://github.com/foxzi/autobrowser-client@v0.1.0#subdirectory=python" autobrowser mcp
+uvx --from "autobrowser-client[cloak] @ git+https://github.com/foxzi/autobrowser-client@v0.6.0#subdirectory=python" autobrowser mcp
 ```
 
 Without a tag uv installs the latest commit of `main`.
@@ -43,7 +43,7 @@ Without a tag uv installs the latest commit of `main`.
 Добавьте `@<тег>` к git-ссылке:
 
 ```bash
-uvx --from "autobrowser-client[cloak] @ git+https://github.com/foxzi/autobrowser-client@v0.1.0#subdirectory=python" autobrowser mcp
+uvx --from "autobrowser-client[cloak] @ git+https://github.com/foxzi/autobrowser-client@v0.6.0#subdirectory=python" autobrowser mcp
 ```
 
 Без тега uv ставит последний коммит `main`.

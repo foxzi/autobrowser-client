@@ -52,7 +52,7 @@ Any client with a JSON config (`mcpServers`):
 }
 ```
 
-To pin a release, add the tag to the URL: `git+https://github.com/foxzi/autobrowser-client@v0.1.0#subdirectory=python`. See [releases.md](releases.md).
+To pin a release, add the tag to the URL: `git+https://github.com/foxzi/autobrowser-client@v0.6.0#subdirectory=python`. See [releases.md](releases.md).
 
 The first start downloads dependencies and the browser, which takes about a minute. To do it in advance, run the same `uvx --from ... autobrowser install` command with the same environment.
 
@@ -187,7 +187,7 @@ claude mcp add autobrowser \
 }
 ```
 
-Чтобы зафиксировать релиз, добавьте тег к URL: `git+https://github.com/foxzi/autobrowser-client@v0.1.0#subdirectory=python`. Подробнее в [releases.md](releases.md).
+Чтобы зафиксировать релиз, добавьте тег к URL: `git+https://github.com/foxzi/autobrowser-client@v0.6.0#subdirectory=python`. Подробнее в [releases.md](releases.md).
 
 Первый запуск скачивает зависимости и браузер, это занимает около минуты. Чтобы сделать это заранее, выполните ту же команду `uvx --from ... autobrowser install` с теми же переменными окружения.
 
