@@ -1,0 +1,32 @@
+# evaluate with args and wait with any (public page, no profile needed).
+#
+# Run:
+#   autobrowser run-script --file examples/evaluate-args.yaml
+#
+# - "args" is passed to the script as its single argument (the script must be a
+#   function); ${...} works inside args and an exact "${sel}" keeps its type
+# - "wait: {any: [...]}" waits for the first true condition and "as" stores its index
+
+vars:
+  sel: h1
+
+steps:
+  - open: https://example.com
+
+  - action: evaluate
+    script: "({sel, extra}) => document.querySelector(sel).innerText.length + extra"
+    args: {sel: "${sel}", extra: 10}
+    as: size
+  - assert: {var: size, equals: 24}
+
+  - wait:
+      any:
+        - visible: "#does-not-exist"
+        - text: "Example Domain"
+    timeout: 5000
+    as: which
+  - if: {var: which, equals: 1}
+    then:
+      - evaluate: "(n) => n * 2"
+        args: "${which}"
+        as: doubled

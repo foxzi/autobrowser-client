@@ -27,6 +27,7 @@ YAML scenario examples for `autobrowser run-script`. Each file is a ready-to-run
 | `speedtest.yaml` | speedtest.net speed test: results from `evaluate`, screenshot in `finally` |
 | `google-search.yaml` | Google search in a saved profile: top results, login and captcha flags, screenshot |
 | `extract-loop.yaml` | `forEach` + `extract` + variables (quotes.toscrape.com) |
+| `evaluate-args.yaml` | `evaluate` with `args` and `wait` with `any` (example.com) |
 
 ### Running scenarios
 
@@ -152,6 +153,7 @@ steps:
 | `speedtest.yaml` | Тест скорости speedtest.net: результат через `evaluate`, скриншот в `finally` |
 | `google-search.yaml` | Поиск в Google в сохранённом профиле: топ результатов, флаги входа и капчи, скриншот |
 | `extract-loop.yaml` | `forEach` + `extract` + переменные (quotes.toscrape.com) |
+| `evaluate-args.yaml` | `evaluate` с `args` и `wait` с `any` (example.com) |
 
 ### Способы запуска
 
