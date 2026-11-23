@@ -98,7 +98,7 @@ func (s *Session) Evaluate(pageID, expr string, isolated bool) (any, error) {
 		return nil, err
 	}
 	if !isolated {
-		return t.evaluate(expr)
+		return t.evaluate(expr, nil)
 	}
 	world, err := proto.PageCreateIsolatedWorld{FrameID: t.page.FrameID, WorldName: "utility"}.Call(t.page)
 	if err != nil {

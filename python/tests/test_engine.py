@@ -500,3 +500,67 @@ def test_wrong_type_after_substitution_is_step_error(session, calls):
     assert out["steps"][1]["optional"] is True
     assert out["vars"]["same"] is True
     assert calls == []
+
+
+def test_evaluate_args_templated(session, calls):
+    script = _script(
+        [{"evaluate": "(a) => a", "args": {"q": "${q}", "n": "${n}", "t": "x-${q}"}}], vars={"q": "hi", "n": 5}
+    )
+    assert run_script(session, script)["success"]
+    assert calls[0].args == {"q": "hi", "n": 5, "t": "x-hi"}
+
+
+def _wait_any_script(**step):
+    gate = {"wait": {"any": [{"text": "alpha"}, {"urlMatches": "/sorry/"}]}, "as": "gate", **step}
+    return _script(
+        [gate, {"if": {"var": "gate", "equals": 1}, "then": [{"set": {"branch": "second"}}], "else": [{"set": {"branch": "first"}}]}]
+    )
+
+
+def test_wait_any_first_matches(session, calls, no_sleep):
+    page = session.get_page.return_value
+    page.inner_text.return_value = "alpha beta"
+    page.url = "https://a.com/sorry/x"
+    out = run_script(session, _wait_any_script())
+    assert out["success"] and out["steps"][0]["action"] == "wait"
+    assert out["steps"][0]["data"] == {"matched": 0}
+    assert out["vars"]["gate"] == 0 and out["vars"]["branch"] == "first"
+    assert no_sleep == [] and calls == []
+
+
+def test_wait_any_second_matches_after_polling(session, calls, no_sleep):
+    page = session.get_page.return_value
+    texts = iter(["x", "x", "x"])
+    page.inner_text.side_effect = lambda *_: next(texts)
+    urls = iter(["https://a.com/", "https://a.com/", "https://a.com/sorry/"])
+    type(page).url = property(lambda self: next(urls))
+    out = run_script(session, _wait_any_script())
+    assert out["success"] and out["steps"][0]["data"] == {"matched": 1}
+    assert out["vars"]["gate"] == 1 and out["vars"]["branch"] == "second"
+    assert no_sleep == [250, 250]
+
+
+def test_wait_any_timeout_error(session, calls, no_sleep):
+    page = session.get_page.return_value
+    page.inner_text.return_value = "nothing"
+    page.url = "https://a.com/"
+    out = run_script(session, _wait_any_script(timeout=20))
+    assert not out["success"] and len(out["steps"]) == 1
+    assert out["steps"][0]["error"] == (
+        'wait any timed out after 20ms: none of [{"text": "alpha"}, {"urlMatches": "/sorry/"}]'
+    )
+    assert "gate" not in out["vars"]
+
+
+def test_wait_any_default_timeout_and_page(session, calls, no_sleep):
+    session.settings.timeouts.action_ms = 15
+    session.get_page.return_value.inner_text.return_value = "nothing"
+    out = run_script(session, _script([{"wait": {"any": [{"text": "alpha"}]}, "page": "page_2"}]))
+    assert out["steps"][0]["error"].startswith("wait any timed out after 15ms: none of ")
+    session.get_page.assert_called_with("page_2")
+
+
+def test_wait_any_templated(session, calls, no_sleep):
+    session.get_page.return_value.inner_text.return_value = "hello bob"
+    out = run_script(session, _script([{"wait": {"any": [{"text": "${who}"}]}, "as": "i"}], vars={"who": "bob"}))
+    assert out["success"] and out["vars"]["i"] == 0

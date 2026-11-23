@@ -11,6 +11,7 @@ import (
 	"github.com/go-rod/rod/lib/proto"
 
 	"github.com/foxzi/autobrowser-client/go/internal/engine"
+	"github.com/foxzi/autobrowser-client/go/internal/omap"
 	"github.com/foxzi/autobrowser-client/go/internal/scenario"
 )
 
@@ -146,14 +147,20 @@ func (t *tab) goto_(url string, ms int) error {
 	return nil
 }
 
-// evaluate runs an expression or function source; a function is called.
-func (t *tab) evaluate(expr string) (any, error) {
+// evaluate runs an expression or function source; a function is called, with
+// args (when set) as its single argument.
+func (t *tab) evaluate(expr string, args any) (any, error) {
+	call, params := "v()", []any{expr}
+	if args != nil {
+		// args travel as JSON text, which keeps the key order
+		call, params = "v(JSON.parse(args))", append(params, omap.Marshal(args, 0))
+	}
 	// Objects come back as JSON text: CDP values lose the key order.
-	res, err := t.page.Evaluate(rod.Eval(`async (expr) => {
+	res, err := t.page.Evaluate(rod.Eval(`async (expr, args) => {
 		let v = (0, eval)(expr);
-		v = await (typeof v === 'function' ? v() : v);
+		v = await (typeof v === 'function' ? `+call+` : v);
 		return v !== null && typeof v === 'object' ? [JSON.stringify(v)] : v;
-	}`, expr).ByPromise())
+	}`, params...).ByPromise())
 	if ee := (*rod.EvalError)(nil); errors.As(err, &ee) {
 		return nil, fmt.Errorf("Page.evaluate: %s", exceptionMessage(ee.Exception))
 	}

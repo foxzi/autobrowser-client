@@ -62,6 +62,8 @@ func (b *fakeBrowser) Page(string) (Page, error) {
 	return b.page, nil
 }
 
+func (b *fakeBrowser) ActionTimeout() int { return 10000 }
+
 func (b *fakeBrowser) ExecuteStep(step *scenario.Step, _ string) *StepResult {
 	b.log = append(b.log, step)
 	r := &StepResult{Action: step.Action, Success: true}
@@ -730,4 +732,107 @@ steps:
 	if !ok(out) {
 		t.Fatalf("%s", omap.Marshal(out, 0))
 	}
+}
+
+func TestEvaluateArgsTemplated(t *testing.T) {
+	b := newBrowser()
+	run(t, b, `
+vars: {q: hi, n: 5}
+steps:
+  - evaluate: "(a) => a"
+    args: {q: "${q}", n: "${n}", t: "x-${q}"}
+`)
+	if got := omap.Marshal(b.log[0].Args, 0); got != `{"q": "hi", "n": 5, "t": "x-hi"}` {
+		t.Errorf("%s", got)
+	}
+}
+
+const waitAnyYAML = `
+steps:
+  - wait: {any: [{text: alpha}, {urlMatches: "/sorry/"}]}
+    as: gate
+%s
+  - if: {var: gate, equals: 1}
+    then: [{set: {branch: second}}]
+    else: [{set: {branch: first}}]
+`
+
+func TestWaitAnyFirstMatches(t *testing.T) {
+	sl := noSleep(t)
+	b := newBrowser()
+	b.page.text, b.page.url = "alpha beta", "https://a.com/sorry/x"
+	out := run(t, b, strings.Replace(waitAnyYAML, "%s", "", 1))
+	if !ok(out) || get(steps(out)[0], "action") != "wait" || omap.Marshal(get(steps(out)[0], "data"), 0) != `{"matched": 0}` {
+		t.Fatalf("%s", omap.Marshal(out, 0))
+	}
+	if get(out, "vars", "gate") != 0 || get(out, "vars", "branch") != "first" || len(*sl) != 0 || len(b.log) != 0 {
+		t.Fatalf("%s %v", omap.Marshal(out, 0), *sl)
+	}
+}
+
+func TestWaitAnySecondMatchesAfterPolling(t *testing.T) {
+	sl := noSleep(t)
+	b := newBrowser()
+	b.page.text = "x"
+	b.page.url = "https://a.com/"
+	b.page.counts = nil
+	// the url flips to /sorry/ after two polling passes
+	pg := &flippingPage{fakePage: b.page, flipAfter: 2}
+	b2 := &pageBrowser{fakeBrowser: b, page: pg}
+	out := run(t, b2, strings.Replace(waitAnyYAML, "%s", "", 1))
+	if !ok(out) || omap.Marshal(get(steps(out)[0], "data"), 0) != `{"matched": 1}` {
+		t.Fatalf("%s", omap.Marshal(out, 0))
+	}
+	if get(out, "vars", "gate") != 1 || get(out, "vars", "branch") != "second" || !reflect.DeepEqual(*sl, []float64{250, 250}) {
+		t.Fatalf("%s %v", omap.Marshal(out, 0), *sl)
+	}
+}
+
+func TestWaitAnyTimeoutError(t *testing.T) {
+	noSleep(t)
+	b := newBrowser()
+	b.page.text, b.page.url = "nothing", "https://a.com/"
+	out := run(t, b, strings.Replace(waitAnyYAML, "%s", "    timeout: 20", 1))
+	if ok(out) || len(steps(out)) != 1 {
+		t.Fatalf("%s", omap.Marshal(out, 0))
+	}
+	want := `wait any timed out after 20ms: none of [{"text": "alpha"}, {"urlMatches": "/sorry/"}]`
+	if e, _ := get(steps(out)[0], "error").(string); e != want {
+		t.Fatalf("%q", e)
+	}
+	if _, has := get(out, "vars").(*omap.Map).Get("gate"); has {
+		t.Fatal("gate stored on timeout")
+	}
+}
+
+func TestWaitAnyTemplated(t *testing.T) {
+	noSleep(t)
+	b := newBrowser()
+	b.page.text = "hello bob"
+	out := run(t, b, "vars: {who: bob}\nsteps:\n  - wait: {any: [{text: '${who}'}]}\n    as: i\n")
+	if !ok(out) || get(out, "vars", "i") != 0 {
+		t.Fatalf("%s", omap.Marshal(out, 0))
+	}
+}
+
+// pageBrowser serves a different page than the embedded fakeBrowser's.
+type pageBrowser struct {
+	*fakeBrowser
+	page Page
+}
+
+func (b *pageBrowser) Page(string) (Page, error) { return b.page, nil }
+
+// flippingPage reports /sorry/ in the url after flipAfter URL calls.
+type flippingPage struct {
+	*fakePage
+	flipAfter, calls int
+}
+
+func (p *flippingPage) URL() (string, error) {
+	p.calls++
+	if p.calls > p.flipAfter {
+		return "https://a.com/sorry/", nil
+	}
+	return p.fakePage.URL()
 }

@@ -61,6 +61,7 @@ type Step struct {
 	Options     []string
 	Files       []string
 	Script      string
+	Args        any
 	Direction   string
 	Text        string
 	Gone        bool
@@ -77,6 +78,7 @@ type Step struct {
 	AsName      *string // yaml key "as"
 	Vars        *omap.Map
 	Condition   *Condition
+	Any         []*Condition // wait: alternatives, non-nil when the key is present
 	Message     string
 	Name        string
 	Retry       int

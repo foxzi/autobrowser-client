@@ -261,7 +261,7 @@ func TestShorthandErrors(t *testing.T) {
 	} {
 		stepErr(t, text)
 	}
-	if err := stepErr(t, "{wait: bogus}"); !strings.Contains(err.Error(), "wait shorthand expects int (ms) or load-state string, got: 'bogus'") {
+	if err := stepErr(t, "{wait: bogus}"); !strings.Contains(err.Error(), "wait shorthand expects int (ms), load-state string or {any: [...]}, got: 'bogus'") {
 		t.Fatal(err)
 	}
 	if err := stepErr(t, "{open: x, url: y}"); !strings.Contains(err.Error(), "shorthand conflict: cannot specify both shorthand value and explicit 'url'") {
@@ -432,5 +432,49 @@ func TestIncludeErrors(t *testing.T) {
 		if _, err := Load(path); err == nil || !strings.Contains(err.Error(), c.want) {
 			t.Errorf("%s: %v", c.file, err)
 		}
+	}
+}
+
+func TestEvaluateArgs(t *testing.T) {
+	if err := stepErr(t, "{action: click, locator: '#a', args: [1]}"); !strings.Contains(err.Error(), "'args' is not supported by 'click'") {
+		t.Fatal(err)
+	}
+	s := mustStep(t, `{evaluate: "(a) => a", args: {k: [1, 2]}}`)
+	if got := omap.Marshal(s.Args, 0); got != `{"k": [1, 2]}` {
+		t.Fatal(got)
+	}
+	if mustStep(t, `{evaluate: "1", args: null}`).Args != nil {
+		t.Fatal("null args")
+	}
+}
+
+func TestWaitAnyValidation(t *testing.T) {
+	cases := []struct{ step, msg string }{
+		{"{action: click, locator: '#a', any: [{text: x}]}", "'any' is not supported by 'click'"},
+		{"{action: wait, any: []}", "'wait' with 'any' requires at least one condition"},
+		{"{action: wait, any: [{text: x}], waitUntil: load}", "'wait' with 'any' cannot be combined with 'waitUntil'"},
+		{"{action: wait, any: [{text: x, timeout: 5}]}", "'wait' alternatives cannot have 'timeout'; use the step 'timeout'"},
+		{"{action: wait, timeout: 5, as: g}", "'as' is not supported by 'wait'"},
+		{"{action: wait, any: [{}]}", "condition needs exactly one of"},
+		{"{wait: bogus}", "wait shorthand expects int (ms), load-state string or {any: [...]}, got: 'bogus'"},
+		{"{wait: {any: [{text: x}], timeout: 5}}", "wait shorthand expects int (ms)"},
+	}
+	for _, c := range cases {
+		if err := stepErr(t, c.step); !strings.Contains(err.Error(), c.msg) {
+			t.Errorf("%s: %v", c.step, err)
+		}
+	}
+}
+
+func TestWaitAnyValid(t *testing.T) {
+	s := mustStep(t, `{wait: {any: [{visible: "#a"}, {text: x}]}, timeout: 500, as: g}`)
+	if s.Action != "wait" || len(s.Any) != 2 || *s.Timeout != 500 || *s.AsName != "g" {
+		t.Fatalf("%+v", s)
+	}
+	if got := omap.Marshal(s.Raw, 0); !strings.Contains(got, `"any": [{"visible": {"type": "id", "value": "a"}}, {"text": "x"}]`) {
+		t.Fatal(got)
+	}
+	if c := mustStep(t, `{action: wait, any: [{text: x}]}`); *c.Any[0].Text != "x" {
+		t.Fatal("canonical form")
 	}
 }

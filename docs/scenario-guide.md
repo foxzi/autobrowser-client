@@ -129,7 +129,7 @@ steps:
 | function | `() => document.title` | return value |
 | async function | `async () => { await new Promise(r => setTimeout(r, 500)); return 1 }` | awaited result |
 
-- The function gets **no arguments**: pass data through templates (see 4.3).
+- Without `args` the function gets **no arguments**; pass data with `args` (see 4.4).
 - JS runs in the **main world** of the page: page globals (`window.jQuery`, app state) are visible,
   and the page sees changes you make.
 - Long scripts: use a YAML block `script: |` (no quoting problems, line breaks kept).
@@ -159,30 +159,45 @@ Return one object with everything you need, and store it with `as:`; then use `$
 
 Templates are substituted in `script` **before** the JS runs. A JS template literal
 `` `${x.title}` `` is therefore taken as a scenario variable and the step fails with
-`undefined variable: x.title`. Options:
+`undefined variable: x.title`. To avoid it, keep scenario variables out of the script text and
+pass them with `args` (see 4.4). If the script itself needs a template literal, escape it:
 
 ```js
-// 1. escape: $${ becomes ${ and JS gets its template literal
+// $${ becomes ${ and JS gets its template literal
 () => { const i = 1; return `n=$${i + 1}`; }           // -> "n=2"
-// 2. plain concatenation
-items.map((x, i) => (i + 1) + '. ' + x.title).join('\n')
 ```
 
 `$` alone is not special: `$('a')`, `$x(...)`, `/\$\{/` regexes work unchanged.
 
 #### 4.4 Passing variables into JS
 
-The value is inserted as raw text, **without escaping**:
+Recommended: `args`. The value is passed to the function as its single argument (like
+`page.evaluate(script, arg)` in Playwright), with no quoting problems:
+
+```yaml
+- action: evaluate
+  script: "({word, n, items}) => document.title.includes(word) && items.length > n"
+  args: {word: "${word}", n: 1, items: "${rows}"}
+```
+
+- With `args` the script must be a function source (`(a) => ...`); a plain expression ignores `args`.
+- `${...}` is substituted in every string inside `args`; an exact `"${rows}"` keeps the type
+  (list, dict, number), so structures arrive as real JS objects.
+- A quote in a value (`it's "quoted"`) is not a problem.
+- `args` exists only on `evaluate`.
+
+Inserting `${...}` straight into the script text still works, but the value goes in as raw text,
+**without escaping**:
 
 ```yaml
 - action: evaluate
   script: "() => document.title.includes('${word}')"
 ```
 
-- Works for controlled values (numbers, words, selectors without quotes).
+- Fine only for controlled values (numbers, words, selectors without quotes).
 - A value with a quote (`it's "quoted"`) breaks the JS: `SyntaxError`.
 - A dict or list is inserted in Python syntax (`{'a': 1, 'b': True}`) and is not valid JS.
-- Ways out:
+- Other ways out, when `args` is not an option:
   - keep user text out of JS: put it into the page with `type`/`fill` (`value: "${query}"`) and
     read it in JS from the DOM;
   - pass a URL-encoded value and decode it: `--var "q=it%27s"`, JS `decodeURIComponent('${q}')`;
@@ -199,6 +214,31 @@ The value is inserted as raw text, **without escaping**:
 - `waitUntil: visible` with a comma-separated locator waits for whichever appears first
   (results **or** captcha); add `index: 0`, since several elements may match.
 - Values read by JS from the page are a snapshot: re-run `evaluate` after the page changes.
+
+#### 4.6 Wait for one of several conditions
+
+When the page may end up in one of several states (results or captcha, logged in or login form),
+use `wait` with `any` instead of a polling loop in JS. It returns the index of the first
+condition that became true; store it with `as` and branch with `if`:
+
+```yaml
+- wait:
+    any:
+      - exists: "#results"            # index 0
+      - text: "unusual traffic"       # index 1
+      - urlMatches: "/sorry/"         # index 2
+  timeout: 15000                      # the whole wait; no timeout inside alternatives
+  as: state
+- if: {var: state, equals: 0}
+  then:
+    - extract: "#results h3"
+      as: first
+  else:
+    - fail: "blocked, state ${state}"
+```
+
+On timeout the step fails (`wait any timed out after 15000ms: none of [...]`); add `optional: true`
+or a `try` to continue. Details: [scripts.md](scripts.md).
 
 ### 5. Writing files
 
@@ -241,31 +281,32 @@ steps:
         locator: "textarea[name='q'], input[name='q']"
         value: "${query}"                       # text field: no escaping needed
       - press: Enter
-      - action: wait                            # results or captcha, whichever comes first
-        waitUntil: visible
-        locator: "#search a h3, #captcha-form"
-        index: 0
+      - wait:                                   # results or captcha, whichever comes first
+          any:
+            - exists: "#search a h3"            # index 0: results
+            - urlMatches: "/sorry/"             # index 1: captcha
+            - exists: "#captcha-form"           # index 2: captcha
         timeout: 20000
-        optional: true
-      - action: evaluate
-        as: results
-        script: |
-          () => {
-            const items = [...document.querySelectorAll('#search a:has(h3)')].slice(0, 10)
-              .map(a => ({title: a.querySelector('h3').innerText, url: a.href}));
-            return {
-              captcha: /\/sorry\//.test(location.href),
-              items,
-              // no JS template literal here: ${...} would be taken as a scenario variable
-              text: items.map((x, i) => (i + 1) + '. ' + x.title + '\n   ' + x.url).join('\n') + '\n',
-            };
-          }
-      - if: {var: results.captcha}
+        as: gate
+      - if: {var: gate, equals: 0}
         then:
+          - action: evaluate
+            as: results
+            script: |
+              () => {
+                const items = [...document.querySelectorAll('#search a:has(h3)')].slice(0, 10)
+                  .map(a => ({title: a.querySelector('h3').innerText, url: a.href}));
+                return {
+                  items,
+                  // no JS template literal here: ${...} would be taken as a scenario variable
+                  text: items.map((x, i) => (i + 1) + '. ' + x.title + '\n   ' + x.url).join('\n') + '\n',
+                };
+              }
+          - action: save
+            file: output/google-search.txt
+            value: "${results.text}"
+        else:
           - fail: "captcha for ${query}"
-      - action: save
-        file: output/google-search.txt
-        value: "${results.text}"
     finally:
       - screenshot: output/google-search.png
 ```
@@ -398,7 +439,7 @@ steps:
 | функция | `() => document.title` | возвращённое значение |
 | async-функция | `async () => { await new Promise(r => setTimeout(r, 500)); return 1 }` | дожидается результата |
 
-- Функция **не получает аргументов**: данные передаются через шаблоны (см. 4.4).
+- Без `args` функция **не получает аргументов**; данные передаются через `args` (см. 4.4).
 - JS выполняется в **основном мире** страницы: видны глобальные объекты страницы (`window.jQuery`,
   состояние приложения), и страница видит ваши изменения.
 - Длинные скрипты пишите блоком YAML `script: |` (нет проблем с кавычками, переносы сохраняются).
@@ -428,30 +469,46 @@ Go-бинарник преобразует объекты через `JSON.strin
 
 Шаблоны подставляются в `script` **до** запуска JS. Поэтому JS-шаблонная строка
 `` `${x.title}` `` воспринимается как переменная сценария, и шаг падает с
-`undefined variable: x.title`. Варианты:
+`undefined variable: x.title`. Чтобы этого избежать, не вставляйте переменные сценария в текст
+скрипта, а передавайте их через `args` (см. 4.4). Если шаблонная строка нужна самому скрипту,
+экранируйте её:
 
 ```js
-// 1. экранирование: $${ превращается в ${, и JS получает свою шаблонную строку
+// $${ превращается в ${, и JS получает свою шаблонную строку
 () => { const i = 1; return `n=$${i + 1}`; }           // -> "n=2"
-// 2. обычная конкатенация
-items.map((x, i) => (i + 1) + '. ' + x.title).join('\n')
 ```
 
 Одиночный `$` не особенный: `$('a')`, `$x(...)`, регулярки `/\$\{/` работают без изменений.
 
 #### 4.4 Передача переменных в JS
 
-Значение вставляется как сырой текст, **без экранирования**:
+Рекомендуется `args`. Значение передаётся функции единственным аргументом (как
+`page.evaluate(script, arg)` в Playwright), без проблем с кавычками:
+
+```yaml
+- action: evaluate
+  script: "({word, n, items}) => document.title.includes(word) && items.length > n"
+  args: {word: "${word}", n: 1, items: "${rows}"}
+```
+
+- С `args` скрипт должен быть кодом функции (`(a) => ...`); обычное выражение игнорирует `args`.
+- `${...}` подставляется во всех строках внутри `args`; строка ровно `"${rows}"` сохраняет тип
+  (список, словарь, число), поэтому структуры приходят настоящими объектами JS.
+- Кавычка в значении (`it's "quoted"`) не проблема.
+- `args` есть только у `evaluate`.
+
+Вставка `${...}` прямо в текст скрипта по-прежнему работает, но значение вставляется как сырой текст,
+**без экранирования**:
 
 ```yaml
 - action: evaluate
   script: "() => document.title.includes('${word}')"
 ```
 
-- Работает для контролируемых значений (числа, слова, селекторы без кавычек).
+- Подходит только для контролируемых значений (числа, слова, селекторы без кавычек).
 - Значение с кавычкой (`it's "quoted"`) ломает JS: `SyntaxError`.
 - Словарь или список вставляется в синтаксисе Python (`{'a': 1, 'b': True}`) - это не JS.
-- Выходы:
+- Другие выходы, когда `args` не подходит:
   - не пускать пользовательский текст в JS: ввести его на страницу через `type`/`fill`
     (`value: "${query}"`) и прочитать в JS из DOM;
   - передать значение в URL-кодировке и раскодировать: `--var "q=it%27s"`, в JS `decodeURIComponent('${q}')`;
@@ -468,6 +525,31 @@ items.map((x, i) => (i + 1) + '. ' + x.title).join('\n')
 - `waitUntil: visible` с локатором через запятую ждёт то, что появится первым (результаты **или**
   капча); добавьте `index: 0`, так как совпасть может несколько элементов.
 - Значения, прочитанные JS со страницы, - снимок: после изменений страницы запускайте `evaluate` заново.
+
+#### 4.6 Ждать одно из нескольких условий
+
+Если страница может прийти в одно из нескольких состояний (результаты или капча, вход выполнен или
+форма входа), используйте `wait` с `any` вместо цикла опроса в JS. Он возвращает индекс первого
+условия, которое стало истинным; сохраните его через `as` и ветвитесь через `if`:
+
+```yaml
+- wait:
+    any:
+      - exists: "#results"            # индекс 0
+      - text: "unusual traffic"       # индекс 1
+      - urlMatches: "/sorry/"         # индекс 2
+  timeout: 15000                      # на весь wait; внутри альтернатив timeout нельзя
+  as: state
+- if: {var: state, equals: 0}
+  then:
+    - extract: "#results h3"
+      as: first
+  else:
+    - fail: "blocked, state ${state}"
+```
+
+По таймауту шаг падает (`wait any timed out after 15000ms: none of [...]`); чтобы продолжить, добавьте
+`optional: true` или `try`. Подробности: [scripts.md](scripts.md).
 
 ### 5. Запись файлов
 
@@ -501,10 +583,10 @@ items.map((x, i) => (i + 1) + '. ' + x.title).join('\n')
 Главное в нём:
 
 - запрос вводится через `type` с `value: "${query}"` - экранирование не нужно;
-- ожидание «результаты или капча» одним шагом `wait` с локатором через запятую и `optional: true`;
-- `evaluate` возвращает объект `{captcha, items, text}` в `results`, строка `text` собирается
+- ожидание «результаты или капча» одним шагом `wait` с `any` и `as: gate` (индекс 0 - результаты);
+- `if: {var: gate, equals: 0}` выбирает ветку: результаты разбираются в `evaluate`, иначе `fail` с явной ошибкой;
+- `evaluate` возвращает объект `{items, text}` в `results`, строка `text` собирается
   конкатенацией, без JS-шаблонных строк;
-- `if: {var: results.captcha}` + `fail` для явной ошибки;
 - `save` с `value: "${results.text}"` пишет `output/google-search.txt`;
 - `screenshot` в `finally`.
 
