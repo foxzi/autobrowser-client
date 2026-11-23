@@ -3,7 +3,6 @@ package browser
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/ysmood/gson"
@@ -121,9 +120,20 @@ func (s *Session) Evaluate(pageID, expr string, isolated bool) (any, error) {
 	if d := res.ExceptionDetails; d != nil {
 		msg := d.Text
 		if d.Exception != nil {
-			msg = strings.TrimSpace(fmt.Sprintf("%s %s", d.Exception.Description, d.Exception.Value))
+			msg = exceptionMessage(d.Exception)
 		}
 		return nil, fmt.Errorf("Page.evaluate: %s", msg)
 	}
 	return toValue([]byte(res.Result.Value.JSON("", "")))
+}
+
+// exceptionMessage is Playwright's getExceptionMessage: description || String(value).
+func exceptionMessage(exc *proto.RuntimeRemoteObject) string {
+	if exc.Description != "" {
+		return exc.Description
+	}
+	if s, ok := exc.Value.Val().(string); ok {
+		return s
+	}
+	return exc.Value.JSON("", "")
 }

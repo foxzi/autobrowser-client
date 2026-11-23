@@ -1,9 +1,9 @@
 package browser
 
 import (
+	"errors"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/go-rod/rod"
@@ -136,8 +136,11 @@ func (t *tab) evaluate(expr string) (any, error) {
 		const v = (0, eval)(expr);
 		return typeof v === 'function' ? v() : v;
 	}`, expr).ByPromise())
+	if ee := (*rod.EvalError)(nil); errors.As(err, &ee) {
+		return nil, fmt.Errorf("Page.evaluate: %s", exceptionMessage(ee.Exception))
+	}
 	if err != nil {
-		return nil, fmt.Errorf("Page.evaluate: %s", strings.TrimPrefix(err.Error(), "eval js error: "))
+		return nil, fmt.Errorf("Page.evaluate: %s", err)
 	}
 	return toValue([]byte(res.Value.JSON("", "")))
 }

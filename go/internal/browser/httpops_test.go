@@ -54,6 +54,13 @@ func TestHTTPOps(t *testing.T) {
 	if _, err := s.Evaluate("", "nope()", true); err == nil || !strings.HasPrefix(err.Error(), "Page.evaluate: ReferenceError") {
 		t.Fatalf("evaluate isolated error: %v", err)
 	}
+	if _, err := s.Evaluate("", "() => { throw new Error('boom') }", false); err == nil ||
+		!strings.HasPrefix(err.Error(), "Page.evaluate: Error: boom\n    at ") || strings.Contains(err.Error(), "<nil>") {
+		t.Fatalf("evaluate error: %v", err)
+	}
+	if _, err := s.Evaluate("", "() => { throw 'x' }", false); err == nil || err.Error() != "Page.evaluate: x" {
+		t.Fatalf("evaluate thrown string: %v", err)
+	}
 	if err := s.Wheel("", 0, 100.5); err != nil {
 		t.Fatal(err)
 	}
