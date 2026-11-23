@@ -91,6 +91,9 @@ environment variables and exit codes are the same unless listed here.
 - `mouse-random` uses the same algorithm with Go's `math/rand`, so a seed gives another path
   (the step output is the same).
 - `solve-challenge` finds out-of-process iframes through `Target.getTargets`; the click point is the same.
+- `evaluate` converts objects with `JSON.stringify`: `Infinity` and `NaN` give `null`, a `Date` gives
+  its ISO string (`1970-01-01T00:00:00.000Z`), a DOM element `{}` (Python: `Infinity`,
+  `1970-01-01 00:00:00+00:00`, `ref: <Node>`).
 - Regex conditions use RE2; an invalid regex makes the check false.
 - A failed step always has an `error` key (empty string without text); Python omits it for `None`.
 - Scenario validation errors (`run-script`, `validate-script`, MCP `browser_run_script`, API

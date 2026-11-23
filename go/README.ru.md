@@ -91,6 +91,9 @@ Chromium из cloakbrowser ищется и, если его нет, скачив
 - `mouse-random` использует тот же алгоритм с `math/rand` Go, поэтому один seed даёт другой путь
   (вывод шага тот же).
 - `solve-challenge` находит iframe вне процесса через `Target.getTargets`; точка клика та же.
+- `evaluate` преобразует объекты через `JSON.stringify`: `Infinity` и `NaN` дают `null`, `Date` -
+  строку ISO (`1970-01-01T00:00:00.000Z`), DOM-элемент - `{}` (Python: `Infinity`,
+  `1970-01-01 00:00:00+00:00`, `ref: <Node>`).
 - Regex в условиях - RE2; некорректный regex делает проверку ложной.
 - У неуспешного шага всегда есть ключ `error` (пустая строка без текста); Python опускает его для `None`.
 - Ошибки валидации сценария (`run-script`, `validate-script`, MCP `browser_run_script`, API
